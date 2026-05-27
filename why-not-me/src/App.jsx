@@ -4,6 +4,7 @@ import { AnimatePresence } from 'framer-motion'
 import Nav from './components/Nav'
 import Footer from './components/Footer'
 import ScrollToTop from './components/ScrollToTop'
+import ScrollAtmosphere from './components/ScrollAtmosphere'
 import HomePage from './pages/HomePage'
 import DocumentaryPage from './pages/DocumentaryPage'
 import DonatePage from './pages/DonatePage'
@@ -75,6 +76,7 @@ export default function App() {
     <BrowserRouter>
       <div className={`site-shell ${isMobileView ? 'mobile-view' : 'desktop-view'}`} data-mobile-view={isMobileView}>
         <ScrollToTop />
+        <ScrollAtmosphere />
         <Nav />
         <AnimatedRoutes />
         <Footer />

@@ -196,9 +196,206 @@ section {
     linear-gradient(180deg, var(--black) 0%, #111916 48%, var(--black) 100%);
 }
 
+.page-cinema-aperture {
+  position: fixed;
+  inset: 0;
+  z-index: 2499;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(0,0,0,0.86), transparent 18%, transparent 82%, rgba(0,0,0,0.86)),
+    radial-gradient(circle at 50% 50%, transparent 36%, rgba(0,0,0,0.42) 74%, rgba(0,0,0,0.8) 100%);
+  transform-origin: center center;
+}
+
+.scroll-atmosphere {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.scroll-atmosphere-lens {
+  position: absolute;
+  inset: -18vh -12vw;
+  background:
+    radial-gradient(circle at 50% 48%, rgba(203,178,153,0.08), transparent 28%),
+    radial-gradient(circle at 18% 22%, rgba(85,96,77,0.12), transparent 32%),
+    linear-gradient(115deg, transparent 0%, rgba(245,243,236,0.035) 48%, transparent 56%);
+  mix-blend-mode: screen;
+  filter: blur(18px);
+}
+
+.scroll-atmosphere-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  transform-origin: left center;
+  background: linear-gradient(90deg, transparent, rgba(203,178,153,0.72), rgba(245,243,236,0.66), transparent);
+  opacity: 0.68;
+  box-shadow: 0 0 22px rgba(203,178,153,0.22);
+}
+
+.scroll-atmosphere-letterbox {
+  position: fixed;
+  left: 0;
+  right: 0;
+  height: clamp(10px, 1.5vw, 20px);
+  background: linear-gradient(180deg, rgba(0,0,0,0.62), rgba(0,0,0,0));
+  opacity: 0.44;
+}
+
+.scroll-atmosphere-letterbox-top { top: 0; }
+.scroll-atmosphere-letterbox-bottom { bottom: 0; transform: rotate(180deg); }
+
 .reveal-layer {
   transform-style: preserve-3d;
   will-change: transform, opacity, filter;
+}
+
+
+/* ============ SCROLL DIRECTED CINEMA ============ */
+.page-cinema-content > section {
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+  will-change: transform, opacity, filter;
+}
+
+@supports (animation-timeline: view()) {
+  .page-cinema-content > section:not(.hero):not(.marathon-page-hero) {
+    animation: sectionCinemaDrift both linear;
+    animation-timeline: view();
+    animation-range: entry 0% exit 100%;
+  }
+
+  .page-cinema-content .section-label {
+    animation: labelCinematicFocus both linear;
+    animation-timeline: view();
+    animation-range: entry 18% cover 42%;
+  }
+
+  .page-cinema-content .gold-line {
+    animation: lineCinematicDraw both linear;
+    animation-timeline: view();
+    animation-range: entry 24% cover 46%;
+  }
+}
+
+@keyframes sectionCinemaDrift {
+  0% {
+    opacity: 0.46;
+    transform: translate3d(0, 72px, 0) scale(0.965);
+    filter: blur(10px) brightness(0.82);
+  }
+  14% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+    filter: blur(0px) brightness(1);
+  }
+  74% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+    filter: blur(0px) brightness(1);
+  }
+  100% {
+    opacity: 0.64;
+    transform: translate3d(0, -58px, 0) scale(1.038);
+    filter: blur(7px) brightness(0.88);
+  }
+}
+
+@keyframes labelCinematicFocus {
+  0% {
+    opacity: 0;
+    letter-spacing: 8px;
+    transform: translate3d(0, 20px, 0);
+    filter: blur(8px);
+  }
+  100% {
+    opacity: 1;
+    letter-spacing: 4px;
+    transform: translate3d(0, 0, 0);
+    filter: blur(0px);
+  }
+}
+
+@keyframes lineCinematicDraw {
+  0% { transform: scaleX(0); opacity: 0; }
+  100% { transform: scaleX(1); opacity: 1; }
+}
+
+.reveal-layer {
+  transform-origin: center center;
+}
+
+.reveal-layer img,
+.marathon-dunedin-photo img,
+.tumour-images img,
+.treatment-images img,
+.photo-grid img {
+  backface-visibility: hidden;
+  will-change: transform, filter;
+}
+
+.scroll-zoom-focus::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -0.12em;
+  width: min(220px, 62%);
+  height: 1px;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(203,178,153,0.4), transparent);
+  transform: translateX(-50%) scaleX(0);
+  transform-origin: center;
+  opacity: 0;
+  transition: transform 0.85s var(--ease-cinematic), opacity 0.85s var(--ease-cinematic);
+}
+
+.scroll-zoom-focus:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) scaleX(1);
+}
+
+@media (max-width: 820px), (hover: none) and (pointer: coarse) {
+  @supports (animation-timeline: view()) {
+    .page-cinema-content > section:not(.hero):not(.marathon-page-hero) {
+      animation-name: sectionCinemaDriftMobile;
+    }
+  }
+
+  .scroll-atmosphere-progress {
+    opacity: 0.46;
+  }
+
+  .scroll-atmosphere-letterbox {
+    height: 8px;
+  }
+}
+
+@keyframes sectionCinemaDriftMobile {
+  0% {
+    opacity: 0.58;
+    transform: translate3d(0, 44px, 0) scale(0.985);
+    filter: blur(7px) brightness(0.86);
+  }
+  16% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+    filter: blur(0px) brightness(1);
+  }
+  78% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+    filter: blur(0px) brightness(1);
+  }
+  100% {
+    opacity: 0.76;
+    transform: translate3d(0, -32px, 0) scale(1.014);
+    filter: blur(4px) brightness(0.92);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

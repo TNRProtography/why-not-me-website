@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { motion, useReducedMotion, useScroll, useTransform } from 'framer-motion'
+import { motion, useReducedMotion, useScroll, useSpring, useTransform } from 'framer-motion'
 
 function getCompactView() {
   if (typeof window === 'undefined') return false
@@ -34,8 +34,8 @@ export default function ScrollZoomFocus({
     }
   }, [])
 
-  const finalScaleTo = compactView ? Math.min(scaleTo, 1.48) : scaleTo
-  const finalYTo = compactView ? Math.max(yTo, -48) : yTo
+  const finalScaleTo = compactView ? Math.min(scaleTo, 1.52) : scaleTo
+  const finalYTo = compactView ? Math.max(yTo, -50) : yTo
   const finalBlurTo = compactView ? Math.min(blurTo, 7) : blurTo
 
   const { scrollYProgress } = useScroll({
@@ -43,10 +43,22 @@ export default function ScrollZoomFocus({
     offset,
   })
 
-  const scale = useTransform(scrollYProgress, [0, 0.5, 1], [0.985, 1, finalScaleTo])
-  const y = useTransform(scrollYProgress, [0, 0.56, 1], [18, 0, finalYTo])
-  const opacity = useTransform(scrollYProgress, [0, 0.62, 1], [1, 1, opacityTo])
-  const filter = useTransform(scrollYProgress, [0, 0.7, 1], ['blur(0px)', 'blur(0px)', `blur(${finalBlurTo}px)`])
+  const smoothProgress = useSpring(scrollYProgress, {
+    stiffness: 54,
+    damping: 24,
+    mass: 0.78,
+  })
+
+  const scale = useTransform(smoothProgress, [0, 0.42, 0.78, 1], [0.965, 1, 1.035, finalScaleTo])
+  const y = useTransform(smoothProgress, [0, 0.5, 0.82, 1], [22, 0, -4, finalYTo])
+  const opacity = useTransform(smoothProgress, [0, 0.55, 0.82, 1], [0.92, 1, 1, opacityTo])
+  const filter = useTransform(smoothProgress, [0, 0.18, 0.76, 1], ['blur(8px) brightness(0.82)', 'blur(0px) brightness(1)', 'blur(0px) brightness(1.06)', `blur(${finalBlurTo}px) brightness(1.16)`])
+  const letterSpacing = useTransform(smoothProgress, [0, 0.72, 1], ['0em', '0.004em', '0.038em'])
+  const textShadow = useTransform(
+    smoothProgress,
+    [0, 0.55, 1],
+    ['0 0 0 rgba(203,178,153,0)', '0 10px 42px rgba(203,178,153,0.08)', '0 30px 100px rgba(203,178,153,0.26)']
+  )
 
   if (reduceMotion) {
     return (
@@ -61,7 +73,7 @@ export default function ScrollZoomFocus({
       ref={targetRef}
       className={`scroll-zoom-focus ${className}`.trim()}
       data-origin={origin}
-      style={{ scale, y, opacity, filter }}
+      style={{ scale, y, opacity, filter, letterSpacing, textShadow }}
     >
       {children}
     </motion.div>
