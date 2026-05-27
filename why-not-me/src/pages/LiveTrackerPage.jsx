@@ -25,19 +25,20 @@ const BASEMAPS = {
     className: 'basemap-dark',
     maxZoom: 19,
   },
-  light: {
-    url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
-    label: 'Light',
-    className: 'basemap-light',
+  satellite: {
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attribution: 'Tiles &copy; Esri, Maxar, Earthstar Geographics, and the GIS User Community',
+    label: 'Satellite',
+    className: 'basemap-satellite',
     maxZoom: 19,
   },
-  streets: {
-    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
-    label: 'Streets',
-    className: 'basemap-streets',
-    maxZoom: 19,
+  terrain: {
+    url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+    attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, SRTM | Map style &copy; <a href="https://opentopomap.org">OpenTopoMap</a>',
+    label: 'Terrain',
+    className: 'basemap-terrain',
+    maxZoom: 17,
+    maxNativeZoom: 17,
   },
 }
 
@@ -288,6 +289,63 @@ function buildElevationProfile(routePoints) {
   }
 }
 
+function buildRouteSegments(routePoints) {
+  if (!Array.isArray(routePoints) || routePoints.length < 2) return []
+
+  const elevations = routePoints
+    .map(point => point.elevation)
+    .filter(Number.isFinite)
+  const minElevation = elevations.length ? Math.min(...elevations) : 0
+  const maxElevation = elevations.length ? Math.max(...elevations) : 1
+  const elevationRange = Math.max(1, maxElevation - minElevation)
+
+  let distanceKm = 0
+  const segments = []
+
+  for (let i = 1; i < routePoints.length; i++) {
+    const from = routePoints[i - 1]
+    const to = routePoints[i]
+    distanceKm += haversineKm(from, to)
+    const elevation = Number.isFinite(to.elevation) ? to.elevation : null
+    const elevationNorm = elevation == null ? 0.35 : (elevation - minElevation) / elevationRange
+
+    segments.push({
+      index: i,
+      from,
+      to,
+      latLngs: [[from.lat, from.lng], [to.lat, to.lng]],
+      distanceKm,
+      elevation,
+      elevationNorm,
+    })
+  }
+
+  return segments
+}
+
+function getNearestRoutePointByDistance(routePoints, distanceKm) {
+  if (!Array.isArray(routePoints) || !routePoints.length) return null
+  let travelled = 0
+  let bestPoint = routePoints[0]
+  let bestIndex = 0
+  let bestDelta = Math.abs(distanceKm)
+  let bestDistanceKm = 0
+
+  for (let i = 1; i < routePoints.length; i++) {
+    travelled += haversineKm(routePoints[i - 1], routePoints[i])
+    const delta = Math.abs(travelled - distanceKm)
+    if (delta < bestDelta) {
+      bestDelta = delta
+      bestPoint = routePoints[i]
+      bestIndex = i
+      bestDistanceKm = travelled
+    }
+  }
+
+  return { ...bestPoint, index: bestIndex, distanceKm: bestDistanceKm }
+}
+
+
 function createTileLayer(L, config) {
   return L.tileLayer(config.url, {
     attribution: config.attribution,
@@ -296,6 +354,8 @@ function createTileLayer(L, config) {
     keepBuffer: 3,
     updateWhenIdle: true,
     updateWhenZooming: false,
+    subdomains: config.subdomains,
+    noWrap: false,
   })
 }
 
@@ -316,6 +376,7 @@ export default function LiveTrackerPage() {
   const markerRef = useRef(null)
   const routeLayerRef = useRef(null)
   const trailLayerRef = useRef(null)
+  const hoverLayerRef = useRef(null)
   const mapInitializedRef = useRef(false)
   const fetchInFlightRef = useRef(false)
   const fetchControllerRef = useRef(null)
@@ -330,9 +391,11 @@ export default function LiveTrackerPage() {
   const [basemap, setBasemap] = useState('dark')
   const [showStartEnd, setShowStartEnd] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [hoverPoint, setHoverPoint] = useState(null)
   const [now, setNow] = useState(Date.now())
 
   const routeLatLngs = useMemo(() => kmlTrackPath.map(point => [point.lat, point.lng]), [kmlTrackPath])
+  const routeSegments = useMemo(() => buildRouteSegments(kmlTrackPath), [kmlTrackPath])
   const sortedHistory = useMemo(() => sortHistory(history), [history])
   const elevationProfile = useMemo(() => buildElevationProfile(kmlTrackPath), [kmlTrackPath])
   const lastReceivedAt = useMemo(() => getLatestReceivedAt(data, sortedHistory), [data, sortedHistory])
@@ -490,6 +553,7 @@ export default function LiveTrackerPage() {
 
       routeLayerRef.current = L.layerGroup().addTo(map)
       trailLayerRef.current = L.layerGroup().addTo(map)
+      hoverLayerRef.current = L.layerGroup().addTo(map)
 
       mapRef.current = map
       mapInitializedRef.current = true
@@ -520,21 +584,47 @@ export default function LiveTrackerPage() {
 
     L.polyline(routeLatLngs, {
       color: SITE_COLORS.gold,
-      weight: 10,
-      opacity: 0.16,
+      weight: 12,
+      opacity: 0.12,
       lineCap: 'round',
       lineJoin: 'round',
       interactive: false,
     }).addTo(routeLayerRef.current)
 
-    const coursePath = L.polyline(routeLatLngs, {
-      color: SITE_COLORS.gold,
-      weight: 4,
-      opacity: 0.92,
-      lineCap: 'round',
-      lineJoin: 'round',
-      className: 'marathon-course-line',
-    }).addTo(routeLayerRef.current)
+    routeSegments.forEach((segment) => {
+      const lineWeight = 3.2 + (segment.elevationNorm * 3.8)
+      const segmentOpacity = 0.72 + (segment.elevationNorm * 0.22)
+
+      L.polyline(segment.latLngs, {
+        color: segment.elevationNorm > 0.68 ? SITE_COLORS.white : segment.elevationNorm > 0.34 ? SITE_COLORS.warm : SITE_COLORS.gold,
+        weight: lineWeight,
+        opacity: segmentOpacity,
+        lineCap: 'round',
+        lineJoin: 'round',
+        interactive: false,
+        className: 'marathon-course-line',
+      }).addTo(routeLayerRef.current)
+
+      L.polyline(segment.latLngs, {
+        color: SITE_COLORS.gold,
+        weight: 18,
+        opacity: 0,
+        lineCap: 'round',
+        lineJoin: 'round',
+        interactive: true,
+        bubblingMouseEvents: false,
+      })
+        .on('mouseover mousemove', () => setHoverPoint({
+          lat: segment.to.lat,
+          lng: segment.to.lng,
+          elevation: segment.elevation,
+          distanceKm: segment.distanceKm,
+          index: segment.index,
+          source: 'map',
+        }))
+        .on('mouseout', () => setHoverPoint(null))
+        .addTo(routeLayerRef.current)
+    })
 
     if (showStartEnd) {
       const startPoint = routeLatLngs[0]
@@ -551,9 +641,32 @@ export default function LiveTrackerPage() {
     }
 
     if (!data?.location && sortedHistory.length < 2) {
-      map.fitBounds(coursePath.getBounds(), { padding: [36, 36], maxZoom: 13 })
+      const courseBounds = L.latLngBounds(routeLatLngs)
+      map.fitBounds(courseBounds, { padding: [36, 36], maxZoom: 13 })
     }
-  }, [mapReady, routeLatLngs, showStartEnd, data?.location, sortedHistory.length])
+  }, [mapReady, routeLatLngs, routeSegments, showStartEnd, data?.location, sortedHistory.length])
+
+  // ---- Linked map/elevation hover marker ----
+  useEffect(() => {
+    if (!mapRef.current || !hoverLayerRef.current || !window.L) return
+    const L = window.L
+    hoverLayerRef.current.clearLayers()
+    if (!hoverPoint) return
+
+    L.circleMarker([hoverPoint.lat, hoverPoint.lng], {
+      radius: 7,
+      color: SITE_COLORS.white,
+      weight: 2,
+      fillColor: SITE_COLORS.gold,
+      fillOpacity: 0.9,
+      className: 'course-hover-marker',
+    })
+      .bindTooltip(
+        `${hoverPoint.distanceKm?.toFixed ? hoverPoint.distanceKm.toFixed(1) : '--'} km${Number.isFinite(hoverPoint.elevation) ? ` · ${Math.round(hoverPoint.elevation)} m` : ''}`,
+        { direction: 'top', offset: [0, -10], className: 'course-tooltip', permanent: false }
+      )
+      .addTo(hoverLayerRef.current)
+  }, [hoverPoint])
 
   // ---- Update marker + trail when data changes ----
   useEffect(() => {
@@ -889,6 +1002,65 @@ export default function LiveTrackerPage() {
           )}
         </motion.div>
 
+        {elevationProfile && (
+          <section className="elevation-panel" aria-label="Queenstown Marathon elevation profile">
+            <div className="elevation-panel-header">
+              <div>
+                <p className="elevation-kicker">Queenstown Marathon</p>
+                <h2>Elevation profile</h2>
+              </div>
+              <div className="elevation-stats">
+                <span>{elevationProfile.totalDistanceKm.toFixed(1)} km</span>
+                <span>{Math.round(elevationProfile.minElevation)}–{Math.round(elevationProfile.maxElevation)} m</span>
+                <span>+{Math.round(elevationProfile.elevationGain)} m</span>
+              </div>
+            </div>
+
+            <div className="elevation-chart-wrap">
+              <svg
+                className="elevation-chart"
+                viewBox={`0 0 ${elevationProfile.width} ${elevationProfile.height}`}
+                role="img"
+                aria-label={`Elevation profile from ${Math.round(elevationProfile.minElevation)} metres to ${Math.round(elevationProfile.maxElevation)} metres`}
+                preserveAspectRatio="none"
+                onMouseMove={(event) => {
+                  const rect = event.currentTarget.getBoundingClientRect()
+                  const xRatio = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width))
+                  const distanceKm = xRatio * elevationProfile.totalDistanceKm
+                  const nearest = getNearestRoutePointByDistance(kmlTrackPath, distanceKm)
+                  if (nearest) setHoverPoint({ ...nearest, source: 'profile' })
+                }}
+                onMouseLeave={() => setHoverPoint(null)}
+              >
+                <polygon className="elevation-area" points={elevationProfile.areaPoints} />
+                <polyline className="elevation-line" points={elevationProfile.svgPoints} />
+                <line className="elevation-axis" x1="24" y1="158" x2="976" y2="158" />
+                {hoverPoint && (
+                  <>
+                    <line
+                      className="elevation-hover-line"
+                      x1={24 + (Math.min(elevationProfile.totalDistanceKm, Math.max(0, hoverPoint.distanceKm || 0)) / elevationProfile.totalDistanceKm) * 952}
+                      x2={24 + (Math.min(elevationProfile.totalDistanceKm, Math.max(0, hoverPoint.distanceKm || 0)) / elevationProfile.totalDistanceKm) * 952}
+                      y1="18"
+                      y2="158"
+                    />
+                    <circle
+                      className="elevation-hover-dot"
+                      cx={24 + (Math.min(elevationProfile.totalDistanceKm, Math.max(0, hoverPoint.distanceKm || 0)) / elevationProfile.totalDistanceKm) * 952}
+                      cy={18 + (1 - ((Number.isFinite(hoverPoint.elevation) ? hoverPoint.elevation : elevationProfile.minElevation) - elevationProfile.minElevation) / Math.max(1, elevationProfile.maxElevation - elevationProfile.minElevation)) * 140}
+                      r="6"
+                    />
+                  </>
+                )}
+              </svg>
+              <div className="elevation-axis-labels">
+                <span>Start</span>
+                <span>Finish</span>
+              </div>
+            </div>
+          </section>
+        )}
+
         {/* Info cards below map */}
         <div className="tracker-info-strip">
           <div className="tracker-info-card">
@@ -930,39 +1102,7 @@ export default function LiveTrackerPage() {
           </div>
         </div>
 
-        {elevationProfile && (
-          <section className="elevation-panel" aria-label="Queenstown Marathon elevation profile">
-            <div className="elevation-panel-header">
-              <div>
-                <p className="elevation-kicker">Queenstown Marathon</p>
-                <h2>Elevation profile</h2>
-              </div>
-              <div className="elevation-stats">
-                <span>{elevationProfile.totalDistanceKm.toFixed(1)} km</span>
-                <span>{Math.round(elevationProfile.minElevation)}–{Math.round(elevationProfile.maxElevation)} m</span>
-                <span>+{Math.round(elevationProfile.elevationGain)} m</span>
-              </div>
-            </div>
 
-            <div className="elevation-chart-wrap">
-              <svg
-                className="elevation-chart"
-                viewBox={`0 0 ${elevationProfile.width} ${elevationProfile.height}`}
-                role="img"
-                aria-label={`Elevation profile from ${Math.round(elevationProfile.minElevation)} metres to ${Math.round(elevationProfile.maxElevation)} metres`}
-                preserveAspectRatio="none"
-              >
-                <polygon className="elevation-area" points={elevationProfile.areaPoints} />
-                <polyline className="elevation-line" points={elevationProfile.svgPoints} />
-                <line className="elevation-axis" x1="24" y1="158" x2="976" y2="158" />
-              </svg>
-              <div className="elevation-axis-labels">
-                <span>Start</span>
-                <span>Finish</span>
-              </div>
-            </div>
-          </section>
-        )}
 
         {/* Footer */}
         <div className="tracker-footer-spacer">
