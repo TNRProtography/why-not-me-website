@@ -453,30 +453,40 @@ export default function LiveTrackerPage() {
     }
   }, [fetchData])
 
-  // ---- Load Leaflet from CDN ----
+  // ---- Load Leaflet from CDN (guard against duplicate injection) ----
   useEffect(() => {
-    if (window.L) return
+    if (!document.querySelector('link[href*="leaflet@1.9"]')) {
+      const css = document.createElement('link')
+      css.rel = 'stylesheet'
+      css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
+      document.head.appendChild(css)
+    }
 
-    const css = document.createElement('link')
-    css.rel = 'stylesheet'
-    css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
-    document.head.appendChild(css)
-
-    const script = document.createElement('script')
-    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
-    document.head.appendChild(script)
+    if (!document.querySelector('script[src*="leaflet@1.9"]')) {
+      const script = document.createElement('script')
+      script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
+      document.head.appendChild(script)
+    }
   }, [])
 
-  // ---- Initialize map (always, even without data) ----
+  // ---- Initialize map ----
   useEffect(() => {
-    if (mapInitializedRef.current) return
     if (!mapContainerRef.current) return
 
+    const container = mapContainerRef.current
+    let map = null
+    let cancelled = false
+    let interval = null
+    let timeout = null
+
     const tryInit = () => {
+      if (cancelled) return true
       if (!window.L) return false
+      // Prevent double-init on same DOM node
+      if (container._leaflet_id) return true
       const L = window.L
 
-      const map = L.map(mapContainerRef.current, {
+      map = L.map(container, {
         center: DEFAULT_CENTER,
         zoom: DEFAULT_ZOOM,
         zoomControl: true,
@@ -494,17 +504,33 @@ export default function LiveTrackerPage() {
       mapInitializedRef.current = true
       setMapReady(true)
 
-      setTimeout(() => map.invalidateSize(), 200)
-      setTimeout(() => map.invalidateSize(), 800)
+      setTimeout(() => { if (!cancelled) map.invalidateSize() }, 200)
+      setTimeout(() => { if (!cancelled) map.invalidateSize() }, 800)
       return true
     }
 
     if (!tryInit()) {
-      const interval = setInterval(() => {
+      interval = setInterval(() => {
         if (tryInit()) clearInterval(interval)
       }, 150)
-      const timeout = setTimeout(() => clearInterval(interval), 10000)
-      return () => { clearInterval(interval); clearTimeout(timeout) }
+      timeout = setTimeout(() => { if (interval) clearInterval(interval) }, 10000)
+    }
+
+    return () => {
+      cancelled = true
+      if (interval) clearInterval(interval)
+      if (timeout) clearTimeout(timeout)
+      if (map) {
+        map.remove()
+        map = null
+      }
+      mapRef.current = null
+      mapInitializedRef.current = false
+      tileLayerRef.current = null
+      currentBasemapRef.current = null
+      routeLayerRef.current = null
+      trailLayerRef.current = null
+      setMapReady(false)
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
