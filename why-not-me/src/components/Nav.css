@@ -1,0 +1,131 @@
+/* ============================================================
+ * NAV STYLES
+ * The nav is fixed at the top. It starts transparent and gets
+ * a dark blurred background when the user scrolls down.
+ * ============================================================ */
+
+.main-nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 1000;
+  padding: 20px 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: linear-gradient(180deg, rgba(13,13,13,0.9) 0%, transparent 100%);
+  transition: background 0.5s ease, padding 0.3s ease;
+}
+
+/* When user has scrolled past 80px */
+.main-nav.scrolled {
+  background: rgba(13,13,13,0.97);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  padding: 14px 40px;
+}
+
+/* Logo */
+.nav-logo {
+  height: 48px;
+  transition: transform 0.3s ease;
+}
+.nav-logo:hover { transform: scale(1.05); }
+
+/* Desktop nav links container */
+.nav-links {
+  display: flex;
+  gap: 36px;
+  align-items: center;
+}
+
+/* Individual nav link */
+.nav-link {
+  color: var(--white);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  position: relative;
+  transition: color 0.3s ease;
+}
+.nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: -4px; left: 0;
+  width: 0; height: 1px;
+  background: var(--gold);
+  transition: width 0.4s ease;
+}
+.nav-link:hover { color: var(--gold); }
+.nav-link:hover::after { width: 100%; }
+.nav-link.active { color: var(--gold); }
+.nav-link.active::after { width: 100%; }
+
+/* Donate button in nav - always stands out */
+.nav-donate-btn {
+  background: var(--gold);
+  color: var(--black) !important;
+  padding: 10px 22px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  transition: all 0.3s ease;
+}
+.nav-donate-btn:hover {
+  background: var(--warm);
+  transform: translateY(-2px);
+}
+
+/* ============================================================
+ * HAMBURGER ICON (mobile only)
+ * Three horizontal lines that animate into an X when open.
+ * ============================================================ */
+.hamburger {
+  display: none; /* Hidden on desktop */
+  flex-direction: column;
+  gap: 5px;
+  z-index: 1001;
+  padding: 8px;
+}
+.hamburger span {
+  width: 24px; height: 2px;
+  background: var(--white);
+  transition: all 0.3s ease;
+  display: block;
+}
+.hamburger.open span:nth-child(1) { transform: rotate(45deg) translate(5px, 5px); }
+.hamburger.open span:nth-child(2) { opacity: 0; }
+.hamburger.open span:nth-child(3) { transform: rotate(-45deg) translate(5px, -5px); }
+
+/* ============================================================
+ * MOBILE FULL-SCREEN MENU
+ * Slides in from the right. Centered large links.
+ * ============================================================ */
+.mobile-menu {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 999;
+  background: var(--black);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 28px;
+}
+.mobile-menu a {
+  color: var(--white);
+  font-family: var(--font-hero);
+  font-size: 36px;
+  transition: color 0.3s ease;
+}
+.mobile-menu a:hover { color: var(--gold); }
+
+/* ============================================================
+ * RESPONSIVE
+ * ============================================================ */
+@media (max-width: 900px) {
+  .nav-links { display: none; }
+  .hamburger { display: flex; }
+  .main-nav { padding: 15px 20px; }
+}

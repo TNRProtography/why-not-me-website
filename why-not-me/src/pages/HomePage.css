@@ -1,0 +1,459 @@
+/*
+ * ============================================================
+ * HOMEPAGE.CSS - Styles for all homepage sections
+ * ============================================================
+ * Organised by section. Search for the section name to find styles.
+ *
+ * IMAGE SIZING TIPS:
+ *   - aspect-ratio controls image proportions without cropping weirdly
+ *   - object-fit: cover fills the space and crops excess
+ *   - object-position: center focuses on the middle of the image
+ * ============================================================
+ */
+
+/* ============ HERO ============
+ * Full-viewport intro with parallax background.
+ * The background image is moved by framer-motion (in JSX).
+ */
+.hero {
+  height: 100vh;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.hero-bg {
+  position: absolute;
+  inset: -10%; /* Slightly larger than viewport so parallax doesn't show edges */
+  background-size: cover;
+  background-position: center;
+}
+.hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(13,13,13,0.3) 0%,
+    rgba(13,13,13,0.5) 40%,
+    rgba(13,13,13,0.95) 100%
+  );
+}
+.hero-content {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  padding: 0 20px;
+}
+.hero-title {
+  font-family: var(--font-hero);
+  font-size: clamp(60px, 12vw, 150px);
+  line-height: 0.95;
+  color: var(--white);
+  text-shadow: 0 4px 60px rgba(0,0,0,0.5);
+}
+.hero-subtitle {
+  font-size: clamp(12px, 1.5vw, 15px);
+  font-weight: 600;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  margin-top: 20px;
+  color: var(--gold);
+}
+.hero-tagline {
+  font-size: clamp(16px, 2vw, 20px);
+  font-weight: 300;
+  font-style: italic;
+  margin-top: 28px;
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
+  color: var(--white-70);
+}
+
+/* Animated scroll indicator line */
+.hero-scroll-indicator {
+  position: absolute;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+}
+.hero-scroll-indicator span {
+  display: block;
+  width: 1px;
+  height: 60px;
+  background: linear-gradient(to bottom, var(--gold), transparent);
+  animation: scrollBounce 2s infinite;
+}
+@keyframes scrollBounce {
+  0%, 100% { transform: translateY(0); opacity: 1; }
+  50% { transform: translateY(12px); opacity: 0.5; }
+}
+
+/* ============ STORY ============ */
+.story-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 80px;
+  max-width: 1400px;
+  margin: 0 auto;
+  align-items: center;
+}
+.story-portrait {
+  width: 100%;
+  aspect-ratio: 3/4;
+  object-fit: cover;
+  filter: brightness(0.9);
+  transition: transform 0.6s ease, filter 0.6s ease;
+}
+.story-portrait:hover {
+  transform: scale(1.02);
+  filter: brightness(1);
+}
+
+/* ============ STATS BAR ============ */
+.stats-bar {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  max-width: 900px;
+  margin: 0 auto;
+  border-top: 1px solid var(--gold);
+  border-bottom: 1px solid var(--gold);
+  padding: 60px 0;
+}
+.stat { text-align: center; }
+.stat-number {
+  font-family: var(--font-heading);
+  font-size: clamp(40px, 5vw, 72px);
+  font-weight: 700;
+  color: var(--white);
+  line-height: 1;
+}
+.stat-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-top: 10px;
+}
+
+/* ============ TUMOUR SECTION ============
+ * Uses the Depth Blue background to visually separate this section.
+ * Gradient overlays on top/bottom blend it into the black sections.
+ */
+.tumour-section {
+  background: var(--blue);
+  position: relative;
+  overflow: hidden;
+  padding: 160px 40px;
+}
+.tumour-section::before {
+  content: '';
+  position: absolute;
+  top: -1px; left: 0; right: 0;
+  height: 120px;
+  background: linear-gradient(to bottom, var(--black), transparent);
+  z-index: 1;
+}
+.tumour-section::after {
+  content: '';
+  position: absolute;
+  bottom: -1px; left: 0; right: 0;
+  height: 120px;
+  background: linear-gradient(to top, var(--black), transparent);
+  z-index: 1;
+}
+.tumour-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 80px;
+  max-width: 1400px;
+  margin: 0 auto;
+  align-items: center;
+  position: relative;
+  z-index: 2;
+}
+.tumour-subtitle {
+  font-family: var(--font-hero);
+  font-size: clamp(24px, 3vw, 40px);
+  margin-bottom: 20px;
+  color: var(--warm);
+}
+.tumour-images {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tumour-images img {
+  width: 100%;
+  object-fit: cover;
+  filter: brightness(0.85) contrast(1.05);
+  cursor: pointer;
+  transition: filter 0.4s ease;
+}
+.tumour-images img:hover { filter: brightness(1); }
+
+/* ============ TREATMENT ============ */
+.treatment-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+.treatment-images {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.treatment-images img {
+  width: 100%;
+  aspect-ratio: 3/4;
+  object-fit: cover;
+  filter: brightness(0.75) saturate(0.8);
+  cursor: pointer;
+  transition: filter 0.5s ease;
+}
+.treatment-images img:hover { filter: brightness(0.95) saturate(1); }
+.treatment-text {
+  padding: 40px 80px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* ============ TIMELINE ============
+ * Vertical line on the left with dots for each year.
+ * Each item slides in via RevealOnScroll.
+ */
+.timeline {
+  position: relative;
+  padding-left: 40px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+.timeline-line {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 1px;
+  background: linear-gradient(to bottom, transparent, var(--gold) 10%, var(--gold) 90%, transparent);
+}
+.timeline-item {
+  position: relative;
+  padding: 0 0 50px 40px;
+}
+.timeline-dot {
+  position: absolute;
+  left: -44px; top: 6px;
+  width: 9px; height: 9px;
+  background: var(--gold);
+  border-radius: 50%;
+}
+/* Red dot for the terminal diagnosis year */
+.timeline-dot-danger {
+  background: #c0392b;
+  box-shadow: 0 0 12px rgba(192, 57, 43, 0.5);
+}
+/* Gold glowing dot for remission year */
+.timeline-dot-gold {
+  background: var(--gold);
+  box-shadow: 0 0 12px rgba(168, 142, 93, 0.6);
+}
+.timeline-year {
+  font-family: var(--font-heading);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: var(--gold);
+  margin-bottom: 8px;
+}
+.timeline-text {
+  font-size: 15px;
+  line-height: 1.85;
+  color: var(--white-70);
+}
+
+/* ============ PHOTO GRID ============
+ * Masonry-style grid. 4 columns on desktop, 2 on mobile.
+ * Images are clickable (open in lightbox).
+ */
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+.photo-grid img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  aspect-ratio: 1/1;
+  filter: brightness(0.85);
+  cursor: pointer;
+  transition: all 0.5s ease;
+}
+.photo-grid img:hover {
+  filter: brightness(1);
+  transform: scale(1.02);
+  z-index: 2;
+  position: relative;
+}
+.photo-grid .span-2 {
+  grid-column: span 2;
+  aspect-ratio: 2/1;
+}
+
+/* ============ QUOTES ============ */
+.quotes-section {
+  background: var(--blue);
+  position: relative;
+  overflow: hidden;
+  padding: 160px 40px;
+}
+.quotes-section::before {
+  content: '';
+  position: absolute;
+  top: -1px; left: 0; right: 0;
+  height: 120px;
+  background: linear-gradient(to bottom, var(--black), transparent);
+  z-index: 1;
+}
+.quotes-section::after {
+  content: '';
+  position: absolute;
+  bottom: -1px; left: 0; right: 0;
+  height: 120px;
+  background: linear-gradient(to top, var(--black), transparent);
+  z-index: 1;
+}
+.quotes-inner {
+  max-width: 900px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 2;
+}
+.quote-block { margin-bottom: 60px; }
+.quote-text {
+  font-size: clamp(17px, 1.8vw, 21px);
+  font-style: italic;
+  line-height: 1.85;
+  color: rgba(245,243,236,0.85);
+  border-left: 2px solid var(--gold);
+  padding-left: 28px;
+}
+.quote-attr {
+  font-size: 13px;
+  font-weight: 600;
+  font-style: normal;
+  color: var(--gold);
+  margin-top: 14px;
+  padding-left: 28px;
+  letter-spacing: 1px;
+  display: block;
+}
+
+/* ============ FACTS ============ */
+.facts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 30px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.fact-card {
+  padding: 36px;
+  border: 1px solid var(--gold-20);
+  background: var(--blue-40);
+  transition: all 0.4s ease;
+}
+.fact-card:hover {
+  border-color: var(--gold);
+  transform: translateY(-4px);
+  background: var(--blue-60);
+}
+.fact-number {
+  font-family: var(--font-heading);
+  font-size: 44px;
+  font-weight: 700;
+  color: var(--gold);
+  line-height: 1;
+  margin-bottom: 10px;
+}
+.fact-text {
+  font-size: 14px;
+  color: var(--white-70);
+  line-height: 1.7;
+}
+
+/* ============ MARATHON TRAINING ============ */
+.marathon-section {
+  position: relative;
+  overflow: hidden;
+  padding: 160px 40px;
+}
+.marathon-bg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  filter: brightness(0.25);
+}
+.marathon-content {
+  position: relative;
+  z-index: 2;
+  max-width: 700px;
+  margin: 0 auto;
+  text-align: center;
+}
+.marathon-stat {
+  font-family: var(--font-heading);
+  font-size: clamp(60px, 10vw, 120px);
+  font-weight: 700;
+  color: var(--gold);
+  line-height: 1;
+}
+.marathon-stat-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--warm);
+  margin-top: 8px;
+}
+
+/* ============ CONNECT ============ */
+.connect-section {
+  text-align: center;
+  padding: 120px 40px;
+  position: relative;
+  overflow: hidden;
+}
+.connect-bg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  filter: brightness(0.18);
+}
+.connect-inner {
+  position: relative;
+  z-index: 2;
+}
+.social-links {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  margin-top: 36px;
+  flex-wrap: wrap;
+}
+
+/* ============ RESPONSIVE ============ */
+@media (max-width: 900px) {
+  .story-grid { grid-template-columns: 1fr; gap: 40px; }
+  .tumour-grid { grid-template-columns: 1fr; gap: 40px; }
+  .treatment-grid { grid-template-columns: 1fr; }
+  .treatment-text { padding: 40px 0; }
+  .stats-bar { grid-template-columns: 1fr; gap: 30px; padding: 40px 0; }
+  .photo-grid { grid-template-columns: repeat(2, 1fr); }
+}
