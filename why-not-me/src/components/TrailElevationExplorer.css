@@ -121,9 +121,8 @@
   filter: brightness(0.86) contrast(1.04) saturate(0.7);
 }
 
-.explorer-map.basemap-light .leaflet-tile-pane,
-.explorer-map.basemap-streets .leaflet-tile-pane {
-  filter: brightness(0.88) contrast(0.96) saturate(0.65);
+.explorer-map.basemap-satellite .leaflet-tile-pane {
+  filter: brightness(0.92) contrast(1.08) saturate(0.85);
 }
 
 .explorer-map .leaflet-control-attribution {

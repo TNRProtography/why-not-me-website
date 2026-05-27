@@ -837,9 +837,8 @@ body.is-mobile-view .map-waiting-heading {
 }
 
 /* ---- Basemap-specific balancing ---- */
-.tracker-map.basemap-light .leaflet-tile-pane,
-.tracker-map.basemap-streets .leaflet-tile-pane {
-  filter: brightness(0.88) contrast(0.96) saturate(0.65);
+.tracker-map.basemap-satellite .leaflet-tile-pane {
+  filter: brightness(0.92) contrast(1.08) saturate(0.85);
 }
 
 body.is-mobile-view .map-refresh-indicator {
@@ -871,41 +870,4 @@ body.is-mobile-view .elevation-stats {
 
 body.is-mobile-view .elevation-chart {
   height: 160px;
-}
-
-/* ---- Interactive course/elevation linking ---- */
-.course-hover-marker {
-  filter: drop-shadow(0 0 10px rgba(245,243,236,0.45));
-}
-
-.elevation-chart-wrap {
-  cursor: crosshair;
-}
-
-.elevation-hover-line {
-  stroke: rgba(245,243,236,0.55);
-  stroke-width: 1.5;
-  stroke-dasharray: 4 5;
-  pointer-events: none;
-}
-
-.elevation-hover-dot {
-  fill: var(--gold);
-  stroke: var(--white);
-  stroke-width: 2;
-  filter: drop-shadow(0 0 8px rgba(168,142,93,0.35));
-  pointer-events: none;
-}
-
-/* ---- Requested basemaps: dark, satellite, terrain ---- */
-.tracker-map.basemap-dark .leaflet-tile-pane {
-  filter: brightness(0.86) contrast(1.04) saturate(0.7);
-}
-
-.tracker-map.basemap-satellite .leaflet-tile-pane {
-  filter: brightness(0.9) contrast(1.08) saturate(0.86);
-}
-
-.tracker-map.basemap-terrain .leaflet-tile-pane {
-  filter: brightness(0.78) contrast(0.98) saturate(0.55);
 }
