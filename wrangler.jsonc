@@ -1,0 +1,7 @@
+{
+  "name": "why-not-me-website",
+  "compatibility_date": "2026-05-27",
+  "assets": {
+    "directory": "./why-not-me/dist"
+  }
+}
