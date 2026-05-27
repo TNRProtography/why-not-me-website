@@ -104,6 +104,34 @@ export default function MarathonPage() {
         </div>
       </section>
 
+      <section className="marathon-video-section">
+        <div className="marathon-video-grid">
+          <RevealOnScroll direction="left" className="marathon-video-copy">
+            <p className="section-label">2026 Announcement</p>
+            <h2 className="section-title">The moment the next chapter became real.</h2>
+            <div className="gold-line" />
+            <div className="section-body">
+              <p>The marathon announcement is not just a training update. It is the point where the campaign turns from remembering what happened into building toward what comes next.</p>
+              <br />
+              <p>It gives people something to follow, something to share, and something to stand behind. Queenstown becomes the place where the story, the fundraising, and Nicole's own unfinished business meet.</p>
+            </div>
+          </RevealOnScroll>
+
+          <RevealOnScroll direction="right" className="marathon-video-card">
+            <div className="marathon-video-frame">
+              <iframe
+                src="https://www.youtube.com/embed/VifN_bxzM3o"
+                title="Why Not Me Queenstown Marathon 2026 announcement video"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+              />
+            </div>
+            <p className="marathon-video-caption">Queenstown Marathon 2026 announcement video</p>
+          </RevealOnScroll>
+        </div>
+      </section>
+
       <section className="marathon-history-section">
         <RevealOnScroll>
           <div className="marathon-section-heading">

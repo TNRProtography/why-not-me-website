@@ -191,3 +191,53 @@
   .main-nav.scrolled { padding: 8px 20px; }
   .nav-logo { height: 56px; }
 }
+
+/* ============ MOBILE-SPECIFIC NAV VIEW ============ */
+body.is-mobile-view .main-nav {
+  padding: 14px 18px;
+  background: linear-gradient(180deg, rgba(13,13,13,0.86) 0%, rgba(13,13,13,0.28) 76%, transparent 100%);
+}
+
+body.is-mobile-view .main-nav.scrolled {
+  padding: 9px 18px;
+  background: rgba(13,13,13,0.82);
+}
+
+body.is-mobile-view .nav-logo {
+  height: 62px;
+}
+
+body.is-mobile-view .hamburger {
+  display: flex;
+  min-width: 48px;
+  min-height: 48px;
+  justify-content: center;
+  align-items: center;
+  border: 1px solid rgba(245,243,236,0.1);
+  background: rgba(13,13,13,0.2);
+  backdrop-filter: blur(12px);
+}
+
+body.is-mobile-view .mobile-menu-inner {
+  width: min(100%, 420px);
+  padding: 0 26px;
+  gap: 26px;
+}
+
+body.is-mobile-view .mobile-menu a {
+  display: block;
+  width: 100%;
+  padding: 6px 0;
+  text-align: center;
+  font-size: clamp(46px, 15vw, 74px);
+}
+
+@media (max-width: 420px) {
+  body.is-mobile-view .nav-logo {
+    height: 56px;
+  }
+
+  body.is-mobile-view .mobile-menu a {
+    font-size: clamp(42px, 14vw, 64px);
+  }
+}

@@ -600,3 +600,215 @@
   0%, 100% { box-shadow: 0 0 0 0 rgba(168,142,93,0.36); }
   50% { box-shadow: 0 0 0 10px rgba(168,142,93,0); }
 }
+
+/* ============ MOBILE-SPECIFIC EXPERIENCE ============ */
+body.is-mobile-view .hero {
+  min-height: 100svh;
+  align-items: flex-end;
+  padding: 0 22px 118px !important;
+}
+
+body.is-mobile-view .hero-bg {
+  inset: -14%;
+  background-position: center top;
+  filter: brightness(0.62) saturate(0.82);
+}
+
+body.is-mobile-view .hero-overlay {
+  background:
+    radial-gradient(circle at 50% 48%, rgba(203,178,153,0.1), transparent 34%),
+    linear-gradient(180deg, rgba(13,13,13,0.08) 0%, rgba(13,13,13,0.38) 44%, rgba(13,13,13,0.96) 100%);
+}
+
+body.is-mobile-view .hero-content {
+  text-align: left;
+  width: 100%;
+  padding: 0;
+}
+
+body.is-mobile-view .hero-title {
+  font-size: clamp(82px, 23vw, 118px);
+  max-width: 360px;
+}
+
+body.is-mobile-view .hero-subtitle {
+  font-size: 13px;
+  letter-spacing: 3px;
+  margin-top: 18px;
+}
+
+body.is-mobile-view .hero-tagline {
+  font-size: 19px;
+  line-height: 1.65;
+  max-width: 340px;
+  margin: 24px 0 0;
+  color: rgba(245,243,236,0.82);
+}
+
+body.is-mobile-view .hero-scroll-indicator {
+  left: auto;
+  right: 22px;
+  bottom: 42px;
+  transform: none;
+}
+
+body.is-mobile-view .story-grid,
+body.is-mobile-view .tumour-grid,
+body.is-mobile-view .treatment-grid {
+  grid-template-columns: 1fr;
+  gap: 34px;
+}
+
+body.is-mobile-view .story-grid > .reveal-layer:first-child,
+body.is-mobile-view .treatment-grid > .reveal-layer:first-child {
+  order: 2;
+}
+
+body.is-mobile-view .story-portrait {
+  aspect-ratio: 4/5;
+  max-height: 620px;
+}
+
+body.is-mobile-view .stats-bar {
+  grid-template-columns: 1fr;
+  gap: 0;
+  padding: 18px 0;
+  border-color: rgba(168,142,93,0.58);
+}
+
+body.is-mobile-view .stat {
+  padding: 30px 0;
+  border-bottom: 1px solid rgba(168,142,93,0.22);
+}
+
+body.is-mobile-view .stat:last-child {
+  border-bottom: 0;
+}
+
+body.is-mobile-view .stat-number {
+  font-size: clamp(58px, 18vw, 86px);
+}
+
+body.is-mobile-view .stat-label,
+body.is-mobile-view .timeline-year,
+body.is-mobile-view .marathon-stat-label {
+  font-size: 12px;
+  letter-spacing: 2.6px;
+}
+
+body.is-mobile-view .tumour-section,
+body.is-mobile-view .quotes-section,
+body.is-mobile-view .marathon-section,
+body.is-mobile-view .connect-section {
+  padding-top: 96px !important;
+  padding-bottom: 96px !important;
+}
+
+body.is-mobile-view .tumour-images,
+body.is-mobile-view .treatment-images {
+  gap: 10px;
+}
+
+body.is-mobile-view .treatment-images {
+  grid-template-columns: 1fr 1fr;
+}
+
+body.is-mobile-view .treatment-text {
+  padding: 0;
+}
+
+body.is-mobile-view .timeline {
+  padding-left: 24px;
+}
+
+body.is-mobile-view .timeline-item {
+  padding: 0 0 44px 24px;
+}
+
+body.is-mobile-view .timeline-dot {
+  left: -28px;
+  top: 9px;
+  width: 11px;
+  height: 11px;
+}
+
+body.is-mobile-view .timeline-text,
+body.is-mobile-view .fact-text {
+  font-size: 16.5px;
+  line-height: 1.82;
+}
+
+body.is-mobile-view .photo-grid {
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+body.is-mobile-view .photo-grid .span-2 {
+  grid-column: span 1;
+  aspect-ratio: 4/5;
+}
+
+body.is-mobile-view .photo-grid img {
+  aspect-ratio: 4/5;
+}
+
+body.is-mobile-view .quote-block {
+  margin-bottom: 46px;
+}
+
+body.is-mobile-view .quote-text {
+  font-size: 19px;
+  line-height: 1.75;
+  padding-left: 20px;
+}
+
+body.is-mobile-view .quote-attr {
+  padding-left: 20px;
+  font-size: 12px;
+}
+
+body.is-mobile-view .facts-grid {
+  grid-template-columns: 1fr;
+  gap: 18px;
+}
+
+body.is-mobile-view .fact-card,
+body.is-mobile-view .marathon-content,
+body.is-mobile-view .connect-inner {
+  padding: 34px 24px;
+}
+
+body.is-mobile-view .marathon-content,
+body.is-mobile-view .connect-inner {
+  text-align: left;
+}
+
+body.is-mobile-view .marathon-content .gold-line,
+body.is-mobile-view .connect-inner .gold-line {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+body.is-mobile-view .marathon-content .section-body,
+body.is-mobile-view .connect-inner .section-body {
+  text-align: left !important;
+}
+
+body.is-mobile-view .marathon-stat {
+  font-size: clamp(78px, 24vw, 110px);
+}
+
+body.is-mobile-view .social-links {
+  display: grid;
+  grid-template-columns: 1fr;
+}
+
+@media (max-width: 420px) {
+  body.is-mobile-view .hero-title {
+    font-size: clamp(72px, 22vw, 96px);
+  }
+
+  body.is-mobile-view .treatment-images {
+    grid-template-columns: 1fr;
+  }
+}

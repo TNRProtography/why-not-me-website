@@ -218,3 +218,149 @@ section {
     max-width: 340px;
   }
 }
+
+/* ============ DEVICE-AWARE MOBILE VIEW ============ */
+.site-shell {
+  min-height: 100vh;
+  overflow-x: clip;
+}
+
+html[data-device='mobile'] {
+  font-size: 17px;
+}
+
+body.is-mobile-view {
+  line-height: 1.82;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(85,96,77,0.2), transparent 42%),
+    radial-gradient(circle at 12% 22%, rgba(168,142,93,0.1), transparent 36%),
+    var(--black);
+}
+
+body.is-mobile-view::after {
+  background: radial-gradient(circle at 50% 36%, transparent 34%, rgba(0,0,0,0.42) 100%);
+}
+
+body.is-mobile-view .section-label {
+  font-size: 12px;
+  letter-spacing: 3.2px;
+  margin-bottom: 16px;
+}
+
+body.is-mobile-view .section-title {
+  font-size: clamp(44px, 14vw, 72px);
+  line-height: 0.98;
+  margin-bottom: 24px;
+}
+
+body.is-mobile-view .section-body {
+  font-size: clamp(17px, 4.5vw, 19px);
+  line-height: 1.84;
+  color: rgba(245, 243, 236, 0.78);
+}
+
+body.is-mobile-view .gold-line {
+  width: 72px;
+  margin: 24px 0;
+}
+
+body.is-mobile-view .btn-primary,
+body.is-mobile-view .btn-outline {
+  width: 100%;
+  max-width: none;
+  min-height: 56px;
+  padding: 17px 22px;
+  font-size: 12px;
+  letter-spacing: 2.4px;
+}
+
+@media (max-width: 820px), (hover: none) and (pointer: coarse) {
+  section {
+    padding-left: 22px !important;
+    padding-right: 22px !important;
+  }
+
+  .page-cinema-wipe {
+    inset: -8vh 0;
+  }
+}
+
+@media (max-width: 420px) {
+  html[data-device='mobile'] {
+    font-size: 16.5px;
+  }
+
+  body.is-mobile-view .section-title {
+    font-size: clamp(40px, 15vw, 62px);
+  }
+
+  body.is-mobile-view .section-body {
+    font-size: 17px;
+  }
+}
+
+/* ============ MOBILE OVERRIDES FOR INLINE PAGES ============ */
+body.is-mobile-view .documentary-hero,
+body.is-mobile-view .donate-hero {
+  min-height: 58svh !important;
+  height: auto !important;
+  padding-top: 128px !important;
+  padding-bottom: 74px !important;
+}
+
+body.is-mobile-view .documentary-hero-content,
+body.is-mobile-view .donate-hero-content {
+  text-align: left !important;
+  width: 100%;
+  padding: 0 !important;
+}
+
+body.is-mobile-view .documentary-hero-content h1,
+body.is-mobile-view .donate-hero-content h1 {
+  font-size: clamp(56px, 16vw, 86px) !important;
+  line-height: 0.95 !important;
+}
+
+body.is-mobile-view .documentary-content-section,
+body.is-mobile-view .donate-options-section,
+body.is-mobile-view .donate-follow-section {
+  padding: 72px 22px !important;
+}
+
+body.is-mobile-view .documentary-video-frame {
+  margin: 34px 0 !important;
+  border-color: rgba(168,142,93,0.34) !important;
+  box-shadow: var(--shadow-soft);
+}
+
+body.is-mobile-view .documentary-share-card,
+body.is-mobile-view .donate-card {
+  text-align: left !important;
+}
+
+body.is-mobile-view .documentary-share-card .gold-line {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+body.is-mobile-view .documentary-share-card .section-body,
+body.is-mobile-view .donate-card .section-body,
+body.is-mobile-view .donate-follow-section .section-body {
+  text-align: left !important;
+}
+
+body.is-mobile-view .documentary-actions,
+body.is-mobile-view .donate-social-actions {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 14px !important;
+}
+
+body.is-mobile-view .donate-card-grid {
+  grid-template-columns: 1fr !important;
+  gap: 22px !important;
+}
+
+body.is-mobile-view .donate-card {
+  padding: 34px 24px !important;
+}

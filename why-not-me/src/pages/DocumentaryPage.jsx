@@ -22,7 +22,7 @@ export default function DocumentaryPage() {
   return (
     <PageTransition>
       {/* Hero banner */}
-      <section style={{
+      <section className="documentary-hero" style={{
         height: '60vh', position: 'relative', overflow: 'hidden',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
@@ -32,7 +32,7 @@ export default function DocumentaryPage() {
           backgroundSize: 'cover', backgroundPosition: 'center',
           filter: 'brightness(0.2)', transform: 'scale(1.05)',
         }} />
-        <div style={{ position: 'relative', zIndex: 2, textAlign: 'center', padding: '0 20px' }}>
+        <div className="documentary-hero-content" style={{ position: 'relative', zIndex: 2, textAlign: 'center', padding: '0 20px' }}>
           <p className="section-label">The Documentary</p>
           <h1 style={{
             fontFamily: 'var(--font-hero)',
@@ -46,7 +46,7 @@ export default function DocumentaryPage() {
       </section>
 
       {/* Documentary content */}
-      <section style={{ maxWidth: 900, margin: '0 auto', padding: '80px 40px' }}>
+      <section className="documentary-content-section" style={{ maxWidth: 900, margin: '0 auto', padding: '80px 40px' }}>
         <RevealOnScroll>
           <p className="section-body" style={{ maxWidth: '100%', textAlign: 'center', marginBottom: 20 }}>
             This is Nicole's story in full. Told by the people who were there, through the surgeries, through the waiting rooms, through the quiet moments when nobody knew what to say. From a 16 year old having her first seizure behind the wheel, to a 26 year old training for a marathon in remission. This documentary does not hold back, and neither did she.
@@ -55,7 +55,7 @@ export default function DocumentaryPage() {
 
         {/* YouTube embed - responsive container */}
         <RevealOnScroll>
-          <div style={{
+          <div className="documentary-video-frame" style={{
             position: 'relative', paddingBottom: '56.25%', height: 0,
             overflow: 'hidden', margin: '40px 0',
             border: '1px solid var(--gold-20)',
@@ -73,7 +73,7 @@ export default function DocumentaryPage() {
 
         {/* Share + Donate CTAs */}
         <RevealOnScroll>
-          <div style={{ textAlign: 'center', marginTop: 60 }}>
+          <div className="documentary-share-card" style={{ textAlign: 'center', marginTop: 60 }}>
             <div className="gold-line" style={{ margin: '0 auto 30px' }} />
             <h3 style={{ fontFamily: 'var(--font-hero)', fontSize: 36, marginBottom: 15 }}>
               Share this story.
@@ -81,7 +81,7 @@ export default function DocumentaryPage() {
             <p className="section-body" style={{ maxWidth: '100%', textAlign: 'center' }}>
               If this story moved you, share it. Every view, every share, every conversation about brain tumours matters. Brain cancer survival rates have barely changed in 30 years. Stories like Nicole's help change that.
             </p>
-            <div style={{ marginTop: 30, display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <div className="documentary-actions" style={{ marginTop: 30, display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
               <a href="https://www.facebook.com/nicole.white.why.not.me" target="_blank" rel="noopener noreferrer" className="btn-outline">
                 Share on Facebook
               </a>
