@@ -183,7 +183,17 @@ function formatMinPerKm(kmh) {
   const minutesPerKm = 60 / kmh
   const minutes = Math.floor(minutesPerKm)
   const seconds = Math.round((minutesPerKm - minutes) * 60)
+  // Handle edge case where rounding pushes seconds to 60
+  if (seconds >= 60) return `${minutes + 1}:00`
   return `${minutes}:${String(seconds).padStart(2, '0')}`
+}
+
+function formatSpeedKmh(kmh) {
+  if (kmh == null) return '--'
+  const num = Number(kmh)
+  if (!Number.isFinite(num)) return '--'
+  // Show 1 decimal for display, but keep full value for pace calc
+  return num.toFixed(1)
 }
 
 function haversineKm(a, b) {
@@ -377,14 +387,21 @@ export default function LiveTrackerPage() {
     fetchInFlightRef.current = true
     setIsRefreshing(true)
 
+    // Hard timeout — if the request hangs, abort after 12 seconds
+    const timeoutId = setTimeout(() => controller.abort(), 12000)
+
     try {
+      // Double cache-bust: query param + unique header to defeat CDN/edge/browser caches
       const cacheBust = `${Date.now()}-${Math.random().toString(36).slice(2)}`
       const res = await fetch(`${API_BASE}/api/state?history=1&limit=2000&_=${cacheBust}`, {
+        method: 'GET',
         cache: 'no-store',
         signal: controller.signal,
         headers: {
-          'Cache-Control': 'no-cache, no-store, max-age=0',
-          Pragma: 'no-cache',
+          'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+          'X-Request-Id': cacheBust,
         },
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -401,6 +418,7 @@ export default function LiveTrackerPage() {
         setApiStatus((prev) => prev === 'loading' ? 'error' : prev)
       }
     } finally {
+      clearTimeout(timeoutId)
       const isCurrentRequest = fetchControllerRef.current === controller
 
       if (isCurrentRequest) {
@@ -618,10 +636,11 @@ export default function LiveTrackerPage() {
         const time = pointTime
           ? new Date(pointTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
           : ''
+        const kmhDisplay = kmh != null ? Number(kmh) : null
         segment.bindPopup(
           `<div style="font-family:Montserrat,sans-serif;font-size:12px;line-height:1.5;min-width:120px">
             <strong style="color:${SITE_COLORS.gold}">${label}</strong><br/>
-            ${kmh != null ? `${Number(kmh).toFixed ? Number(kmh).toFixed(1) : kmh} km/h` : 'No speed'}
+            ${kmhDisplay != null ? `${kmhDisplay.toFixed(1)} km/h` : 'No speed'}
             ${paceStr ? ` · ${paceStr} /km` : ''}<br/>
             <span style="opacity:0.6">${time}</span>
           </div>`,
@@ -729,6 +748,13 @@ export default function LiveTrackerPage() {
   const session = data?.session || {}
   const sessionDuration = formatDuration(session.startedAt, now)
 
+  // Compute speed and pace with full precision from raw data
+  // Prefer calculatedKmh (higher precision) over worker-rounded kmh
+  const rawKmh = speed.calculatedKmh ?? speed.kmh ?? null
+  const rawKmhNum = rawKmh != null ? Number(rawKmh) : null
+  const displayKmh = rawKmhNum != null && Number.isFinite(rawKmhNum) ? rawKmhNum : null
+  const displayPace = formatMinPerKm(displayKmh)
+
   // Compute total distance from received history
   const totalDistanceKm = (() => {
     const pts = sortedHistory.filter(p => p.location?.lat && p.location?.lng)
@@ -798,14 +824,14 @@ export default function LiveTrackerPage() {
 
           <div className="tracker-stat">
             <span className="tracker-stat-value pace">
-              {speed.minPerKm || '--'}
+              {displayPace || '--'}
             </span>
             <span className="tracker-stat-label">Pace</span>
           </div>
 
           <div className="tracker-stat">
             <span className="tracker-stat-value">
-              {speed.kmh != null ? `${speed.kmh} km/h` : '--'}
+              {displayKmh != null ? `${formatSpeedKmh(displayKmh)} km/h` : '--'}
             </span>
             <span className="tracker-stat-label">Speed</span>
           </div>
@@ -912,10 +938,11 @@ export default function LiveTrackerPage() {
           <div className="tracker-info-card">
             <div className="tracker-info-card-label">Speed Detail</div>
             <div className="tracker-info-card-value">
-              {speed.friendly || 'No speed data'}
+              {displayKmh != null ? `${formatSpeedKmh(displayKmh)} km/h — ${speedLabel(displayKmh)}` : 'No speed data'}
             </div>
             <div className="tracker-info-card-sub">
-              {speed.calculatedKmh != null && speed.source === 'owntracks' ? `Calculated: ${speed.calculatedKmh} km/h` : 'Based on latest received point'}
+              {displayPace ? `Pace: ${displayPace} /km` : 'Awaiting speed data'}
+              {speed.calculatedKmh != null ? ` · Raw: ${Number(speed.calculatedKmh).toFixed(4)} km/h` : ''}
             </div>
           </div>
 
