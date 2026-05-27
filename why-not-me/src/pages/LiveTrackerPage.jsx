@@ -33,6 +33,7 @@ const SPECTATOR_ZONES = [
   { id: 'zone-3', label: 'Spectator Zone 3', lat: -45.030639, lng: 168.659472 },
   { id: 'zone-4', label: 'Spectator Zone 4', lat: -45.029111, lng: 168.66 },
 ]
+const START_DETECTION_RADIUS_KM = 0.12
 
 function formatAge(seconds) {
   if (seconds == null) return ''
@@ -354,37 +355,46 @@ export default function LiveTrackerPage() {
 
   const routeLatLngs = useMemo(() => kmlTrackPath.map(point => [point.lat, point.lng]), [kmlTrackPath])
   const sortedHistory = useMemo(() => sortHistory(history), [history])
-  const splitTimes = useMemo(() => {
+  const raceProgress = useMemo(() => {
     const points = sortedHistory.filter((p) => p?.location?.lat != null && p?.location?.lng != null)
-    if (points.length < 2) return {}
+    if (points.length < 2 || kmlTrackPath.length < 2) return { started: false, startTimeMs: null, progressKm: 0, splitTimes: {} }
+    const start = kmlTrackPath[0]
+    const startIdx = points.findIndex((p) => (
+      haversineKm(
+        { lat: p.location.lat, lng: p.location.lng },
+        { lat: start.lat, lng: start.lng }
+      ) <= START_DETECTION_RADIUS_KM
+    ))
+    if (startIdx < 0 || startIdx >= points.length - 1) {
+      return { started: false, startTimeMs: null, progressKm: 0, splitTimes: {} }
+    }
+
+    const startedPoints = points.slice(startIdx)
     let cumKm = 0
     let nextIdx = 0
     const out = {}
-    for (let i = 1; i < points.length && nextIdx < SPLIT_MARKERS_KM.length; i++) {
-      const prev = points[i - 1]
-      const curr = points[i]
+    for (let i = 1; i < startedPoints.length && nextIdx < SPLIT_MARKERS_KM.length; i++) {
+      const prev = startedPoints[i - 1]
+      const curr = startedPoints[i]
       cumKm += haversineKm({ lat: prev.location.lat, lng: prev.location.lng }, { lat: curr.location.lat, lng: curr.location.lng })
       while (nextIdx < SPLIT_MARKERS_KM.length && cumKm >= SPLIT_MARKERS_KM[nextIdx]) {
         out[SPLIT_MARKERS_KM[nextIdx]] = getPointReceivedTimeMs(curr)
         nextIdx += 1
       }
     }
-    return out
-  }, [sortedHistory])
+    return {
+      started: true,
+      startTimeMs: getPointReceivedTimeMs(startedPoints[0]),
+      progressKm: Math.min(MARATHON_DISTANCE_KM, cumKm),
+      splitTimes: out,
+    }
+  }, [sortedHistory, kmlTrackPath])
+  const splitTimes = raceProgress.splitTimes
   const lastReceivedAt = useMemo(() => getLatestReceivedAt(data, sortedHistory), [data, sortedHistory])
   const lastReceivedAgeSeconds = lastReceivedAt
     ? Math.max(0, Math.floor((now - lastReceivedAt.getTime()) / 1000))
     : null
-  const progressKm = useMemo(() => {
-    if (sortedHistory.length < 2) return 0
-    let km = 0
-    for (let i = 1; i < sortedHistory.length; i++) {
-      const a = sortedHistory[i - 1]
-      const b = sortedHistory[i]
-      if (a?.location && b?.location) km += haversineKm({ lat: a.location.lat, lng: a.location.lng }, { lat: b.location.lat, lng: b.location.lng })
-    }
-    return Math.min(MARATHON_DISTANCE_KM, km)
-  }, [sortedHistory])
+  const progressKm = raceProgress.progressKm
   const progressPct = Math.max(0, Math.min(100, (progressKm / MARATHON_DISTANCE_KM) * 100))
 
   // ---- Elevation profile from KML ----
@@ -1122,7 +1132,7 @@ export default function LiveTrackerPage() {
     : 'Live'
   const speed = data?.speed || {}
   const session = data?.session || {}
-  const sessionDuration = formatDuration(session.startedAt, now)
+  const sessionDuration = formatDuration(raceProgress.startTimeMs || session.startedAt, now)
 
   // Compute speed and pace with full precision from raw data
   // Prefer calculatedKmh (higher precision) over worker-rounded kmh
@@ -1223,6 +1233,7 @@ export default function LiveTrackerPage() {
         <div style={{ maxWidth: 1180, margin: '10px auto 0', padding: '0 20px' }}>
           <div style={{ color: 'var(--white-70)', fontSize: 12, marginBottom: 6 }}>
             Progress: {progressPct.toFixed(1)}% · {progressKm.toFixed(2)} km covered · {(MARATHON_DISTANCE_KM - progressKm).toFixed(2)} km remaining
+            {!raceProgress.started ? ' · Waiting for start line pass' : ''}
           </div>
           <div style={{ position: 'relative', height: 10, background: 'rgba(255,255,255,0.08)', borderRadius: 999 }}>
             <div style={{ width: `${progressPct}%`, height: '100%', borderRadius: 999, background: 'linear-gradient(90deg,#7A6A4A,#A88E5D,#E0C58E)' }} />
