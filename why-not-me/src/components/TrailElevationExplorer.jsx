@@ -301,22 +301,19 @@ export default function TrailElevationExplorer({ history = [] }) {
     const L = window.L
     const map = mapRef.current
     const config = BASEMAPS[basemap]
-    const previousLayer = tileLayerRef.current
-    const nextLayer = L.tileLayer(config.url, {
+
+    // Remove old tile layer
+    if (tileLayerRef.current && map.hasLayer(tileLayerRef.current)) {
+      map.removeLayer(tileLayerRef.current)
+    }
+
+    // Add new tile layer
+    tileLayerRef.current = L.tileLayer(config.url, {
       attribution: config.attribution,
       maxZoom: config.maxZoom,
       keepBuffer: 3,
-    })
-
-    nextLayer.addTo(map)
-    tileLayerRef.current = nextLayer
+    }).addTo(map)
     currentBasemapRef.current = basemap
-
-    const removePrevious = () => {
-      if (previousLayer && map.hasLayer(previousLayer)) map.removeLayer(previousLayer)
-    }
-    nextLayer.once('load', removePrevious)
-    setTimeout(removePrevious, 2000)
 
     // Update container class for CSS filter overrides
     const el = mapContainerRef.current

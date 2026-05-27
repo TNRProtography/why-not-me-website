@@ -668,20 +668,17 @@ export default function LiveTrackerPage() {
     const L = window.L
     const map = mapRef.current
     const config = BASEMAPS[basemap]
-    const previousLayer = tileLayerRef.current
-    const nextLayer = createTileLayer(L, config)
 
-    nextLayer.addTo(map)
-    tileLayerRef.current = nextLayer
-    currentBasemapRef.current = basemap
-
-    const removePrevious = () => {
-      if (previousLayer && map.hasLayer(previousLayer)) map.removeLayer(previousLayer)
+    // Remove old tile layer
+    if (tileLayerRef.current && map.hasLayer(tileLayerRef.current)) {
+      map.removeLayer(tileLayerRef.current)
     }
 
-    nextLayer.once('load', removePrevious)
-    setTimeout(removePrevious, 1800)
+    // Add new tile layer
+    tileLayerRef.current = createTileLayer(L, config).addTo(map)
+    currentBasemapRef.current = basemap
 
+    // Update container class for CSS filter overrides
     const el = mapContainerRef.current
     if (el) {
       Object.values(BASEMAPS).forEach(({ className }) => el.classList.remove(className))
