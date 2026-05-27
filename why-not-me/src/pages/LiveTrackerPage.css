@@ -106,7 +106,7 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #4ade80;
+  background: var(--gold);
   position: relative;
 }
 
@@ -115,7 +115,7 @@
   position: absolute;
   inset: -4px;
   border-radius: 50%;
-  background: rgba(74, 222, 128, 0.3);
+  background: rgba(168,142,93,0.3);
   animation: livePulseRing 2s ease-out infinite;
 }
 
@@ -292,7 +292,7 @@
   height: 52px;
   border-radius: 50% 50% 50% 0;
   transform: rotate(-45deg);
-  background: linear-gradient(135deg, var(--gold), #8b7342);
+  background: linear-gradient(135deg, var(--gold), var(--warm));
   box-shadow:
     0 4px 16px rgba(168,142,93,0.4),
     0 8px 32px rgba(0,0,0,0.5),
@@ -523,9 +523,8 @@ body.is-mobile-view .tracker-info-card {
     rgba(168,142,93,0.4) 15%,
     rgba(185,160,110,0.7) 30%,
     rgba(203,178,153,0.85) 50%,
-    #CBB299 65%,
-    #E8D5B8 82%,
-    #F5F3EC 100%
+    var(--warm) 65%,
+    var(--white) 100%
   );
 }
 
@@ -625,4 +624,251 @@ body.is-mobile-view .map-waiting-content {
 
 body.is-mobile-view .map-waiting-heading {
   font-size: 22px;
+}
+
+/* ---- Subtle refresh indicator ---- */
+.map-refresh-indicator {
+  position: absolute;
+  top: 14px;
+  left: 58px;
+  z-index: 1000;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(13,13,13,0.72);
+  border: 1px solid rgba(168,142,93,0.14);
+  color: var(--white-50);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.35);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+.map-refresh-spinner {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid rgba(168,142,93,0.18);
+  border-top-color: var(--gold);
+  animation: spin 0.9s linear infinite;
+}
+
+/* ---- Route toggle ---- */
+.route-toggle {
+  position: absolute;
+  bottom: 24px;
+  left: 14px;
+  z-index: 1000;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: rgba(13,13,13,0.82);
+  border: 1px solid rgba(168,142,93,0.12);
+  color: var(--white-50);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  user-select: none;
+}
+
+.route-toggle input {
+  accent-color: var(--gold);
+}
+
+.route-toggle:hover {
+  color: var(--white-70);
+  border-color: rgba(168,142,93,0.25);
+}
+
+/* ---- Course markers ---- */
+.marathon-course-line {
+  filter: drop-shadow(0 0 8px rgba(168,142,93,0.22));
+}
+
+.course-marker {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(13,13,13,0.9);
+  border: 2px solid var(--gold);
+  color: var(--white);
+  box-shadow:
+    0 4px 18px rgba(0,0,0,0.55),
+    0 0 0 5px rgba(168,142,93,0.14);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 1px;
+}
+
+.course-marker-finish .course-marker {
+  border-color: var(--warm);
+  box-shadow:
+    0 4px 18px rgba(0,0,0,0.55),
+    0 0 0 5px rgba(203,178,153,0.14);
+}
+
+.course-tooltip {
+  background: rgba(13,13,13,0.88) !important;
+  color: var(--white) !important;
+  border: 1px solid rgba(168,142,93,0.18) !important;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.45) !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  letter-spacing: 1.5px !important;
+  text-transform: uppercase !important;
+}
+
+.course-tooltip::before {
+  border-top-color: rgba(13,13,13,0.88) !important;
+}
+
+/* ---- Elevation profile ---- */
+.elevation-panel {
+  padding: 46px 40px 18px;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(168,142,93,0.08), transparent 62%),
+    var(--black);
+  border-top: 1px solid rgba(168,142,93,0.1);
+}
+
+.elevation-panel-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  max-width: 1180px;
+  margin: 0 auto 20px;
+}
+
+.elevation-kicker {
+  color: var(--gold);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.elevation-panel h2 {
+  font-family: var(--font-hero);
+  font-size: clamp(28px, 4vw, 48px);
+  line-height: 1;
+  margin: 0;
+  color: var(--white);
+}
+
+.elevation-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.elevation-stats span {
+  padding: 8px 10px;
+  border-radius: 999px;
+  background: rgba(168,142,93,0.1);
+  border: 1px solid rgba(168,142,93,0.13);
+  color: var(--white-70);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.elevation-chart-wrap {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 18px 18px 14px;
+  border-radius: 14px;
+  background: rgba(13,13,13,0.68);
+  border: 1px solid rgba(168,142,93,0.1);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.28);
+}
+
+.elevation-chart {
+  display: block;
+  width: 100%;
+  height: 210px;
+  overflow: visible;
+}
+
+.elevation-area {
+  fill: rgba(168,142,93,0.14);
+}
+
+.elevation-line {
+  fill: none;
+  stroke: var(--gold);
+  stroke-width: 4;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 8px rgba(168,142,93,0.24));
+}
+
+.elevation-axis {
+  stroke: rgba(245,243,236,0.15);
+  stroke-width: 1;
+}
+
+.elevation-axis-labels {
+  display: flex;
+  justify-content: space-between;
+  color: var(--white-30);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 0 8px;
+}
+
+/* ---- Basemap-specific balancing ---- */
+.tracker-map.basemap-light .leaflet-tile-pane,
+.tracker-map.basemap-streets .leaflet-tile-pane {
+  filter: brightness(0.88) contrast(0.96) saturate(0.65);
+}
+
+body.is-mobile-view .map-refresh-indicator {
+  top: 10px;
+  left: 52px;
+  padding: 7px 10px;
+}
+
+body.is-mobile-view .route-toggle {
+  bottom: 14px;
+  left: 10px;
+  max-width: calc(100vw - 86px);
+  padding: 8px 10px;
+}
+
+body.is-mobile-view .elevation-panel {
+  padding: 34px 20px 8px;
+}
+
+body.is-mobile-view .elevation-panel-header {
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 14px;
+}
+
+body.is-mobile-view .elevation-stats {
+  justify-content: flex-start;
+}
+
+body.is-mobile-view .elevation-chart {
+  height: 160px;
 }
