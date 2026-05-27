@@ -159,6 +159,10 @@
   filter: brightness(0.86) contrast(1.04) saturate(0.7);
 }
 
+.tracker-map.basemap-topo .leaflet-tile-pane {
+  filter: brightness(0.82) contrast(1.06) saturate(0.6);
+}
+
 .tracker-map.basemap-satellite .leaflet-tile-pane {
   filter: brightness(0.92) contrast(1.08) saturate(0.85);
 }
@@ -278,16 +282,21 @@
 }
 
 /* ---- Nicole custom marker ---- */
+.nicole-marker-container {
+  background: none !important;
+  border: none !important;
+}
+
 .nicole-marker {
   position: relative;
-  width: 52px;
-  height: 68px;
+  width: 56px;
+  height: 72px;
 }
 
 .nicole-marker-pin {
   position: absolute;
   top: 0;
-  left: 0;
+  left: 2px;
   width: 52px;
   height: 52px;
   border-radius: 50% 50% 50% 0;
@@ -298,20 +307,23 @@
     0 8px 32px rgba(0,0,0,0.5),
     inset 0 1px 0 rgba(255,255,255,0.15);
   overflow: hidden;
-  border: 2.5px solid rgba(245,243,236,0.25);
+  border: 2.5px solid rgba(245,243,236,0.3);
 }
 
 .nicole-marker-img {
-  width: 100%;
-  height: 100%;
+  width: 140%;
+  height: 140%;
+  margin-top: -20%;
+  margin-left: -20%;
   object-fit: cover;
-  transform: rotate(45deg) scale(1.42);
-  transform-origin: center center;
+  object-position: 50% 30%;
+  transform: rotate(45deg);
+  transform-origin: 50% 50%;
 }
 
 .nicole-marker-shadow {
   position: absolute;
-  bottom: 0;
+  bottom: 2px;
   left: 50%;
   transform: translateX(-50%);
   width: 28px;
@@ -322,8 +334,8 @@
 
 .nicole-marker-pulse {
   position: absolute;
-  top: 18px;
-  left: 18px;
+  top: 19px;
+  left: 21px;
   width: 16px;
   height: 16px;
   border-radius: 50%;
@@ -625,4 +637,56 @@ body.is-mobile-view .map-waiting-content {
 
 body.is-mobile-view .map-waiting-heading {
   font-size: 22px;
+}
+
+/* ---- Course labels ---- */
+.course-label {
+  background: none !important;
+  border: none !important;
+}
+
+.course-label-text {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 3px;
+  white-space: nowrap;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+}
+
+.course-label-start {
+  color: #55604D;
+  background: rgba(13,13,13,0.7);
+  border: 1px solid rgba(85,96,77,0.3);
+}
+
+.course-label-finish {
+  color: var(--gold);
+  background: rgba(13,13,13,0.7);
+  border: 1px solid rgba(168,142,93,0.3);
+}
+
+/* ---- Speed legend course line ---- */
+.speed-legend-course {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 5px;
+}
+
+.speed-legend-course-line {
+  width: 24px;
+  height: 0;
+  border-top: 3px dashed rgba(85,96,77,0.6);
+}
+
+/* ---- Waiting course text ---- */
+.map-waiting-course {
+  font-size: 11px;
+  color: var(--white-30);
+  margin-top: 8px;
+  letter-spacing: 1px;
 }
