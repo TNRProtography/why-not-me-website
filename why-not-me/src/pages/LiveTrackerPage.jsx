@@ -390,10 +390,6 @@ export default function LiveTrackerPage() {
         method: 'GET',
         cache: 'no-store',
         signal: controller.signal,
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
-          'Pragma': 'no-cache',
-        },
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const json = await res.json()
