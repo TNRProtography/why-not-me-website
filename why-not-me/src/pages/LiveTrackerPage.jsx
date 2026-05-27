@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import PageTransition from '../components/PageTransition'
-import TrailElevationExplorer from '../components/TrailElevationExplorer'
 import './LiveTrackerPage.css'
 
 const API_BASE = 'https://why-not-me-live-tracker.why-not-me-nicole-white.workers.dev'
@@ -322,6 +321,9 @@ export default function LiveTrackerPage() {
   const fetchInFlightRef = useRef(false)
   const fetchControllerRef = useRef(null)
   const refreshTimeoutRef = useRef(null)
+  const elevCanvasRef = useRef(null)
+  const elevWrapRef = useRef(null)
+  const hoverMarkerRef = useRef(null)
 
   const [data, setData] = useState(null)
   const [history, setHistory] = useState([])
@@ -333,6 +335,7 @@ export default function LiveTrackerPage() {
   const [showStartEnd, setShowStartEnd] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [now, setNow] = useState(Date.now())
+  const [elevHoverIdx, setElevHoverIdx] = useState(null)
 
   const routeLatLngs = useMemo(() => kmlTrackPath.map(point => [point.lat, point.lng]), [kmlTrackPath])
   const sortedHistory = useMemo(() => sortHistory(history), [history])
@@ -340,6 +343,27 @@ export default function LiveTrackerPage() {
   const lastReceivedAgeSeconds = lastReceivedAt
     ? Math.max(0, Math.floor((now - lastReceivedAt.getTime()) / 1000))
     : null
+
+  // ---- Elevation profile from KML ----
+  const elevProfile = useMemo(() => {
+    if (kmlTrackPath.length < 2) return null
+    let dist = 0, minE = Infinity, maxE = -Infinity, gain = 0, loss = 0, prev = null
+    const pts = kmlTrackPath.map((pt, i) => {
+      if (i > 0) dist += haversineKm(kmlTrackPath[i - 1], pt)
+      if (pt.elevation != null) {
+        if (prev != null) {
+          const d = pt.elevation - prev
+          if (d > 0) gain += d; else loss -= d
+        }
+        minE = Math.min(minE, pt.elevation)
+        maxE = Math.max(maxE, pt.elevation)
+        prev = pt.elevation
+      }
+      return { ...pt, distanceKm: dist }
+    })
+    const elevRange = (maxE - minE) || 1
+    return { pts, totalKm: dist, minE, maxE, gain, loss, elevRange }
+  }, [kmlTrackPath])
 
   // ---- KML course path ----
   useEffect(() => {
@@ -748,6 +772,143 @@ export default function LiveTrackerPage() {
     mapRef.current.fitBounds(bounds, { padding: [40, 40], maxZoom: 16, duration: 1 })
   }
 
+  // ---- Elevation canvas drawing ----
+  const drawElevation = useCallback((activeIdx) => {
+    const canvas = elevCanvasRef.current
+    if (!canvas || !elevProfile) return
+    const ctx = canvas.getContext('2d')
+    const dpr = window.devicePixelRatio || 1
+    const rect = canvas.parentElement.getBoundingClientRect()
+    const w = rect.width, h = rect.height
+    canvas.width = w * dpr; canvas.height = h * dpr
+    canvas.style.width = w + 'px'; canvas.style.height = h + 'px'
+    ctx.scale(dpr, dpr)
+    ctx.clearRect(0, 0, w, h)
+
+    const { pts, totalKm, minE, elevRange } = elevProfile
+    const padTop = 14, padBot = 20
+    const plotH = h - padTop - padBot
+    const toX = (km) => (km / totalKm) * w
+    const toY = (elev) => padTop + (1 - (elev - minE) / elevRange) * plotH
+
+    // Filled area
+    ctx.beginPath()
+    ctx.moveTo(0, h - padBot)
+    pts.forEach(pt => { if (pt.elevation != null) ctx.lineTo(toX(pt.distanceKm), toY(pt.elevation)) })
+    ctx.lineTo(toX(pts[pts.length - 1].distanceKm), h - padBot)
+    ctx.closePath()
+    const grad = ctx.createLinearGradient(0, padTop, 0, h - padBot)
+    grad.addColorStop(0, 'rgba(168,142,93,0.2)')
+    grad.addColorStop(1, 'rgba(168,142,93,0.02)')
+    ctx.fillStyle = grad
+    ctx.fill()
+
+    // Traversed fill
+    if (activeIdx != null && activeIdx > 0) {
+      ctx.beginPath()
+      ctx.moveTo(0, h - padBot)
+      for (let i = 0; i <= activeIdx && i < pts.length; i++) {
+        if (pts[i].elevation != null) ctx.lineTo(toX(pts[i].distanceKm), toY(pts[i].elevation))
+      }
+      ctx.lineTo(toX(pts[Math.min(activeIdx, pts.length - 1)].distanceKm), h - padBot)
+      ctx.closePath()
+      const tGrad = ctx.createLinearGradient(0, padTop, 0, h - padBot)
+      tGrad.addColorStop(0, 'rgba(168,142,93,0.4)')
+      tGrad.addColorStop(1, 'rgba(168,142,93,0.05)')
+      ctx.fillStyle = tGrad
+      ctx.fill()
+    }
+
+    // Elevation line
+    const lerp = (a, b, t) => a + (b - a) * t
+    for (let i = 1; i < pts.length; i++) {
+      const prev = pts[i - 1], curr = pts[i]
+      if (prev.elevation == null || curr.elevation == null) continue
+      const t = (curr.elevation - minE) / elevRange
+      const isActive = activeIdx != null && i <= activeIdx
+      const r = Math.round(lerp(85, 245, t)), g = Math.round(lerp(120, 220, t)), b2 = Math.round(lerp(100, 140, t))
+      ctx.beginPath()
+      ctx.moveTo(toX(prev.distanceKm), toY(prev.elevation))
+      ctx.lineTo(toX(curr.distanceKm), toY(curr.elevation))
+      ctx.lineWidth = isActive ? 2.5 : 1.5
+      ctx.strokeStyle = isActive ? `rgb(${r},${g},${b2})` : `rgba(168,142,93,${activeIdx != null ? 0.2 : 0.5})`
+      ctx.lineCap = 'round'
+      ctx.stroke()
+    }
+
+    // Km ticks
+    const kmLabels = [0, 5, 10, 15, 20, 25, 30, 35, 40, 42.2]
+    kmLabels.forEach(km => {
+      if (km > totalKm) return
+      const x = toX(km)
+      ctx.font = 'bold 7px Montserrat, sans-serif'
+      ctx.fillStyle = 'rgba(245,243,236,0.2)'
+      ctx.textAlign = 'center'
+      ctx.fillText(km === 42.2 ? '42.2' : `${km}`, x, h - padBot + 12)
+    })
+
+    // Cursor
+    if (activeIdx != null && pts[activeIdx]?.elevation != null) {
+      const pt = pts[activeIdx], x = toX(pt.distanceKm), y = toY(pt.elevation)
+      ctx.beginPath(); ctx.moveTo(x, padTop); ctx.lineTo(x, h - padBot)
+      ctx.strokeStyle = 'rgba(245,243,236,0.15)'; ctx.lineWidth = 1
+      ctx.setLineDash([3, 3]); ctx.stroke(); ctx.setLineDash([])
+      ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2)
+      ctx.fillStyle = '#F5F3EC'; ctx.fill()
+      ctx.lineWidth = 2; ctx.strokeStyle = '#A88E5D'; ctx.stroke()
+    }
+  }, [elevProfile])
+
+  // ---- Elevation hover interaction ----
+  const handleElevHover = useCallback((e) => {
+    if (!elevProfile || !elevWrapRef.current) return
+    const rect = elevWrapRef.current.getBoundingClientRect()
+    const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left
+    const progress = Math.max(0, Math.min(1, x / rect.width))
+    const targetKm = progress * elevProfile.totalKm
+    let closest = 0, closestDiff = Infinity
+    for (let i = 0; i < elevProfile.pts.length; i++) {
+      const diff = Math.abs(elevProfile.pts[i].distanceKm - targetKm)
+      if (diff < closestDiff) { closestDiff = diff; closest = i }
+    }
+    setElevHoverIdx(closest)
+
+    // Show marker on map
+    if (mapRef.current && window.L) {
+      const pt = elevProfile.pts[closest]
+      if (pt) {
+        const L = window.L
+        if (!hoverMarkerRef.current) {
+          hoverMarkerRef.current = L.circleMarker([pt.lat, pt.lng], {
+            radius: 6, color: '#A88E5D', fillColor: '#F5F3EC', fillOpacity: 1, weight: 2, pane: 'markerPane',
+          }).addTo(mapRef.current)
+        } else {
+          hoverMarkerRef.current.setLatLng([pt.lat, pt.lng])
+        }
+      }
+    }
+  }, [elevProfile])
+
+  const handleElevLeave = useCallback(() => {
+    setElevHoverIdx(null)
+    if (hoverMarkerRef.current && mapRef.current) {
+      mapRef.current.removeLayer(hoverMarkerRef.current)
+      hoverMarkerRef.current = null
+    }
+  }, [])
+
+  // ---- Draw elevation on hover change ----
+  useEffect(() => { drawElevation(elevHoverIdx) }, [elevHoverIdx, drawElevation])
+
+  // ---- Resize redraw ----
+  useEffect(() => {
+    const onResize = () => drawElevation(elevHoverIdx)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [drawElevation, elevHoverIdx])
+
+  const elevHoverPoint = elevProfile && elevHoverIdx != null ? elevProfile.pts[elevHoverIdx] : null
+
   // ---- Derived display values ----
   const isWaiting = apiStatus === 'waiting' && !lastReceivedAt
   const signalClass = lastReceivedAgeSeconds == null
@@ -987,6 +1148,36 @@ export default function LiveTrackerPage() {
             )}
           </div>
 
+          {/* Elevation overlay — bottom of map */}
+          {elevProfile && (
+            <>
+              <div className="elev-tooltip-overlay" style={{ opacity: elevHoverPoint ? 1 : 0 }}>
+                <span className="elev-tooltip-alt">
+                  {elevHoverPoint?.elevation != null ? `${Math.round(elevHoverPoint.elevation)} m` : ''}
+                </span>
+                <span className="elev-tooltip-dist">
+                  {elevHoverPoint ? `${elevHoverPoint.distanceKm.toFixed(1)} km` : ''}
+                </span>
+              </div>
+              <div className="elev-overlay">
+                <div
+                  ref={elevWrapRef}
+                  className="elev-canvas-wrap"
+                  onMouseMove={handleElevHover}
+                  onTouchMove={handleElevHover}
+                  onMouseLeave={handleElevLeave}
+                >
+                  <canvas ref={elevCanvasRef} className="elev-canvas" />
+                </div>
+                <div className="elev-legend-inline">
+                  <span>{Math.round(elevProfile.minE)} m</span>
+                  <div className="elev-legend-bar" />
+                  <span>{Math.round(elevProfile.maxE)} m</span>
+                </div>
+              </div>
+            </>
+          )}
+
           {/* Waiting overlay on map */}
           {isWaiting && (
             <div className="map-waiting-overlay">
@@ -1041,7 +1232,6 @@ export default function LiveTrackerPage() {
           </div>
         </div>
 
-        <TrailElevationExplorer history={sortedHistory} />
 
         {/* Footer */}
         <div className="tracker-footer-spacer">

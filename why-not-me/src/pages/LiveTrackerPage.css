@@ -871,3 +871,82 @@ body.is-mobile-view .elevation-stats {
 body.is-mobile-view .elevation-chart {
   height: 160px;
 }
+
+/* ============ ELEVATION OVERLAY (inside main map) ============ */
+
+.elev-tooltip-overlay {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 1000;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  pointer-events: none;
+  transition: opacity 0.2s;
+  background: rgba(13,13,13,0.7);
+  backdrop-filter: blur(12px);
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(168,142,93,0.12);
+}
+
+.elev-tooltip-alt {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--white);
+  font-family: 'Montserrat', sans-serif;
+}
+
+.elev-tooltip-dist {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: 1px;
+}
+
+.elev-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 800;
+  background: linear-gradient(to top, rgba(13,13,13,0.88) 0%, rgba(13,13,13,0.65) 70%, transparent 100%);
+  padding: 0 0 4px;
+  pointer-events: none;
+}
+
+.elev-canvas-wrap {
+  height: 100px;
+  cursor: col-resize;
+  pointer-events: auto;
+  touch-action: none;
+  padding: 0 12px;
+}
+
+.elev-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.elev-legend-inline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 2px 0 4px;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: rgba(245,243,236,0.25);
+  pointer-events: none;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.elev-legend-bar {
+  width: 60px;
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, rgb(85,120,100), rgb(165,170,120), rgb(245,220,140));
+}
