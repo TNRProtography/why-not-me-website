@@ -930,7 +930,7 @@ export default function LiveTrackerPage() {
           </div>
         </div>
 
-        <TrailElevationExplorer />
+        <TrailElevationExplorer history={sortedHistory} />
 
         {/* Footer */}
         <div className="tracker-footer-spacer">
