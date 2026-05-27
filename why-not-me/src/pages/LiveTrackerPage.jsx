@@ -25,6 +25,15 @@ const BASEMAP = {
   maxZoom: 19,
 }
 
+const MARATHON_DISTANCE_KM = 42.2
+const SPLIT_MARKERS_KM = [1, 5, 10, 15, 20, 21.1, 25, 30, 35, 40, 42.2]
+const SPECTATOR_ZONES = [
+  { id: 'zone-1', label: 'Spectator Zone 1', lat: -44.988056, lng: 168.811444 },
+  { id: 'zone-2', label: 'Spectator Zone 2', lat: -44.997111, lng: 168.756722 },
+  { id: 'zone-3', label: 'Spectator Zone 3', lat: -45.030639, lng: 168.659472 },
+  { id: 'zone-4', label: 'Spectator Zone 4', lat: -45.029111, lng: 168.66 },
+]
+
 function formatAge(seconds) {
   if (seconds == null) return ''
   if (seconds < 60) return `${seconds}s ago`
@@ -324,6 +333,9 @@ export default function LiveTrackerPage() {
   const elevCanvasRef = useRef(null)
   const elevWrapRef = useRef(null)
   const hoverMarkerRef = useRef(null)
+  const splitLayerRef = useRef(null)
+  const spectatorLayerRef = useRef(null)
+  const userLocationRef = useRef({ marker: null, accuracy: null })
 
   const [data, setData] = useState(null)
   const [history, setHistory] = useState([])
@@ -342,10 +354,38 @@ export default function LiveTrackerPage() {
 
   const routeLatLngs = useMemo(() => kmlTrackPath.map(point => [point.lat, point.lng]), [kmlTrackPath])
   const sortedHistory = useMemo(() => sortHistory(history), [history])
+  const splitTimes = useMemo(() => {
+    const points = sortedHistory.filter((p) => p?.location?.lat != null && p?.location?.lng != null)
+    if (points.length < 2) return {}
+    let cumKm = 0
+    let nextIdx = 0
+    const out = {}
+    for (let i = 1; i < points.length && nextIdx < SPLIT_MARKERS_KM.length; i++) {
+      const prev = points[i - 1]
+      const curr = points[i]
+      cumKm += haversineKm({ lat: prev.location.lat, lng: prev.location.lng }, { lat: curr.location.lat, lng: curr.location.lng })
+      while (nextIdx < SPLIT_MARKERS_KM.length && cumKm >= SPLIT_MARKERS_KM[nextIdx]) {
+        out[SPLIT_MARKERS_KM[nextIdx]] = getPointReceivedTimeMs(curr)
+        nextIdx += 1
+      }
+    }
+    return out
+  }, [sortedHistory])
   const lastReceivedAt = useMemo(() => getLatestReceivedAt(data, sortedHistory), [data, sortedHistory])
   const lastReceivedAgeSeconds = lastReceivedAt
     ? Math.max(0, Math.floor((now - lastReceivedAt.getTime()) / 1000))
     : null
+  const progressKm = useMemo(() => {
+    if (sortedHistory.length < 2) return 0
+    let km = 0
+    for (let i = 1; i < sortedHistory.length; i++) {
+      const a = sortedHistory[i - 1]
+      const b = sortedHistory[i]
+      if (a?.location && b?.location) km += haversineKm({ lat: a.location.lat, lng: a.location.lng }, { lat: b.location.lat, lng: b.location.lng })
+    }
+    return Math.min(MARATHON_DISTANCE_KM, km)
+  }, [sortedHistory])
+  const progressPct = Math.max(0, Math.min(100, (progressKm / MARATHON_DISTANCE_KM) * 100))
 
   // ---- Elevation profile from KML ----
   const elevProfile = useMemo(() => {
@@ -633,6 +673,8 @@ export default function LiveTrackerPage() {
 
       routeLayerRef.current = L.layerGroup().addTo(map)
       trailLayerRef.current = L.layerGroup().addTo(map)
+      splitLayerRef.current = L.layerGroup().addTo(map)
+      spectatorLayerRef.current = L.layerGroup().addTo(map)
 
       mapRef.current = map
       mapInitializedRef.current = true
@@ -663,6 +705,8 @@ export default function LiveTrackerPage() {
       tileLayerRef.current = null
       routeLayerRef.current = null
       trailLayerRef.current = null
+      splitLayerRef.current = null
+      spectatorLayerRef.current = null
       setMapReady(false)
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -712,6 +756,47 @@ export default function LiveTrackerPage() {
       map.fitBounds(coursePath.getBounds(), { padding: [36, 36], maxZoom: 13 })
     }
   }, [mapReady, routeLatLngs, showStartEnd, data?.location, sortedHistory.length])
+
+  useEffect(() => {
+    if (!mapReady || !window.L || !splitLayerRef.current || !routeLatLngs.length) return
+    const L = window.L
+    splitLayerRef.current.clearLayers()
+    const routePts = kmlTrackPath
+    if (routePts.length < 2) return
+    let cumKm = 0
+    let nextIdx = 0
+    for (let i = 1; i < routePts.length && nextIdx < SPLIT_MARKERS_KM.length; i++) {
+      const a = routePts[i - 1]
+      const b = routePts[i]
+      cumKm += haversineKm(a, b)
+      while (nextIdx < SPLIT_MARKERS_KM.length && cumKm >= SPLIT_MARKERS_KM[nextIdx]) {
+        const splitKm = SPLIT_MARKERS_KM[nextIdx]
+        const label = splitKm === 21.1 ? 'Half' : splitKm === 42.2 ? 'F' : `${splitKm}`
+        const t = splitTimes[splitKm]
+        L.marker([b.lat, b.lng], {
+          icon: createCourseMarkerIcon(L, label, splitKm === 42.2 ? 'finish' : 'split'),
+          zIndexOffset: 650,
+        }).bindTooltip(
+          t ? `${label} km · ${new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : `${label} km · pending`,
+          { direction: 'top', offset: [0, -14], className: 'course-tooltip' }
+        ).addTo(splitLayerRef.current)
+        nextIdx += 1
+      }
+    }
+  }, [mapReady, kmlTrackPath, splitTimes, now])
+
+  useEffect(() => {
+    if (!mapReady || !window.L || !spectatorLayerRef.current) return
+    const L = window.L
+    spectatorLayerRef.current.clearLayers()
+    SPECTATOR_ZONES.forEach((zone) => {
+      L.marker([zone.lat, zone.lng], {
+        icon: createCourseMarkerIcon(L, '👥', 'split'),
+        zIndexOffset: 620,
+      }).bindTooltip(zone.label, { direction: 'top', offset: [0, -14], className: 'course-tooltip' })
+        .addTo(spectatorLayerRef.current)
+    })
+  }, [mapReady])
 
   // ---- Update marker + trail when data changes ----
   useEffect(() => {
@@ -859,6 +944,29 @@ export default function LiveTrackerPage() {
     historyPoints.forEach(p => bounds.extend([p.location.lat, p.location.lng]))
     if (data?.location) bounds.extend([data.location.lat, data.location.lng])
     mapRef.current.fitBounds(bounds, { padding: [40, 40], maxZoom: 16, duration: 1 })
+  }
+
+  const handleCenterOnMe = () => {
+    if (!navigator.geolocation || !mapRef.current || !window.L) return
+    navigator.geolocation.getCurrentPosition((pos) => {
+      const { latitude, longitude, accuracy } = pos.coords
+      const L = window.L
+      const map = mapRef.current
+      if (!userLocationRef.current.marker) {
+        userLocationRef.current.marker = L.circleMarker([latitude, longitude], {
+          radius: 6, color: '#66A3FF', fillColor: '#66A3FF', fillOpacity: 1, weight: 2,
+        }).addTo(map)
+      } else userLocationRef.current.marker.setLatLng([latitude, longitude])
+      if (!userLocationRef.current.accuracy) {
+        userLocationRef.current.accuracy = L.circle([latitude, longitude], {
+          radius: accuracy || 25, color: '#66A3FF', fillColor: '#66A3FF', fillOpacity: 0.12, weight: 1,
+        }).addTo(map)
+      } else {
+        userLocationRef.current.accuracy.setLatLng([latitude, longitude])
+        userLocationRef.current.accuracy.setRadius(accuracy || 25)
+      }
+      map.flyTo([latitude, longitude], Math.max(map.getZoom(), 14), { duration: 1 })
+    })
   }
 
   // ---- Elevation canvas drawing ----
@@ -1112,6 +1220,17 @@ export default function LiveTrackerPage() {
             </motion.h1>
           </div>
         </motion.div>
+        <div style={{ maxWidth: 1180, margin: '10px auto 0', padding: '0 20px' }}>
+          <div style={{ color: 'var(--white-70)', fontSize: 12, marginBottom: 6 }}>
+            Progress: {progressPct.toFixed(1)}% · {progressKm.toFixed(2)} km covered · {(MARATHON_DISTANCE_KM - progressKm).toFixed(2)} km remaining
+          </div>
+          <div style={{ position: 'relative', height: 10, background: 'rgba(255,255,255,0.08)', borderRadius: 999 }}>
+            <div style={{ width: `${progressPct}%`, height: '100%', borderRadius: 999, background: 'linear-gradient(90deg,#7A6A4A,#A88E5D,#E0C58E)' }} />
+            {SPLIT_MARKERS_KM.map((km) => (
+              <span key={km} style={{ position: 'absolute', left: `${(km / MARATHON_DISTANCE_KM) * 100}%`, top: -6, width: 2, height: 22, background: 'rgba(245,243,236,0.35)' }} />
+            ))}
+          </div>
+        </div>
 
         {/* Live stats */}
         <motion.div
@@ -1231,6 +1350,12 @@ export default function LiveTrackerPage() {
                 </svg>
               </button>
             )}
+            <button className="recenter-btn" onClick={handleCenterOnMe} title="Centre on me">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="5" />
+                <path d="M12 1v4m0 14v4M1 12h4m14 0h4" />
+              </svg>
+            </button>
           </div>
 
           {/* Elevation overlay — bottom of map */}
