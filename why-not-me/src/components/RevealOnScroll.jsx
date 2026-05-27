@@ -1,34 +1,11 @@
-/*
- * RevealOnScroll - Animate elements as they enter the viewport.
- *
- * PROPS:
- *   direction: 'up' (default) | 'left' | 'right' | 'none'
- *     Controls which direction the element slides in from.
- *   delay: number (seconds) - stagger delay for sequenced reveals
- *   className: additional CSS classes
- *   children: the content to reveal
- *
- * HOW IT WORKS:
- *   Uses framer-motion's whileInView to trigger animations
- *   when the element scrolls into the viewport. The 'once: true'
- *   setting means it only animates once (doesn't re-trigger).
- *
- * USAGE:
- *   <RevealOnScroll>
- *     <h2>This slides up when scrolled into view</h2>
- *   </RevealOnScroll>
- *
- *   <RevealOnScroll direction="left" delay={0.2}>
- *     <img src="..." />
- *   </RevealOnScroll>
- */
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 
 const directionMap = {
-  up: { y: 50, x: 0 },
-  left: { x: -60, y: 0 },
-  right: { x: 60, y: 0 },
-  none: { x: 0, y: 0 },
+  up: { y: 68, x: 0, rotateX: 3 },
+  down: { y: -48, x: 0, rotateX: -2 },
+  left: { x: -76, y: 0, rotateY: -3 },
+  right: { x: 76, y: 0, rotateY: 3 },
+  none: { x: 0, y: 0, rotateX: 0, rotateY: 0 },
 }
 
 export default function RevealOnScroll({
@@ -37,18 +14,36 @@ export default function RevealOnScroll({
   delay = 0,
   className = '',
 }) {
+  const reduceMotion = useReducedMotion()
   const offset = directionMap[direction] || directionMap.up
+
+  if (reduceMotion) {
+    return <div className={className}>{children}</div>
+  }
 
   return (
     <motion.div
-      className={className}
-      initial={{ opacity: 0, ...offset }}
-      whileInView={{ opacity: 1, x: 0, y: 0 }}
-      viewport={{ once: true, margin: '-50px' }}
+      className={`reveal-layer ${className}`.trim()}
+      initial={{
+        opacity: 0,
+        scale: 0.975,
+        filter: 'blur(18px)',
+        ...offset,
+      }}
+      whileInView={{
+        opacity: 1,
+        x: 0,
+        y: 0,
+        scale: 1,
+        rotateX: 0,
+        rotateY: 0,
+        filter: 'blur(0px)',
+      }}
+      viewport={{ once: true, amount: 0.24, margin: '0px 0px -80px 0px' }}
       transition={{
-        duration: 0.7,
+        duration: 1.1,
         delay,
-        ease: [0.22, 1, 0.36, 1],
+        ease: [0.19, 1, 0.22, 1],
       }}
     >
       {children}

@@ -1,44 +1,61 @@
-/* ============================================================
- * NAV STYLES
- * The nav is fixed at the top. It starts transparent and gets
- * a dark blurred background when the user scrolls down.
- * ============================================================ */
-
 .main-nav {
   position: fixed;
-  top: 0; left: 0; right: 0;
+  top: 0;
+  left: 0;
+  right: 0;
   z-index: 1000;
-  padding: 20px 40px;
+  padding: 18px 42px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: linear-gradient(180deg, rgba(13,13,13,0.9) 0%, transparent 100%);
-  transition: background 0.5s ease, padding 0.3s ease;
+  background: linear-gradient(180deg, rgba(13,13,13,0.74) 0%, rgba(13,13,13,0.22) 62%, transparent 100%);
+  transition: background 0.75s var(--ease-cinematic), padding 0.55s var(--ease-cinematic), box-shadow 0.55s var(--ease-cinematic);
 }
 
-/* When user has scrolled past 80px */
+.main-nav::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 0%, rgba(203,178,153,0.12), transparent 56%);
+  opacity: 0;
+  transition: opacity 0.55s var(--ease-cinematic);
+  pointer-events: none;
+}
+
 .main-nav.scrolled {
-  background: rgba(13,13,13,0.97);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  padding: 14px 40px;
+  background: rgba(13,13,13,0.74);
+  backdrop-filter: blur(24px) saturate(1.15);
+  -webkit-backdrop-filter: blur(24px) saturate(1.15);
+  padding: 10px 42px;
+  box-shadow: 0 20px 80px rgba(0,0,0,0.25);
 }
 
-/* Logo */
-.nav-logo {
-  height: 48px;
-  transition: transform 0.3s ease;
+.main-nav.scrolled::before {
+  opacity: 1;
 }
-.nav-logo:hover { transform: scale(1.05); }
 
-/* Desktop nav links container */
-.nav-links {
-  display: flex;
-  gap: 36px;
+.nav-logo-link {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
   align-items: center;
 }
 
-/* Individual nav link */
+.nav-logo {
+  height: 62px;
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 12px 28px rgba(0,0,0,0.5));
+}
+
+.nav-links {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: 34px;
+  align-items: center;
+}
+
 .nav-link {
   color: var(--white);
   font-size: 11px;
@@ -46,86 +63,131 @@
   letter-spacing: 3px;
   text-transform: uppercase;
   position: relative;
-  transition: color 0.3s ease;
+  transition: color 0.45s var(--ease-cinematic), opacity 0.45s var(--ease-cinematic);
 }
+
 .nav-link::after {
   content: '';
   position: absolute;
-  bottom: -4px; left: 0;
-  width: 0; height: 1px;
-  background: var(--gold);
-  transition: width 0.4s ease;
+  bottom: -7px;
+  left: 50%;
+  width: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  transform: translateX(-50%);
+  transition: width 0.55s var(--ease-cinematic);
 }
-.nav-link:hover { color: var(--gold); }
-.nav-link:hover::after { width: 100%; }
-.nav-link.active { color: var(--gold); }
-.nav-link.active::after { width: 100%; }
 
-/* Donate button in nav - always stands out */
+.nav-link:hover,
+.nav-link.active {
+  color: var(--gold);
+}
+
+.nav-link:hover::after,
+.nav-link.active::after {
+  width: 120%;
+}
+
 .nav-donate-btn {
-  background: var(--gold);
+  background: rgba(168,142,93,0.92);
   color: var(--black) !important;
-  padding: 10px 22px;
+  padding: 11px 23px;
+  border: 1px solid rgba(245,243,236,0.18);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: 2px;
   text-transform: uppercase;
-  transition: all 0.3s ease;
-}
-.nav-donate-btn:hover {
-  background: var(--warm);
-  transform: translateY(-2px);
+  box-shadow: 0 12px 34px rgba(168,142,93,0.18);
+  transition: transform 0.5s var(--ease-cinematic), background 0.5s var(--ease-cinematic), box-shadow 0.5s var(--ease-cinematic);
 }
 
-/* ============================================================
- * HAMBURGER ICON (mobile only)
- * Three horizontal lines that animate into an X when open.
- * ============================================================ */
-.hamburger {
-  display: none; /* Hidden on desktop */
-  flex-direction: column;
-  gap: 5px;
-  z-index: 1001;
-  padding: 8px;
+.nav-donate-btn:hover {
+  background: var(--warm);
+  transform: translateY(-3px);
+  box-shadow: 0 18px 46px rgba(203,178,153,0.24);
 }
+
+.hamburger {
+  display: none;
+  position: relative;
+  z-index: 1001;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+}
+
 .hamburger span {
-  width: 24px; height: 2px;
+  width: 25px;
+  height: 2px;
   background: var(--white);
-  transition: all 0.3s ease;
+  transition: transform 0.45s var(--ease-cinematic), opacity 0.35s var(--ease-cinematic);
   display: block;
 }
-.hamburger.open span:nth-child(1) { transform: rotate(45deg) translate(5px, 5px); }
+
+.hamburger.open span:nth-child(1) { transform: rotate(45deg) translate(6px, 6px); }
 .hamburger.open span:nth-child(2) { opacity: 0; }
 .hamburger.open span:nth-child(3) { transform: rotate(-45deg) translate(5px, -5px); }
 
-/* ============================================================
- * MOBILE FULL-SCREEN MENU
- * Slides in from the right. Centered large links.
- * ============================================================ */
 .mobile-menu {
   position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
+  inset: 0;
   z-index: 999;
+  overflow: hidden;
   background: var(--black);
   display: flex;
-  flex-direction: column;
   justify-content: center;
+  align-items: center;
+}
+
+.mobile-menu-bg {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(13,13,13,0.34), rgba(13,13,13,0.96)),
+    url('/images/lores/running-motion.jpg') center/cover;
+  filter: brightness(0.58) saturate(0.76);
+}
+
+.mobile-menu-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 42%, rgba(168,142,93,0.22), transparent 42%);
+}
+
+.mobile-menu-inner {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
   align-items: center;
   gap: 28px;
 }
+
 .mobile-menu a {
   color: var(--white);
   font-family: var(--font-hero);
-  font-size: 36px;
-  transition: color 0.3s ease;
+  font-size: clamp(42px, 12vw, 72px);
+  line-height: 0.95;
+  text-shadow: 0 18px 50px rgba(0,0,0,0.6);
+  transition: color 0.45s var(--ease-cinematic), letter-spacing 0.45s var(--ease-cinematic);
 }
-.mobile-menu a:hover { color: var(--gold); }
 
-/* ============================================================
- * RESPONSIVE
- * ============================================================ */
+.mobile-menu a:hover,
+.mobile-menu a.active {
+  color: var(--gold);
+  letter-spacing: 1px;
+}
+
+@media (max-width: 1050px) {
+  .nav-links { gap: 22px; }
+  .nav-link { letter-spacing: 2px; }
+}
+
 @media (max-width: 900px) {
   .nav-links { display: none; }
   .hamburger { display: flex; }
-  .main-nav { padding: 15px 20px; }
+  .main-nav { padding: 12px 20px; }
+  .main-nav.scrolled { padding: 8px 20px; }
+  .nav-logo { height: 56px; }
 }

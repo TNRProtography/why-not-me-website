@@ -61,6 +61,7 @@ export default function HomePage() {
           }}
         />
         <div className="hero-overlay" />
+        <div className="hero-light" />
         <motion.div className="hero-content" style={{ opacity: heroOpacity }}>
           <motion.h1
             className="hero-title"
@@ -346,16 +347,17 @@ export default function HomePage() {
       {/* ========== 10. MARATHON TRAINING ========== */}
       <section className="marathon-section">
         <div className="marathon-bg" style={{ backgroundImage: 'url(/images/lores/running-motion.jpg)' }} />
+        <div className="marathon-film-light" />
         <RevealOnScroll className="marathon-content">
-          <p className="section-label">Marathon Training</p>
-          <h2 className="section-title">How is training going?</h2>
+          <p className="section-label">Queenstown Marathon</p>
+          <h2 className="section-title">Not just another finish line.</h2>
           <div className="gold-line" style={{ margin: '20px auto' }} />
           <div className="section-body" style={{ maxWidth: '100%', textAlign: 'center', margin: '0 auto' }}>
             <p>At this stage Nicole is focussing on getting her body moving again. It has had a long and gruelling 12 months of treatment and surgeries. Although she is 12 months post all that, it still takes a massive toll on her body.</p>
             <br />
-            <p>Training right now is about listening to her body and knowing how far she can push it. It is a balancing act between working shift work, finding time to rest and time to be active, as well as battling with ongoing fatigue. Training includes running, swimming, going to the gym, and taking it slow some days by just going for a walk.</p>
+            <p>Queenstown matters because this is not Nicole's first time lining up for something hard. She has already run a half marathon while on chemo, raised $4,500 for Brain Tumour Support NZ, and pushed herself through a full marathon when treatment was still part of daily life.</p>
             <br />
-            <p>The Queenstown Marathon is in November, so she has given herself enough time to gradually build.</p>
+            <p>This return is different. It is about the history behind the running, the disappointment she still carries from 2023, and the chance to see how far remission, training, and a little bit of vengeance can take her.</p>
           </div>
           <div style={{ marginTop: 50 }}>
             <div className="marathon-stat">16km</div>
@@ -364,6 +366,9 @@ export default function HomePage() {
           <p style={{ fontStyle: 'italic', marginTop: 30, color: 'var(--warm)', fontSize: 18 }}>
             "So far I'm feeling good, feeling strong and capable. I'm happy with where I am at the moment."
           </p>
+          <div style={{ marginTop: 34 }}>
+            <Link to="/queenstown-marathon" className="btn-primary">Why Queenstown?</Link>
+          </div>
         </RevealOnScroll>
       </section>
 

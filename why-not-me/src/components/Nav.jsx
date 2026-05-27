@@ -1,84 +1,116 @@
-/*
- * ============================================================
- * NAV.JSX - Site Navigation
- * ============================================================
- * Features:
- *   - Fixed position, always visible
- *   - Transparent at top, dark/blurred when scrolled
- *   - Active route highlighting (gold underline)
- *   - Mobile hamburger menu with full-screen overlay
- *   - Donate button always visible as CTA
- *
- * TO ADD A NAV LINK:
- *   Add a new <NavLink> inside the nav-links div, and a
- *   matching one inside the mobile-menu div.
- * ============================================================
- */
 import { useState, useEffect } from 'react'
 import { NavLink, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import './Nav.css'
 
+const navItems = [
+  { to: '/', label: 'Home', end: true },
+  { to: '/documentary', label: 'Documentary' },
+  { to: '/queenstown-marathon', label: 'Marathon' },
+]
+
 export default function Nav() {
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
 
-  /* Listen for scroll to toggle nav background */
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 80)
-    window.addEventListener('scroll', onScroll)
+    const onScroll = () => setScrolled(window.scrollY > 70)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  /* Close mobile menu when clicking a link */
+  useEffect(() => {
+    document.body.style.overflow = mobileOpen ? 'hidden' : ''
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [mobileOpen])
+
   const closeMobile = () => setMobileOpen(false)
 
   return (
     <>
-      <nav className={`main-nav ${scrolled ? 'scrolled' : ''}`}>
-        {/* Logo - click to go home */}
-        <Link to="/" className="nav-logo-link">
-          <img
-            src="/images/logos/logo-white.png"
+      <motion.nav
+        className={`main-nav ${scrolled ? 'scrolled' : ''}`}
+        initial={{ y: -90, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.9, ease: [0.19, 1, 0.22, 1] }}
+      >
+        <Link to="/" className="nav-logo-link" aria-label="Why Not Me home">
+          <motion.img
+            src="/images/logos/logo-white-transparent.png"
             alt="Why Not Me?"
             className="nav-logo"
+            whileHover={{ scale: 1.06, rotate: -2 }}
+            transition={{ duration: 0.45, ease: [0.19, 1, 0.22, 1] }}
           />
         </Link>
 
-        {/* Desktop links */}
         <div className="nav-links">
-          <NavLink to="/" end className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'}>Home</NavLink>
-          <NavLink to="/documentary" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'}>Documentary</NavLink>
-          {/* <NavLink to="/sponsorship" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'}>Sponsorship</NavLink> */}
-          {/* <NavLink to="/media" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'}>Media</NavLink> */}
+          {navItems.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.end}
+              className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}
+            >
+              {item.label}
+            </NavLink>
+          ))}
           <NavLink to="/donate" className="nav-donate-btn">Donate</NavLink>
         </div>
 
-        {/* Mobile hamburger */}
         <button
           className={`hamburger ${mobileOpen ? 'open' : ''}`}
           onClick={() => setMobileOpen(!mobileOpen)}
           aria-label="Toggle menu"
+          aria-expanded={mobileOpen}
         >
           <span /><span /><span />
         </button>
-      </nav>
+      </motion.nav>
 
-      {/* Mobile full-screen menu overlay */}
       <AnimatePresence>
         {mobileOpen && (
           <motion.div
             className="mobile-menu"
-            initial={{ opacity: 0, x: '100%' }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: '100%' }}
-            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.45, ease: [0.19, 1, 0.22, 1] }}
           >
-            <NavLink to="/" onClick={closeMobile}>Home</NavLink>
-            <NavLink to="/documentary" onClick={closeMobile}>Documentary</NavLink>
-            {/* <NavLink to="/sponsorship" onClick={closeMobile}>Sponsorship</NavLink> */}
-            {/* <NavLink to="/media" onClick={closeMobile}>Media</NavLink> */}
-            <NavLink to="/donate" onClick={closeMobile}>Donate</NavLink>
+            <motion.div
+              className="mobile-menu-bg"
+              aria-hidden="true"
+              initial={{ scale: 1.1, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 1.04, opacity: 0 }}
+              transition={{ duration: 0.8, ease: [0.19, 1, 0.22, 1] }}
+            />
+            <motion.div
+              className="mobile-menu-inner"
+              initial="hidden"
+              animate="visible"
+              exit="hidden"
+              variants={{
+                hidden: {},
+                visible: { transition: { staggerChildren: 0.08, delayChildren: 0.08 } },
+              }}
+            >
+              {[...navItems, { to: '/donate', label: 'Donate' }].map((item) => (
+                <motion.div
+                  key={item.to}
+                  variants={{
+                    hidden: { opacity: 0, y: 24, filter: 'blur(10px)' },
+                    visible: { opacity: 1, y: 0, filter: 'blur(0px)' },
+                  }}
+                  transition={{ duration: 0.65, ease: [0.19, 1, 0.22, 1] }}
+                >
+                  <NavLink to={item.to} end={item.end} onClick={closeMobile}>{item.label}</NavLink>
+                </motion.div>
+              ))}
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
