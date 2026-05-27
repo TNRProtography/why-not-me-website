@@ -5,19 +5,21 @@ import './LiveTrackerPage.css'
 
 const API_BASE = 'https://why-not-me-live-tracker.why-not-me-nicole-white.workers.dev'
 const POLL_INTERVAL = 8000
-const TRAIL_COLOR = '#A88E5D'
-const TRAIL_GLOW = '#CBB299'
+
+// Queenstown Marathon start area — default when no tracker data
+const DEFAULT_CENTER = [-45.0312, 168.6626]
+const DEFAULT_ZOOM = 13
 
 const BASEMAPS = {
   dark: {
     url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
     label: 'Dark',
     className: 'basemap-dark',
   },
   topo: {
     url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
-    attribution: '&copy; <a href="https://opentopomap.org">OpenTopoMap</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    attribution: '&copy; <a href="https://opentopomap.org">OpenTopoMap</a> &copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
     label: 'Topo',
     className: 'basemap-topo',
   },
@@ -29,7 +31,30 @@ const BASEMAPS = {
   },
 }
 
+// Speed → colour mapping for the trail
+// Stationary/slow = dim gold, walking = warm amber, running = bright gold, fast = white-hot
+function speedToColor(kmh) {
+  if (kmh == null || kmh <= 0) return 'rgba(168,142,93,0.25)'
+  if (kmh <= 2) return 'rgba(168,142,93,0.4)'     // stationary
+  if (kmh <= 5) return 'rgba(185,160,110,0.7)'     // walking
+  if (kmh <= 8) return 'rgba(203,178,153,0.85)'    // jogging
+  if (kmh <= 12) return '#CBB299'                   // running
+  if (kmh <= 16) return '#E8D5B8'                   // fast running
+  return '#F5F3EC'                                   // sprinting
+}
+
+function speedLabel(kmh) {
+  if (kmh == null || kmh <= 0) return 'Stopped'
+  if (kmh <= 2) return 'Stationary'
+  if (kmh <= 5) return 'Walking'
+  if (kmh <= 8) return 'Jogging'
+  if (kmh <= 12) return 'Running'
+  if (kmh <= 16) return 'Fast run'
+  return 'Sprint'
+}
+
 function formatAge(seconds) {
+  if (seconds == null) return ''
   if (seconds < 60) return `${seconds}s ago`
   if (seconds < 3600) return `${Math.round(seconds / 60)}m ago`
   if (seconds < 86400) return `${Math.round(seconds / 3600)}h ago`
@@ -39,6 +64,7 @@ function formatAge(seconds) {
 function formatDuration(startedAt) {
   if (!startedAt) return '--'
   const ms = Date.now() - new Date(startedAt).getTime()
+  if (ms < 0) return '--'
   const totalMin = Math.floor(ms / 60000)
   const h = Math.floor(totalMin / 60)
   const m = totalMin % 60
@@ -46,23 +72,37 @@ function formatDuration(startedAt) {
   return `${m}m`
 }
 
+function getSpeedKmh(point) {
+  if (point?.speed?.kmh != null) return point.speed.kmh
+  if (point?.speed?.calculatedKmh != null) return point.speed.calculatedKmh
+  return null
+}
+
+function formatMinPerKm(kmh) {
+  if (!kmh || kmh <= 0.5) return null
+  const minutesPerKm = 60 / kmh
+  const minutes = Math.floor(minutesPerKm)
+  const seconds = Math.round((minutesPerKm - minutes) * 60)
+  return `${minutes}:${String(seconds).padStart(2, '0')}`
+}
+
 export default function LiveTrackerPage() {
   const mapContainerRef = useRef(null)
   const mapRef = useRef(null)
   const tileLayerRef = useRef(null)
   const markerRef = useRef(null)
-  const trailRef = useRef(null)
-  const historyDotsRef = useRef(null)
-  const leafletLoadedRef = useRef(false)
+  const trailLayerRef = useRef(null)
+  const leafletReadyRef = useRef(false)
+  const mapInitializedRef = useRef(false)
 
   const [data, setData] = useState(null)
   const [history, setHistory] = useState([])
   const [error, setError] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [apiStatus, setApiStatus] = useState('loading') // 'loading' | 'live' | 'waiting' | 'error'
   const [basemap, setBasemap] = useState('dark')
   const [sessionDuration, setSessionDuration] = useState('--')
 
-  // Fetch live state + history
+  // ---- Data fetching ----
   const fetchData = useCallback(async () => {
     try {
       const res = await fetch(`${API_BASE}/api/state?history=1&limit=2000`)
@@ -70,15 +110,14 @@ export default function LiveTrackerPage() {
       const json = await res.json()
       setData(json)
       if (json.history) setHistory(json.history)
+      setApiStatus(json.status === 'waiting' ? 'waiting' : 'live')
       setError(null)
     } catch (err) {
       setError(err.message)
-    } finally {
-      setLoading(false)
+      setApiStatus((prev) => prev === 'loading' ? 'error' : prev)
     }
   }, [])
 
-  // Poll
   useEffect(() => {
     fetchData()
     const interval = setInterval(fetchData, POLL_INTERVAL)
@@ -94,10 +133,12 @@ export default function LiveTrackerPage() {
     return () => clearInterval(interval)
   }, [data?.session?.startedAt])
 
-  // Load Leaflet from CDN
+  // ---- Load Leaflet from CDN ----
   useEffect(() => {
-    if (leafletLoadedRef.current) return
-    if (window.L) { leafletLoadedRef.current = true; return }
+    if (window.L) {
+      leafletReadyRef.current = true
+      return
+    }
 
     const css = document.createElement('link')
     css.rel = 'stylesheet'
@@ -106,70 +147,46 @@ export default function LiveTrackerPage() {
 
     const script = document.createElement('script')
     script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
-    script.onload = () => { leafletLoadedRef.current = true }
+    script.onload = () => { leafletReadyRef.current = true }
     document.head.appendChild(script)
   }, [])
 
-  // Initialize map once we have Leaflet + data + container
+  // ---- Initialize map (always, even without data) ----
   useEffect(() => {
-    if (mapRef.current) return
-    if (!data?.location) return
+    if (mapInitializedRef.current) return
     if (!mapContainerRef.current) return
 
     const tryInit = () => {
       if (!window.L) return false
-
       const L = window.L
-      const { lat, lng } = data.location
+
+      const center = data?.location
+        ? [data.location.lat, data.location.lng]
+        : DEFAULT_CENTER
+
+      const zoom = data?.location ? 14 : DEFAULT_ZOOM
 
       const map = L.map(mapContainerRef.current, {
-        center: [lat, lng],
-        zoom: 14,
+        center,
+        zoom,
         zoomControl: true,
         attributionControl: true,
       })
 
-      const basemapConfig = BASEMAPS[basemap]
-      tileLayerRef.current = L.tileLayer(basemapConfig.url, {
-        attribution: basemapConfig.attribution,
+      const config = BASEMAPS[basemap]
+      tileLayerRef.current = L.tileLayer(config.url, {
+        attribution: config.attribution,
         maxZoom: 18,
       }).addTo(map)
 
-      // Custom Nicole marker
-      const markerIcon = L.divIcon({
-        className: 'nicole-marker-container',
-        html: `
-          <div class="nicole-marker">
-            <div class="nicole-marker-pulse"></div>
-            <div class="nicole-marker-pin">
-              <img class="nicole-marker-img" src="/images/lores/portrait-smile.jpg" alt="Nicole" />
-            </div>
-            <div class="nicole-marker-shadow"></div>
-          </div>
-        `,
-        iconSize: [52, 68],
-        iconAnchor: [26, 62],
-      })
-
-      markerRef.current = L.marker([lat, lng], { icon: markerIcon }).addTo(map)
-
-      // Trail polyline
-      trailRef.current = L.polyline([], {
-        color: TRAIL_COLOR,
-        weight: 3,
-        opacity: 0.8,
-        smoothFactor: 1.5,
-        lineCap: 'round',
-        lineJoin: 'round',
-      }).addTo(map)
-
-      // History dot layer
-      historyDotsRef.current = L.layerGroup().addTo(map)
+      // Layer group for the speed-coloured trail segments
+      trailLayerRef.current = L.layerGroup().addTo(map)
 
       mapRef.current = map
+      mapInitializedRef.current = true
 
-      // Slight delay for tile rendering
       setTimeout(() => map.invalidateSize(), 200)
+      setTimeout(() => map.invalidateSize(), 800)
       return true
     }
 
@@ -177,55 +194,127 @@ export default function LiveTrackerPage() {
       const interval = setInterval(() => {
         if (tryInit()) clearInterval(interval)
       }, 150)
-      return () => clearInterval(interval)
+      const timeout = setTimeout(() => clearInterval(interval), 10000)
+      return () => { clearInterval(interval); clearTimeout(timeout) }
     }
   }, [data, basemap])
 
-  // Update marker position + trail when data/history changes
+  // ---- Update marker + trail when data changes ----
   useEffect(() => {
-    if (!mapRef.current || !data?.location || !window.L) return
-
+    if (!mapRef.current || !window.L) return
     const L = window.L
-    const { lat, lng } = data.location
+    const map = mapRef.current
 
-    // Update marker
-    if (markerRef.current) {
-      markerRef.current.setLatLng([lat, lng])
+    // Add / update Nicole marker
+    if (data?.location) {
+      const { lat, lng } = data.location
+
+      if (!markerRef.current) {
+        const markerIcon = L.divIcon({
+          className: 'nicole-marker-container',
+          html: `
+            <div class="nicole-marker">
+              <div class="nicole-marker-pulse"></div>
+              <div class="nicole-marker-pin">
+                <img class="nicole-marker-img" src="/images/lores/portrait-smile.jpg" alt="Nicole" />
+              </div>
+              <div class="nicole-marker-shadow"></div>
+            </div>
+          `,
+          iconSize: [52, 68],
+          iconAnchor: [26, 62],
+        })
+        markerRef.current = L.marker([lat, lng], { icon: markerIcon, zIndexOffset: 1000 }).addTo(map)
+      } else {
+        markerRef.current.setLatLng([lat, lng])
+      }
     }
 
-    // Update trail from history
-    if (trailRef.current && history.length > 0) {
-      const coords = history
-        .filter(p => p.location?.lat && p.location?.lng)
-        .map(p => [p.location.lat, p.location.lng])
+    // Build speed-coloured trail
+    if (trailLayerRef.current) {
+      trailLayerRef.current.clearLayers()
 
-      // Add current position to trail
-      coords.push([lat, lng])
-      trailRef.current.setLatLngs(coords)
-    }
-
-    // Update history dots
-    if (historyDotsRef.current) {
-      historyDotsRef.current.clearLayers()
-
-      // Show dots every N points depending on count
       const points = history.filter(p => p.location?.lat && p.location?.lng)
-      const step = points.length > 200 ? 10 : points.length > 80 ? 5 : 2
+      if (points.length < 2) return
 
-      points.forEach((p, i) => {
-        if (i % step !== 0) return
-        const isRecent = i > points.length - 6
-        L.circleMarker([p.location.lat, p.location.lng], {
-          radius: isRecent ? 3.5 : 2,
-          color: 'transparent',
-          fillColor: isRecent ? TRAIL_GLOW : TRAIL_COLOR,
-          fillOpacity: isRecent ? 0.8 : 0.35,
-        }).addTo(historyDotsRef.current)
-      })
+      // Draw segments between consecutive points, coloured by speed
+      for (let i = 1; i < points.length; i++) {
+        const prev = points[i - 1]
+        const curr = points[i]
+        const kmh = getSpeedKmh(curr)
+        const color = speedToColor(kmh)
+
+        const segment = L.polyline(
+          [
+            [prev.location.lat, prev.location.lng],
+            [curr.location.lat, curr.location.lng],
+          ],
+          {
+            color,
+            weight: 3.5,
+            opacity: 1,
+            lineCap: 'round',
+            lineJoin: 'round',
+          }
+        )
+
+        // Popup with speed info on click
+        const label = speedLabel(kmh)
+        const paceStr = formatMinPerKm(kmh)
+        const time = curr.gpsTimestamp
+          ? new Date(curr.gpsTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          : ''
+        segment.bindPopup(
+          `<div style="font-family:Montserrat,sans-serif;font-size:12px;line-height:1.5;min-width:120px">
+            <strong style="color:#A88E5D">${label}</strong><br/>
+            ${kmh != null ? `${kmh.toFixed ? kmh.toFixed(1) : kmh} km/h` : 'No speed'}
+            ${paceStr ? ` · ${paceStr} /km` : ''}<br/>
+            <span style="opacity:0.6">${time}</span>
+          </div>`,
+          { className: 'tracker-popup' }
+        )
+
+        segment.addTo(trailLayerRef.current)
+      }
+
+      // Add current position to the trail end
+      if (data?.location && points.length > 0) {
+        const last = points[points.length - 1]
+        const kmh = getSpeedKmh(data)
+        L.polyline(
+          [
+            [last.location.lat, last.location.lng],
+            [data.location.lat, data.location.lng],
+          ],
+          {
+            color: speedToColor(kmh),
+            weight: 3.5,
+            opacity: 1,
+            lineCap: 'round',
+            lineJoin: 'round',
+          }
+        ).addTo(trailLayerRef.current)
+      }
+
+      // Start marker
+      const first = points[0]
+      L.circleMarker([first.location.lat, first.location.lng], {
+        radius: 6,
+        color: '#0D0D0D',
+        weight: 2,
+        fillColor: '#55604D',
+        fillOpacity: 1,
+      }).bindPopup(
+        `<div style="font-family:Montserrat,sans-serif;font-size:12px">
+          <strong style="color:#55604D">Start</strong><br/>
+          ${new Date(first.gpsTimestamp || first.receivedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        </div>`,
+        { className: 'tracker-popup' }
+      ).addTo(trailLayerRef.current)
     }
   }, [data, history])
 
-  // Basemap switch
+  // ---- Basemap switch ----
   useEffect(() => {
     if (!mapRef.current || !tileLayerRef.current || !window.L) return
     const L = window.L
@@ -237,7 +326,6 @@ export default function LiveTrackerPage() {
       maxZoom: 18,
     }).addTo(mapRef.current)
 
-    // Update container class for satellite filter
     const el = mapContainerRef.current
     if (el) {
       el.classList.remove('basemap-dark', 'basemap-topo', 'basemap-satellite')
@@ -245,75 +333,56 @@ export default function LiveTrackerPage() {
     }
   }, [basemap])
 
-  // Recenter
+  // ---- Recenter ----
   const handleRecenter = () => {
-    if (!mapRef.current || !data?.location) return
-    mapRef.current.flyTo([data.location.lat, data.location.lng], 15, {
-      duration: 1.2,
-    })
+    if (!mapRef.current) return
+    if (data?.location) {
+      mapRef.current.flyTo([data.location.lat, data.location.lng], 15, { duration: 1.2 })
+    } else {
+      mapRef.current.flyTo(DEFAULT_CENTER, DEFAULT_ZOOM, { duration: 1.2 })
+    }
   }
 
-  // ---- Render states ----
-
-  if (loading) {
-    return (
-      <PageTransition>
-        <div className="tracker-page">
-          <div className="tracker-hero">
-            <div className="tracker-hero-inner">
-              <p className="tracker-subtitle">Live Marathon Tracker</p>
-              <h1>Track Nicole.</h1>
-            </div>
-          </div>
-          <div className="tracker-loading">
-            <div className="tracker-loading-spinner" />
-            <p className="tracker-loading-text">Connecting to tracker</p>
-          </div>
-        </div>
-      </PageTransition>
-    )
+  // ---- Fit trail bounds ----
+  const handleFitTrail = () => {
+    if (!mapRef.current || !window.L) return
+    const points = history.filter(p => p.location?.lat && p.location?.lng)
+    if (points.length < 2) return
+    const bounds = window.L.latLngBounds(points.map(p => [p.location.lat, p.location.lng]))
+    if (data?.location) bounds.extend([data.location.lat, data.location.lng])
+    mapRef.current.fitBounds(bounds, { padding: [40, 40], maxZoom: 16, duration: 1 })
   }
 
-  if (data?.status === 'waiting') {
-    return (
-      <PageTransition>
-        <div className="tracker-page">
-          <div className="tracker-hero">
-            <div className="tracker-hero-inner">
-              <p className="tracker-subtitle">Live Marathon Tracker</p>
-              <h1>Track Nicole.</h1>
-            </div>
-          </div>
-          <div className="tracker-waiting">
-            <h2>Tracking hasn't started yet.</h2>
-            <p>
-              Nicole's live location will appear here on race day. Check back when the marathon begins
-              — you'll see her position, speed, and route in real time.
-            </p>
-            <div style={{ marginTop: 40 }}>
-              <motion.a
-                href="/queenstown-marathon"
-                className="btn-outline"
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-              >
-                About the Marathon
-              </motion.a>
-            </div>
-          </div>
-        </div>
-      </PageTransition>
-    )
-  }
-
+  // ---- Derived display values ----
+  const isLive = apiStatus === 'live'
+  const isWaiting = apiStatus === 'waiting'
   const isStale = data?.ageSeconds > 120
   const isOffline = data?.ageSeconds > 600
-  const statusClass = isOffline ? 'offline' : isStale ? 'stale' : ''
-  const statusLabel = isOffline ? 'Offline' : isStale ? 'Stale' : 'Live'
+  const statusClass = !isLive ? 'offline' : isOffline ? 'offline' : isStale ? 'stale' : ''
+  const statusLabel = !isLive ? 'Waiting' : isOffline ? 'Offline' : isStale ? 'Stale' : 'Live'
   const speed = data?.speed || {}
   const movement = data?.movement || {}
   const phone = data?.phone || {}
   const session = data?.session || {}
+
+  // Compute total distance from history
+  const totalDistanceKm = (() => {
+    const pts = history.filter(p => p.location?.lat && p.location?.lng)
+    if (pts.length < 2) return null
+    let dist = 0
+    for (let i = 1; i < pts.length; i++) {
+      const a = pts[i - 1].location
+      const b = pts[i].location
+      const R = 6371000
+      const dLat = ((b.lat - a.lat) * Math.PI) / 180
+      const dLng = ((b.lng - a.lng) * Math.PI) / 180
+      const lat1 = (a.lat * Math.PI) / 180
+      const lat2 = (b.lat * Math.PI) / 180
+      const x = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2
+      dist += 2 * R * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x))
+    }
+    return dist / 1000
+  })()
 
   return (
     <PageTransition>
@@ -363,7 +432,7 @@ export default function LiveTrackerPage() {
 
           <div className="tracker-stat">
             <span className="tracker-stat-value pace">
-              {speed.minPerKm || speed.friendly || '--'}
+              {speed.minPerKm || '--'}
             </span>
             <span className="tracker-stat-label">Pace</span>
           </div>
@@ -373,6 +442,13 @@ export default function LiveTrackerPage() {
               {speed.kmh != null ? `${speed.kmh} km/h` : '--'}
             </span>
             <span className="tracker-stat-label">Speed</span>
+          </div>
+
+          <div className="tracker-stat">
+            <span className="tracker-stat-value">
+              {totalDistanceKm != null ? `${totalDistanceKm.toFixed(2)} km` : '--'}
+            </span>
+            <span className="tracker-stat-label">Distance</span>
           </div>
 
           <div className="tracker-stat">
@@ -390,7 +466,7 @@ export default function LiveTrackerPage() {
           </div>
         </motion.div>
 
-        {/* Map */}
+        {/* Map — always renders */}
         <motion.div
           className="tracker-map-wrap"
           initial={{ opacity: 0 }}
@@ -415,13 +491,42 @@ export default function LiveTrackerPage() {
             ))}
           </div>
 
-          {/* Recenter button */}
-          <button className="recenter-btn" onClick={handleRecenter} title="Recenter on Nicole">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="3" />
-              <path d="M12 2v4m0 12v4M2 12h4m12 0h4" />
-            </svg>
-          </button>
+          {/* Map controls */}
+          <div className="map-controls-right">
+            <button className="recenter-btn" onClick={handleRecenter} title="Recenter on Nicole">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M12 2v4m0 12v4M2 12h4m12 0h4" />
+              </svg>
+            </button>
+            {history.length > 1 && (
+              <button className="recenter-btn" onClick={handleFitTrail} title="Fit entire route">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+                </svg>
+              </button>
+            )}
+          </div>
+
+          {/* Speed legend */}
+          <div className="speed-legend">
+            <span className="speed-legend-title">Speed</span>
+            <div className="speed-legend-bar">
+              <span className="speed-legend-label">Slow</span>
+              <div className="speed-legend-gradient" />
+              <span className="speed-legend-label">Fast</span>
+            </div>
+          </div>
+
+          {/* Waiting overlay on map */}
+          {isWaiting && (
+            <div className="map-waiting-overlay">
+              <div className="map-waiting-content">
+                <p className="map-waiting-heading">Queenstown, New Zealand</p>
+                <p className="map-waiting-sub">Tracking will appear here on race day</p>
+              </div>
+            </div>
+          )}
         </motion.div>
 
         {/* Info cards below map */}
@@ -429,7 +534,7 @@ export default function LiveTrackerPage() {
           <div className="tracker-info-card">
             <div className="tracker-info-card-label">Coordinates</div>
             <div className="tracker-info-card-value">
-              {data?.location ? `${data.location.lat.toFixed(5)}, ${data.location.lng.toFixed(5)}` : '--'}
+              {data?.location ? `${data.location.lat.toFixed(5)}, ${data.location.lng.toFixed(5)}` : 'Awaiting signal'}
             </div>
             {data?.location?.altitudeM != null && (
               <div className="tracker-info-card-sub">Altitude: {Math.round(data.location.altitudeM)}m</div>
@@ -469,14 +574,14 @@ export default function LiveTrackerPage() {
           </div>
         </div>
 
-        {/* Bottom spacer */}
+        {/* Footer */}
         <div className="tracker-footer-spacer">
           <p style={{ color: 'var(--white-30)', fontSize: 12, letterSpacing: 2, textTransform: 'uppercase', fontWeight: 700 }}>
-            Updates every {POLL_INTERVAL / 1000} seconds
+            Updates every {POLL_INTERVAL / 1000} seconds · Click trail segments for speed data
           </p>
           {error && (
             <p style={{ color: 'var(--warm)', fontSize: 12, marginTop: 8 }}>
-              Connection issue: {error}
+              Connection issue: {error} — map still works, retrying...
             </p>
           )}
         </div>
