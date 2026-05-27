@@ -1230,19 +1230,6 @@ export default function LiveTrackerPage() {
             </motion.h1>
           </div>
         </motion.div>
-        <div style={{ maxWidth: 1180, margin: '10px auto 0', padding: '0 20px' }}>
-          <div style={{ color: 'var(--white-70)', fontSize: 12, marginBottom: 6 }}>
-            Progress: {progressPct.toFixed(1)}% · {progressKm.toFixed(2)} km covered · {(MARATHON_DISTANCE_KM - progressKm).toFixed(2)} km remaining
-            {!raceProgress.started ? ' · Waiting for start line pass' : ''}
-          </div>
-          <div style={{ position: 'relative', height: 10, background: 'rgba(255,255,255,0.08)', borderRadius: 999 }}>
-            <div style={{ width: `${progressPct}%`, height: '100%', borderRadius: 999, background: 'linear-gradient(90deg,#7A6A4A,#A88E5D,#E0C58E)' }} />
-            {SPLIT_MARKERS_KM.map((km) => (
-              <span key={km} style={{ position: 'absolute', left: `${(km / MARATHON_DISTANCE_KM) * 100}%`, top: -6, width: 2, height: 22, background: 'rgba(245,243,236,0.35)' }} />
-            ))}
-          </div>
-        </div>
-
         {/* Live stats */}
         <motion.div
           className="tracker-status-bar"
@@ -1394,6 +1381,18 @@ export default function LiveTrackerPage() {
                   <span>{Math.round(elevProfile.minE)} m</span>
                   <div className="elev-legend-bar" />
                   <span>{Math.round(elevProfile.maxE)} m</span>
+                </div>
+                <div style={{ marginTop: 10 }}>
+                  <div style={{ color: 'var(--white-70)', fontSize: 11, marginBottom: 6, letterSpacing: 0.6 }}>
+                    Progress: {progressPct.toFixed(1)}% · {progressKm.toFixed(2)} km covered · {(MARATHON_DISTANCE_KM - progressKm).toFixed(2)} km remaining
+                    {!raceProgress.started ? ' · Waiting for start line pass' : ''}
+                  </div>
+                  <div style={{ position: 'relative', height: 8, background: 'rgba(255,255,255,0.08)', borderRadius: 999 }}>
+                    <div style={{ width: `${progressPct}%`, height: '100%', borderRadius: 999, background: 'linear-gradient(90deg,#7A6A4A,#A88E5D,#E0C58E)' }} />
+                    {SPLIT_MARKERS_KM.map((km) => (
+                      <span key={km} style={{ position: 'absolute', left: `${(km / MARATHON_DISTANCE_KM) * 100}%`, top: -5, width: 2, height: 18, background: 'rgba(245,243,236,0.35)' }} />
+                    ))}
+                  </div>
                 </div>
               </div>
             </>
