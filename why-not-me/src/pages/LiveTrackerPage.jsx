@@ -628,7 +628,25 @@ export default function LiveTrackerPage() {
       for (let i = 1; i < points.length; i++) {
         const prev = points[i - 1]
         const curr = points[i]
-        const kmh = getSpeedKmh(curr)
+
+        // Client-side speed: haversine distance / time between points
+        const prevTime = getPointReceivedTimeMs(prev)
+        const currTime = getPointReceivedTimeMs(curr)
+        let segKmh = null
+        let segKm = 0
+        if (prevTime && currTime) {
+          const seconds = (currTime - prevTime) / 1000
+          if (seconds > 0.5 && seconds <= 300) {
+            segKm = haversineKm(
+              { lat: prev.location.lat, lng: prev.location.lng },
+              { lat: curr.location.lat, lng: curr.location.lng }
+            )
+            segKmh = (segKm / seconds) * 3600
+            if (segKmh > 35) segKmh = null // GPS spike
+          }
+        }
+        // Fall back to worker-reported speed
+        const kmh = segKmh ?? getSpeedKmh(curr)
 
         const segment = L.polyline(
           [
@@ -648,14 +666,14 @@ export default function LiveTrackerPage() {
         const paceStr = formatMinPerKm(kmh)
         const pointTime = getPointReceivedTimeMs(curr)
         const time = pointTime
-          ? new Date(pointTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          ? new Date(pointTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
           : ''
-        const kmhDisplay = kmh != null ? Number(kmh) : null
         segment.bindPopup(
-          `<div style="font-family:Montserrat,sans-serif;font-size:12px;line-height:1.5;min-width:120px">
+          `<div style="font-family:Montserrat,sans-serif;font-size:12px;line-height:1.5;min-width:140px">
             <strong style="color:${SITE_COLORS.gold}">${label}</strong><br/>
-            ${kmhDisplay != null ? `${kmhDisplay.toFixed(1)} km/h` : 'No speed'}
-            ${paceStr ? ` · ${paceStr} /km` : ''}<br/>
+            ${kmh != null ? `${Number(kmh).toFixed(1)} km/h` : 'No speed'}
+            ${paceStr ? ` · ${paceStr} /km` : ''}
+            ${segKm > 0 ? `<br/><span style="opacity:0.5">${(segKm * 1000).toFixed(1)} m segment</span>` : ''}<br/>
             <span style="opacity:0.6">${time}</span>
           </div>`,
           { className: 'tracker-popup' }
@@ -756,22 +774,69 @@ export default function LiveTrackerPage() {
   // Prefer calculatedKmh (higher precision) over worker-rounded kmh
   const rawKmh = speed.calculatedKmh ?? speed.kmh ?? null
   const rawKmhNum = rawKmh != null ? Number(rawKmh) : null
-  const displayKmh = rawKmhNum != null && Number.isFinite(rawKmhNum) ? rawKmhNum : null
-  const displayPace = formatMinPerKm(displayKmh)
 
-  // Compute total distance from received history
-  const totalDistanceKm = (() => {
+  // ── Client-side speed computation from history GPS points ──
+  const clientSpeed = useMemo(() => {
     const pts = sortedHistory.filter(p => p.location?.lat && p.location?.lng)
-    if (pts.length < 2) return null
-    let dist = 0
+    if (pts.length < 2) return { current: null, rolling: null, average: null, totalKm: 0, segments: [] }
+
+    // Build segments with distance and time between consecutive points
+    const segments = []
+    let totalKm = 0
     for (let i = 1; i < pts.length; i++) {
-      dist += haversineKm(
-        { lat: pts[i - 1].location.lat, lng: pts[i - 1].location.lng },
-        { lat: pts[i].location.lat, lng: pts[i].location.lng }
+      const prev = pts[i - 1]
+      const curr = pts[i]
+      const prevTime = getPointReceivedTimeMs(prev)
+      const currTime = getPointReceivedTimeMs(curr)
+      if (!prevTime || !currTime) continue
+
+      const seconds = (currTime - prevTime) / 1000
+      // Skip bad gaps (negative time, >5min gap, or <1s)
+      if (seconds <= 0.5 || seconds > 300) continue
+
+      const km = haversineKm(
+        { lat: prev.location.lat, lng: prev.location.lng },
+        { lat: curr.location.lat, lng: curr.location.lng }
       )
+      const kmh = (km / seconds) * 3600
+      // Skip GPS spikes
+      if (kmh > 35) continue
+
+      totalKm += km
+      segments.push({ kmh, km, seconds, time: currTime })
     }
-    return dist
-  })()
+
+    if (segments.length === 0) return { current: null, rolling: null, average: null, totalKm: 0, segments: [] }
+
+    // Current speed: latest segment
+    const current = segments[segments.length - 1].kmh
+
+    // Rolling average: last 30 seconds of segments for smoother reading
+    const cutoff = Date.now() - 30000
+    const recentSegs = segments.filter(s => s.time >= cutoff)
+    let rolling = null
+    if (recentSegs.length > 0) {
+      const recentKm = recentSegs.reduce((sum, s) => sum + s.km, 0)
+      const recentSec = recentSegs.reduce((sum, s) => sum + s.seconds, 0)
+      rolling = recentSec > 0 ? (recentKm / recentSec) * 3600 : null
+    }
+
+    // Session average: total distance / total moving time
+    const movingSegs = segments.filter(s => s.kmh > 1) // ignore stationary
+    const movingTimeSec = movingSegs.reduce((sum, s) => sum + s.seconds, 0)
+    const movingKm = movingSegs.reduce((sum, s) => sum + s.km, 0)
+    const average = movingTimeSec > 0 ? (movingKm / movingTimeSec) * 3600 : null
+
+    return { current, rolling, average, totalKm, segments }
+  }, [sortedHistory])
+
+  // Use client-computed speed (rolling for smoothness), fall back to worker
+  const displayKmh = clientSpeed.rolling ?? clientSpeed.current ?? (rawKmhNum != null && Number.isFinite(rawKmhNum) ? rawKmhNum : null)
+  const displayPace = formatMinPerKm(displayKmh)
+  const avgKmh = clientSpeed.average
+  const avgPace = formatMinPerKm(avgKmh)
+
+  const totalDistanceKm = clientSpeed.totalKm > 0 ? clientSpeed.totalKm : null
 
   return (
     <PageTransition>
@@ -830,14 +895,28 @@ export default function LiveTrackerPage() {
             <span className="tracker-stat-value pace">
               {displayPace || '--'}
             </span>
-            <span className="tracker-stat-label">Pace</span>
+            <span className="tracker-stat-label">Current Pace</span>
           </div>
 
           <div className="tracker-stat">
             <span className="tracker-stat-value">
               {displayKmh != null ? `${formatSpeedKmh(displayKmh)} km/h` : '--'}
             </span>
-            <span className="tracker-stat-label">Speed</span>
+            <span className="tracker-stat-label">Current Speed</span>
+          </div>
+
+          <div className="tracker-stat">
+            <span className="tracker-stat-value pace">
+              {avgPace || '--'}
+            </span>
+            <span className="tracker-stat-label">Avg Pace</span>
+          </div>
+
+          <div className="tracker-stat">
+            <span className="tracker-stat-value">
+              {avgKmh != null ? `${formatSpeedKmh(avgKmh)} km/h` : '--'}
+            </span>
+            <span className="tracker-stat-label">Avg Speed</span>
           </div>
 
           <div className="tracker-stat">
@@ -945,8 +1024,9 @@ export default function LiveTrackerPage() {
               {displayKmh != null ? `${formatSpeedKmh(displayKmh)} km/h — ${speedLabel(displayKmh)}` : 'No speed data'}
             </div>
             <div className="tracker-info-card-sub">
-              {displayPace ? `Pace: ${displayPace} /km` : 'Awaiting speed data'}
-              {speed.calculatedKmh != null ? ` · Raw: ${Number(speed.calculatedKmh).toFixed(4)} km/h` : ''}
+              {displayPace ? `Current: ${displayPace} /km` : 'Awaiting GPS points'}
+              {avgPace ? ` · Avg: ${avgPace} /km` : ''}
+              {clientSpeed.segments.length > 0 ? ` · ${clientSpeed.segments.length} segments` : ''}
             </div>
           </div>
 
