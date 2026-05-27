@@ -393,8 +393,6 @@ export default function LiveTrackerPage() {
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
           'Pragma': 'no-cache',
-          'Expires': '0',
-          'X-Request-Id': cacheBust,
         },
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
