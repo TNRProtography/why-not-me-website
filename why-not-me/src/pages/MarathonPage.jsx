@@ -93,7 +93,7 @@ export default function MarathonPage() {
                 animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
                 transition={{ duration: 1.15, delay: 0.42, ease: [0.19, 1, 0.22, 1] }}
               >
-                Why this finish line m<span className="portal-letter-target" data-portal-letter>a</span>tters.
+                Why this r<span className="portal-letter-target" data-portal-letter>o</span>ad matters.
               </motion.h1>
             </HeroPortalTitle>
             <motion.p

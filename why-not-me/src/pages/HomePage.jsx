@@ -108,7 +108,35 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ========== 2. NICOLE'S STORY ========== */}
+      {/* ========== 2. FEATURE VIDEO ========== */}
+      <section className="home-video-section">
+        <div className="home-video-grid">
+          <RevealOnScroll direction="left" className="home-video-copy">
+            <p className="section-label">Watch First</p>
+            <ScrollZoomFocus origin="left"><h2 className="section-title">The story, before the facts.</h2></ScrollZoomFocus>
+            <div className="gold-line" />
+            <div className="section-body">
+              <p>This film sits near the start because the campaign is not just dates, scans, and fundraising targets. It is a feeling first. It is the reason people stop scrolling, listen properly, and understand why this next chapter matters.</p>
+              <br />
+              <p>The video autoplays muted so the page still feels calm. Tap the player for sound.</p>
+            </div>
+          </RevealOnScroll>
+          <RevealOnScroll direction="right" className="home-video-card">
+            <div className="home-video-frame">
+              <iframe
+                src="https://www.youtube.com/embed/jF1Y3IP9Rj4?autoplay=1&mute=1&loop=1&playlist=jF1Y3IP9Rj4&controls=1&modestbranding=1&playsinline=1&rel=0"
+                title="Why Not Me campaign video"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+              />
+            </div>
+            <p className="home-video-caption">Autoplays muted. Tap the player for sound.</p>
+          </RevealOnScroll>
+        </div>
+      </section>
+
+      {/* ========== 3. NICOLE'S STORY ========== */}
       <section style={{ padding: '120px 40px' }}>
         <div className="story-grid">
           <RevealOnScroll direction="left">

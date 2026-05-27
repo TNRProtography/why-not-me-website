@@ -759,7 +759,7 @@ body.is-mobile-view .marathon-cta-buttons {
 /* ============ HERO LETTER PORTAL OVERRIDES ============ */
 .marathon-page-hero.portal-hero {
   height: auto;
-  min-height: 160svh;
+  min-height: 210svh;
   overflow: visible;
   display: block;
   align-items: initial;
@@ -782,7 +782,7 @@ body.is-mobile-view .marathon-cta-buttons {
 }
 
 body.is-mobile-view .marathon-page-hero.portal-hero {
-  min-height: 146svh !important;
+  min-height: 184svh !important;
   padding: 0 !important;
 }
 

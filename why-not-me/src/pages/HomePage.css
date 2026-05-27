@@ -91,6 +91,85 @@
   50% { transform: translateY(12px); opacity: 0.5; }
 }
 
+/* ============ FEATURE VIDEO ============ */
+.home-video-section {
+  position: relative;
+  padding: clamp(90px, 10vw, 150px) 40px clamp(70px, 8vw, 120px);
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 78% 34%, rgba(203,178,153,0.11), transparent 28%),
+    linear-gradient(180deg, rgba(13,13,13,0.84), rgba(36,49,59,0.34) 52%, rgba(13,13,13,0.96));
+}
+
+.home-video-section::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(0,0,0,0.46), transparent 28%, transparent 72%, rgba(0,0,0,0.52)),
+    radial-gradient(circle at 50% 0%, rgba(245,243,236,0.08), transparent 42%);
+  mix-blend-mode: screen;
+  opacity: 0.72;
+}
+
+.home-video-grid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 0.78fr) minmax(0, 1.22fr);
+  gap: clamp(34px, 5vw, 78px);
+  align-items: center;
+  max-width: 1320px;
+  margin: 0 auto;
+}
+
+.home-video-copy .section-title {
+  max-width: 620px;
+}
+
+.home-video-card {
+  position: relative;
+}
+
+.home-video-card::before {
+  content: '';
+  position: absolute;
+  inset: -24px;
+  border: 1px solid rgba(168,142,93,0.14);
+  background: linear-gradient(135deg, rgba(245,243,236,0.045), rgba(168,142,93,0.035));
+  transform: rotate(-1.2deg);
+  pointer-events: none;
+}
+
+.home-video-frame {
+  position: relative;
+  z-index: 1;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border: 1px solid rgba(168,142,93,0.34);
+  background: rgba(0,0,0,0.38);
+  box-shadow: 0 34px 110px rgba(0,0,0,0.42), 0 0 120px rgba(168,142,93,0.08);
+}
+
+.home-video-frame iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.home-video-caption {
+  position: relative;
+  z-index: 1;
+  margin-top: 14px;
+  color: var(--white-50);
+  font-size: 12px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  text-align: right;
+}
+
 /* ============ STORY ============ */
 .story-grid {
   display: grid;
@@ -668,10 +747,26 @@ body.is-mobile-view .hero-scroll-indicator {
 }
 
 body.is-mobile-view .story-grid,
+body.is-mobile-view .home-video-grid,
 body.is-mobile-view .tumour-grid,
 body.is-mobile-view .treatment-grid {
   grid-template-columns: 1fr;
   gap: 34px;
+}
+
+body.is-mobile-view .home-video-section {
+  padding: 96px 22px 82px;
+}
+
+body.is-mobile-view .home-video-card::before {
+  inset: -12px;
+  transform: rotate(-0.7deg);
+}
+
+body.is-mobile-view .home-video-caption {
+  text-align: left;
+  font-size: 11px;
+  line-height: 1.6;
 }
 
 body.is-mobile-view .story-grid > .reveal-layer:first-child,
@@ -837,7 +932,7 @@ body.is-mobile-view .social-links {
 /* ============ HERO LETTER PORTAL OVERRIDES ============ */
 .hero.portal-hero {
   height: auto;
-  min-height: 160svh;
+  min-height: 210svh;
   overflow: visible;
   display: block;
   align-items: initial;
@@ -864,7 +959,7 @@ body.is-mobile-view .social-links {
 }
 
 body.is-mobile-view .hero.portal-hero {
-  min-height: 146svh !important;
+  min-height: 184svh !important;
 }
 
 body.is-mobile-view .hero.portal-hero .portal-hero-stage {

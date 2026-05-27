@@ -624,7 +624,7 @@ body.is-mobile-view .scroll-zoom-focus[data-origin='right'] {
 /* ============ PAGE-OPENING LETTER PORTAL ============ */
 .portal-hero {
   position: relative;
-  min-height: 150svh;
+  min-height: 210svh;
   overflow: visible;
   padding: 0 !important;
   display: block !important;
@@ -643,7 +643,28 @@ body.is-mobile-view .scroll-zoom-focus[data-origin='right'] {
   justify-content: center;
   text-align: center;
   isolation: isolate;
+  z-index: 4;
+  transform-origin: center center;
 }
+
+.portal-hero + section {
+  margin-top: -56svh;
+  position: relative;
+  z-index: 1;
+}
+
+.portal-hero + section::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -1px;
+  height: 32svh;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(13,13,13,0), rgba(13,13,13,0.72) 68%, rgba(13,13,13,0));
+  z-index: -1;
+}
+
 
 .hero-portal-wrap {
   position: relative;
@@ -691,21 +712,44 @@ body.is-mobile-view .scroll-zoom-focus[data-origin='right'] {
   pointer-events: none;
 }
 
-.hero-portal-glow {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: min(44vw, 520px);
-  aspect-ratio: 1;
-  margin-left: calc(min(44vw, 520px) / -2);
-  margin-top: calc(min(44vw, 520px) / -2);
-  border-radius: 999px;
-  background:
-    radial-gradient(circle, rgba(245,243,236,0.22) 0%, rgba(203,178,153,0.14) 22%, rgba(168,142,93,0.05) 44%, transparent 68%);
-  filter: blur(16px);
-  mix-blend-mode: screen;
+.hero-portal-tunnel,
+.hero-portal-flood {
+  position: fixed;
+  inset: 0;
   pointer-events: none;
+  transform-origin: center center;
+}
+
+.hero-portal-tunnel {
+  z-index: 0;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(13,13,13,0.18), rgba(13,13,13,0.72) 62%, rgba(13,13,13,0.96) 100%);
+  backdrop-filter: blur(1px);
+}
+
+.hero-portal-flood {
+  z-index: 3;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(245,243,236,0.7) 0%, rgba(203,178,153,0.34) 18%, rgba(13,13,13,0.2) 56%, transparent 74%);
+  mix-blend-mode: screen;
+}
+
+.hero-portal-aperture {
+  position: absolute;
+  width: clamp(26px, 3.2vw, 54px);
+  aspect-ratio: 1;
+  margin-left: calc(clamp(26px, 3.2vw, 54px) / -2);
+  margin-top: calc(clamp(26px, 3.2vw, 54px) / -2);
+  border-radius: 999px;
   z-index: 1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle, rgba(13,13,13,0) 0 33%, rgba(245,243,236,0.72) 38%, rgba(203,178,153,0.22) 56%, transparent 74%);
+  box-shadow:
+    0 0 22px rgba(245,243,236,0.24),
+    0 0 80px rgba(203,178,153,0.18);
+  mix-blend-mode: screen;
+  transform-origin: center center;
 }
 
 .hero-portal-depth {
@@ -723,7 +767,7 @@ body.is-mobile-view .scroll-zoom-focus[data-origin='right'] {
 .documentary-hero.portal-hero,
 .donate-hero.portal-hero {
   height: auto !important;
-  min-height: 145svh !important;
+  min-height: 205svh !important;
 }
 
 .documentary-hero.portal-hero .portal-hero-stage,
@@ -743,7 +787,7 @@ body.is-mobile-view .scroll-zoom-focus[data-origin='right'] {
 }
 
 body.is-mobile-view .portal-hero {
-  min-height: 142svh !important;
+  min-height: 184svh !important;
 }
 
 body.is-mobile-view .portal-hero-stage {
@@ -753,6 +797,10 @@ body.is-mobile-view .portal-hero-stage {
   padding: 0 22px 104px;
 }
 
+body.is-mobile-view .portal-hero + section {
+  margin-top: -42svh;
+}
+
 body.is-mobile-view .hero-portal-title h1,
 body.is-mobile-view .hero-portal-title .hero-title {
   max-width: 100%;
@@ -760,7 +808,7 @@ body.is-mobile-view .hero-portal-title .hero-title {
 
 body.is-mobile-view .documentary-hero.portal-hero,
 body.is-mobile-view .donate-hero.portal-hero {
-  min-height: 140svh !important;
+  min-height: 180svh !important;
   height: auto !important;
   padding: 0 !important;
 }
@@ -787,5 +835,106 @@ body.is-mobile-view .donate-hero-content {
   .portal-hero-stage {
     position: relative;
     min-height: 100svh;
+  }
+}
+
+
+/* Stronger first-section portal release. The hero has enough scroll distance for the title
+   to travel into the chosen closed letter before the page content takes over. */
+.hero-portal-wrap {
+  min-height: 0;
+}
+
+.hero-portal-title {
+  transform-origin: center center;
+}
+
+.portal-hero-stage::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 50% 50%, transparent 0%, transparent 24%, rgba(0,0,0,0.18) 62%, rgba(0,0,0,0.48) 100%);
+  opacity: 0.5;
+  mix-blend-mode: multiply;
+}
+
+.portal-hero-stage > * {
+  z-index: 2;
+}
+
+.portal-letter-target {
+  transform-origin: center center;
+}
+
+.portal-letter-target::before {
+  content: '';
+  position: absolute;
+  inset: 22% 24% 22%;
+  border-radius: 999px;
+  background: rgba(13,13,13,0.38);
+  box-shadow: inset 0 0 16px rgba(0,0,0,0.42), 0 0 22px rgba(245,243,236,0.18);
+  opacity: 0.28;
+  pointer-events: none;
+}
+
+@supports (animation-timeline: view()) {
+  .portal-hero-stage::after {
+    animation: heroPortalStageVeil both linear;
+    animation-timeline: view();
+    animation-range: contain 0% contain 100%;
+  }
+}
+
+
+@supports (animation-timeline: view()) {
+  .portal-hero .portal-hero-stage {
+    animation: heroPortalStageRelease both linear;
+    animation-timeline: view(block);
+    animation-range: contain 0% contain 100%;
+  }
+}
+
+@keyframes heroPortalStageRelease {
+  0%, 54% {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0px) brightness(1);
+  }
+  72% {
+    opacity: 1;
+    transform: scale(1.012);
+    filter: blur(0px) brightness(1.08);
+  }
+  90% {
+    opacity: 0.8;
+    transform: scale(1.055);
+    filter: blur(4px) brightness(1.18);
+  }
+  100% {
+    opacity: 0.03;
+    transform: scale(1.12);
+    filter: blur(22px) brightness(1.34);
+  }
+}
+
+@keyframes heroPortalStageVeil {
+  0%, 42% { opacity: 0.5; }
+  70% { opacity: 0.72; }
+  94% { opacity: 0.98; }
+  100% { opacity: 0; }
+}
+
+body.is-mobile-view .hero-portal-aperture {
+  width: clamp(24px, 8vw, 44px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-portal-tunnel,
+  .hero-portal-flood,
+  .hero-portal-aperture {
+    display: none !important;
   }
 }
