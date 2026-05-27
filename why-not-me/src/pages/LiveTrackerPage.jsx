@@ -85,16 +85,17 @@ function getPointReceivedTimeMs(point) {
   if (!point) return null
 
   const candidates = [
+    point.gpsTimestamp,
+    point.time,
+    point.location?.timestamp,
+    point.timestamp,
+    point.ownTracks?.tst,
     point.receivedAt,
     point.lastReceivedAt,
     point.ingestedAt,
     point.location?.receivedAt,
     point.location?.lastReceivedAt,
     point.ownTracks?.receivedAt,
-    point.ownTracks?.tst,
-    point.gpsTimestamp,
-    point.location?.timestamp,
-    point.timestamp,
   ]
 
   for (const candidate of candidates) {
@@ -472,8 +473,19 @@ export default function LiveTrackerPage() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const payload = await res.json()
       const latest = payload?.latest && typeof payload.latest === 'object' ? payload.latest : null
-      const normalizedData = latest
       const normalizedHistory = Array.isArray(payload?.history) ? payload.history : []
+
+      const freshestHistoryPoint = [...normalizedHistory]
+        .filter((p) => p?.location?.lat != null && p?.location?.lng != null)
+        .sort((a, b) => (getPointReceivedTimeMs(b) ?? 0) - (getPointReceivedTimeMs(a) ?? 0))[0] ?? null
+
+      const normalizedData = (() => {
+        if (!latest) return freshestHistoryPoint
+        if (!freshestHistoryPoint) return latest
+        const latestTs = getPointReceivedTimeMs(latest) ?? 0
+        const historyTs = getPointReceivedTimeMs(freshestHistoryPoint) ?? 0
+        return historyTs > latestTs ? freshestHistoryPoint : latest
+      })()
 
       if (payload?.status === 'waiting' || !normalizedData) {
         setData(null)
