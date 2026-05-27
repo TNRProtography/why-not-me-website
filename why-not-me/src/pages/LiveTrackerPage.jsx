@@ -328,7 +328,6 @@ export default function LiveTrackerPage() {
   const [elevHoverIdx, setElevHoverIdx] = useState(null)
   const hasInitialPanRef = useRef(false)
   const lastGpsTimestampRef = useRef(null)
-  const lastNewDataTimeRef = useRef(null)
   const [trackingStatus, setTrackingStatus] = useState('waiting') // 'live' | 'stale' | 'dead' | 'waiting'
   const [summaryNow, setSummaryNow] = useState(Date.now())
 
@@ -379,20 +378,29 @@ export default function LiveTrackerPage() {
     }
   }, [])
 
-  // Keep relative received times and tracking status honest while the page is open.
+  // Keep relative received times honest while the page is open.
   useEffect(() => {
     const tick = () => {
       setNow(Date.now())
-      // Update tracking status based on time since last new data
-      const timeSinceNew = lastNewDataTimeRef.current ? Date.now() - lastNewDataTimeRef.current : null
-      if (timeSinceNew != null) {
-        if (timeSinceNew > 120000) setTrackingStatus('dead')
-        else if (timeSinceNew > 60000) setTrackingStatus('stale')
-      }
     }
     const interval = setInterval(tick, 5000)
     return () => clearInterval(interval)
   }, [])
+
+  // Tracking status is based on how old the last received location is.
+  useEffect(() => {
+    if (apiStatus === 'waiting' || !lastReceivedAt) {
+      setTrackingStatus('waiting')
+      return
+    }
+    if (lastReceivedAgeSeconds > 300) {
+      setTrackingStatus('dead') // 5+ minutes
+    } else if (lastReceivedAgeSeconds > 60) {
+      setTrackingStatus('stale') // 1+ minute
+    } else {
+      setTrackingStatus('live')
+    }
+  }, [apiStatus, lastReceivedAt, lastReceivedAgeSeconds])
 
   useEffect(() => {
     const interval = setInterval(() => setSummaryNow(Date.now()), 60000)
@@ -497,29 +505,9 @@ export default function LiveTrackerPage() {
         return
       }
 
-      // Detect whether this is genuinely new GPS data
+      // Keep last timestamp reference for debugging/consistency checks.
       const incomingGpsTimestamp = normalizedData?.gpsTimestamp || normalizedData?.time || null
-      const previousGpsTimestamp = lastGpsTimestampRef.current
-
-      const isNewData = incomingGpsTimestamp && incomingGpsTimestamp !== previousGpsTimestamp
-
-      if (isNewData) {
-        lastGpsTimestampRef.current = incomingGpsTimestamp
-        lastNewDataTimeRef.current = Date.now()
-        setTrackingStatus('live')
-      } else {
-        // Same GPS timestamp — phone hasn't sent a new location
-        const timeSinceLastNew = lastNewDataTimeRef.current
-          ? Date.now() - lastNewDataTimeRef.current
-          : null
-
-        if (timeSinceLastNew != null && timeSinceLastNew > 120000) {
-          setTrackingStatus('dead') // 2+ minutes: tracking has stopped
-        } else if (timeSinceLastNew != null && timeSinceLastNew > 60000) {
-          setTrackingStatus('stale') // 1+ minute: something might be wrong
-        }
-        // else keep current status
-      }
+      if (incomingGpsTimestamp) lastGpsTimestampRef.current = incomingGpsTimestamp
 
       setData(normalizedData)
       setHistory(normalizedHistory)
@@ -1191,7 +1179,7 @@ export default function LiveTrackerPage() {
               <span className="tracking-alert-icon">{trackingStatus === 'dead' ? '⚠' : '⏳'}</span>
               <span className="tracking-alert-text">
                 {trackingStatus === 'dead'
-                  ? 'Tracking has stopped — no new GPS data received for over 2 minutes'
+                  ? 'Tracking has stopped — no location received for over 5 minutes'
                   : 'No new GPS data for over 1 minute — signal may be weak'
                 }
               </span>
