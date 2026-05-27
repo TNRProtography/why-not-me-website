@@ -33,6 +33,21 @@ const historyItems = [
   },
 ]
 
+const dunedinMarathonPhotos = [
+  {
+    src: '/images/marathon/dunedin-coastal-run.jpg',
+    alt: 'Nicole and Uncle Andy running beside the coast during the Dunedin half marathon',
+  },
+  {
+    src: '/images/marathon/dunedin-town-run.jpg',
+    alt: 'Nicole and Uncle Andy running through Dunedin together',
+  },
+  {
+    src: '/images/marathon/dunedin-finish-hug.jpg',
+    alt: 'Nicole and Uncle Andy sharing a hug after the Dunedin half marathon',
+  },
+]
+
 export default function MarathonPage() {
   const heroRef = useRef(null)
   const { scrollYProgress } = useScroll({
@@ -151,6 +166,31 @@ export default function MarathonPage() {
               </div>
             </RevealOnScroll>
           ))}
+        </div>
+      </section>
+
+      <section className="marathon-dunedin-section">
+        <div className="marathon-dunedin-grid">
+          <RevealOnScroll direction="left" className="marathon-dunedin-copy">
+            <p className="section-label">Dunedin Half Marathon</p>
+            <h2 className="section-title">The day Uncle Andy ran beside her.</h2>
+            <div className="gold-line" />
+            <div className="section-body">
+              <p>Dunedin became one of those days that stays with you. Nicole had already decided to challenge herself and use the half marathon to raise money for Brain Tumour Support NZ, but it became even more meaningful when Uncle Andy asked to run it with her.</p>
+              <br />
+              <p>He did not just turn up for the photo at the end. He ran beside her, supported her through it, and helped make the whole day feel safe, proud, and unforgettable.</p>
+              <br />
+              <p>It became a core memory. Not because it was easy, but because it was shared. The road, the effort, the Brain Tumour Support NZ shirts, and that finish line all became part of the reason Queenstown means so much now.</p>
+            </div>
+          </RevealOnScroll>
+
+          <div className="marathon-dunedin-gallery" aria-label="Dunedin half marathon photo gallery">
+            {dunedinMarathonPhotos.map((photo, index) => (
+              <RevealOnScroll key={photo.src} delay={index * 0.08} className={`marathon-dunedin-photo marathon-dunedin-photo-${index + 1}`}>
+                <img src={photo.src} alt={photo.alt} />
+              </RevealOnScroll>
+            ))}
+          </div>
         </div>
       </section>
 
