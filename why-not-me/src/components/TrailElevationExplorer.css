@@ -65,50 +65,15 @@
   text-transform: uppercase;
 }
 
-/* ---- Tooltip ---- */
-.explorer-tooltip {
-  max-width: 1180px;
-  margin: 0 auto 12px;
-  display: flex;
-  align-items: baseline;
-  gap: 16px;
-  flex-wrap: wrap;
-  transition: opacity 0.2s, transform 0.2s;
-  pointer-events: none;
-  min-height: 36px;
-}
-
-.explorer-tooltip-elev {
-  font-size: 28px;
-  font-weight: 700;
-  color: var(--white);
-  font-family: 'Montserrat', sans-serif;
-}
-
-.explorer-tooltip-dist {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--gold);
-  letter-spacing: 1px;
-}
-
-.explorer-tooltip-coord {
-  font-size: 11px;
-  color: var(--white-30);
-  font-family: monospace;
-  letter-spacing: 0.5px;
-}
-
-/* ---- Map container ---- */
+/* ---- Unified map container ---- */
 .explorer-map-container {
   max-width: 1180px;
   margin: 0 auto;
   position: relative;
-  height: 480px;
-  border-radius: 14px 14px 0 0;
+  height: 620px;
+  border-radius: 14px;
   overflow: hidden;
   border: 1px solid rgba(168,142,93,0.1);
-  border-bottom: none;
   background: var(--black);
 }
 
@@ -156,7 +121,7 @@
   background: rgba(168,142,93,0.2) !important;
 }
 
-/* ---- Basemap toggle ---- */
+/* ---- Basemap toggle (top-right) ---- */
 .explorer-basemap-toggle {
   position: absolute;
   top: 14px;
@@ -180,6 +145,7 @@
   backdrop-filter: blur(12px);
   cursor: pointer;
   transition: all 0.35s var(--ease-cinematic);
+  font-family: 'Montserrat', sans-serif;
 }
 
 .explorer-basemap-btn:first-child { border-radius: 6px 0 0 6px; }
@@ -196,39 +162,154 @@
   color: var(--white-70);
 }
 
-/* ---- Replay bar ---- */
-.explorer-replay-bar {
-  max-width: 1180px;
-  margin: 0 auto;
-  padding: 16px 20px;
-  background: rgba(13,13,13,0.8);
-  border-left: 1px solid rgba(168,142,93,0.1);
-  border-right: 1px solid rgba(168,142,93,0.1);
+/* ---- Elevation tooltip (top-left overlay) ---- */
+.explorer-map-tooltip {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 1000;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  pointer-events: none;
+  transition: opacity 0.2s;
+  background: rgba(13,13,13,0.7);
   backdrop-filter: blur(12px);
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(168,142,93,0.12);
 }
 
-.explorer-replay-controls {
+.explorer-tooltip-elev {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--white);
+}
+
+.explorer-tooltip-dist {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: 1px;
+}
+
+/* ---- Elevation chart overlay (bottom of map) ---- */
+.explorer-elev-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 800;
+  background: linear-gradient(to top, rgba(13,13,13,0.88) 0%, rgba(13,13,13,0.65) 70%, transparent 100%);
+  padding: 0 0 6px;
+  pointer-events: none;
+}
+
+.explorer-elev-canvas-wrap {
+  height: 110px;
+  cursor: col-resize;
+  pointer-events: auto;
+  touch-action: none;
+  padding: 0 12px;
+}
+
+.explorer-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.explorer-elev-legend {
   display: flex;
   align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  padding: 2px 0 4px;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: rgba(245,243,236,0.25);
+  pointer-events: none;
+}
+
+.explorer-legend-bar {
+  width: 60px;
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, rgb(85,120,100), rgb(165,170,120), rgb(245,220,140));
+}
+
+/* ---- Replay start button (center of map) ---- */
+.explorer-replay-start {
+  position: absolute;
+  bottom: 140px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: 8px;
+  background: rgba(13,13,13,0.82);
+  border: 1px solid rgba(168,142,93,0.25);
+  color: var(--gold);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  transition: all 0.3s ease;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.explorer-replay-start svg {
+  width: 16px;
+  height: 16px;
+}
+
+.explorer-replay-start:hover {
+  background: rgba(168,142,93,0.2);
+  border-color: rgba(168,142,93,0.4);
+  transform: translateX(-50%) scale(1.03);
+}
+
+/* ---- Replay controls overlay (above elevation) ---- */
+.explorer-replay-overlay {
+  position: absolute;
+  bottom: 125px;
+  left: 12px;
+  right: 12px;
+  z-index: 1000;
+}
+
+.explorer-replay-overlay .explorer-replay-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(13,13,13,0.82);
+  backdrop-filter: blur(12px);
+  border-radius: 8px;
+  border: 1px solid rgba(168,142,93,0.15);
 }
 
 .explorer-replay-btn {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 18px;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
   border-radius: 6px;
   background: rgba(168,142,93,0.12);
   border: 1px solid rgba(168,142,93,0.2);
   color: var(--white-70);
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 2px;
-  text-transform: uppercase;
   cursor: pointer;
   transition: all 0.3s ease;
+  flex-shrink: 0;
+  padding: 0;
   font-family: 'Montserrat', sans-serif;
 }
 
@@ -254,17 +335,17 @@
   color: var(--white);
 }
 
-/* ---- Speed selector ---- */
+/* ---- Speed selector (inline in replay bar) ---- */
 .explorer-speed-selector {
   display: flex;
   border-radius: 4px;
   overflow: hidden;
-  margin-left: auto;
+  flex-shrink: 0;
 }
 
 .explorer-speed-btn {
-  padding: 7px 10px;
-  font-size: 9px;
+  padding: 6px 8px;
+  font-size: 8px;
   font-weight: 800;
   letter-spacing: 1px;
   background: rgba(13,13,13,0.6);
@@ -285,18 +366,16 @@
   color: var(--white-50);
 }
 
-/* ---- Scrub bar ---- */
-.explorer-scrub-wrap {
-  margin-top: 14px;
-}
-
-.explorer-scrub-bar {
+/* ---- Scrub bar (inline in replay bar) ---- */
+.explorer-replay-overlay .explorer-scrub-bar {
   position: relative;
   height: 6px;
   border-radius: 3px;
   background: rgba(245,243,236,0.06);
   cursor: pointer;
   overflow: visible;
+  flex: 1;
+  min-width: 80px;
 }
 
 .explorer-scrub-fill {
@@ -312,8 +391,8 @@
 .explorer-scrub-handle {
   position: absolute;
   top: 50%;
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
   background: var(--white);
   border: 2px solid var(--gold);
@@ -323,87 +402,13 @@
   transition: left 0.1s linear;
 }
 
-.explorer-scrub-labels {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 6px;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  color: var(--white-30);
-  font-family: 'Montserrat', sans-serif;
-}
-
-/* ---- Elevation chart ---- */
-.explorer-elev-wrap {
-  max-width: 1180px;
-  margin: 0 auto;
-  height: 180px;
-  border-radius: 0 0 14px 14px;
-  background: rgba(13,13,13,0.68);
-  border: 1px solid rgba(168,142,93,0.1);
-  border-top: 1px solid rgba(168,142,93,0.06);
-  position: relative;
-  cursor: col-resize;
-  overflow: hidden;
-  touch-action: none;
-}
-
-.explorer-canvas {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-.explorer-elev-label {
-  position: absolute;
-  top: 6px;
-  left: 14px;
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 3px;
-  text-transform: uppercase;
-  color: rgba(245,243,236,0.2);
-  pointer-events: none;
-}
-
-/* ---- Legend ---- */
-.explorer-legend {
-  max-width: 1180px;
-  margin: 16px auto 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.explorer-legend-gradient {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.explorer-legend-bar {
-  width: 80px;
-  height: 4px;
-  border-radius: 2px;
-  background: linear-gradient(90deg, rgb(85,120,100), rgb(165,170,120), rgb(245,220,140));
-}
-
-.explorer-legend-label {
+.explorer-scrub-time {
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 1px;
   color: var(--white-30);
-}
-
-.explorer-legend-caption {
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  color: rgba(245,243,236,0.18);
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 /* ---- Loading ---- */
@@ -453,18 +458,13 @@ body.is-mobile-view .explorer-stats {
 }
 
 body.is-mobile-view .explorer-map-container {
-  height: 360px;
+  height: 480px;
 }
 
-body.is-mobile-view .explorer-elev-wrap {
-  height: 140px;
+body.is-mobile-view .explorer-elev-canvas-wrap {
+  height: 80px;
 }
 
-body.is-mobile-view .explorer-replay-controls {
-  flex-direction: column;
-  align-items: flex-start;
-}
-
-body.is-mobile-view .explorer-speed-selector {
-  margin-left: 0;
+body.is-mobile-view .explorer-replay-overlay .explorer-replay-controls {
+  flex-wrap: wrap;
 }

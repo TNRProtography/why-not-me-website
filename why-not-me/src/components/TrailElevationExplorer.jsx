@@ -853,20 +853,7 @@ export default function TrailElevationExplorer({ history = [] }) {
         </div>
       </div>
 
-      {/* Tooltip */}
-      <div className="explorer-tooltip" style={{ opacity: activePoint ? 1 : 0, transform: activePoint ? 'translateY(0)' : 'translateY(6px)' }}>
-        <span className="explorer-tooltip-elev">
-          {activePoint?.elevation != null ? `${Math.round(activePoint.elevation)} m` : '—'}
-        </span>
-        <span className="explorer-tooltip-dist">
-          {activePoint ? `${activePoint.distanceKm.toFixed(1)} km` : ''}
-        </span>
-        <span className="explorer-tooltip-coord">
-          {activePoint ? `${activePoint.lat.toFixed(4)}, ${activePoint.lng.toFixed(4)}` : ''}
-        </span>
-      </div>
-
-      {/* Map */}
+      {/* Unified map + elevation */}
       <div className="explorer-map-container">
         <div
           ref={mapContainerRef}
@@ -885,39 +872,56 @@ export default function TrailElevationExplorer({ history = [] }) {
             </button>
           ))}
         </div>
-      </div>
 
-      {/* Replay controls */}
-      {hasReplayData && (
-        <div className="explorer-replay-bar">
-          <div className="explorer-replay-controls">
-            {replayState === 'idle' && (
-              <button className="explorer-replay-btn play" onClick={startReplay}>
-                <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6,3 20,12 6,21" /></svg>
-                <span>Replay Run</span>
-              </button>
-            )}
-            {replayState === 'playing' && (
-              <button className="explorer-replay-btn" onClick={pauseReplay}>
-                <svg viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="3" width="4" height="18" /><rect x="15" y="3" width="4" height="18" /></svg>
-                <span>Pause</span>
-              </button>
-            )}
-            {replayState === 'paused' && (
-              <>
-                <button className="explorer-replay-btn play" onClick={resumeReplay}>
-                  <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6,3 20,12 6,21" /></svg>
-                  <span>Resume</span>
-                </button>
-                <button className="explorer-replay-btn stop" onClick={stopReplay}>
-                  <svg viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2" /></svg>
-                  <span>Stop</span>
-                </button>
-              </>
-            )}
+        {/* Elevation tooltip — floats top-left of map */}
+        <div className="explorer-map-tooltip" style={{ opacity: activePoint ? 1 : 0 }}>
+          <span className="explorer-tooltip-elev">
+            {activePoint?.elevation != null ? `${Math.round(activePoint.elevation)} m` : ''}
+          </span>
+          <span className="explorer-tooltip-dist">
+            {activePoint ? `${activePoint.distanceKm.toFixed(1)} km` : ''}
+          </span>
+        </div>
 
-            {/* Speed selector */}
-            {replayState !== 'idle' && (
+        {/* Elevation chart overlay — bottom of map */}
+        <div className="explorer-elev-overlay">
+          <div
+            ref={elevWrapRef}
+            className="explorer-elev-canvas-wrap"
+            onMouseMove={handleElevHover}
+            onTouchMove={handleElevHover}
+            onMouseLeave={handleElevLeave}
+          >
+            <canvas ref={elevCanvasRef} className="explorer-canvas" />
+          </div>
+
+          {/* Legend bar inline */}
+          <div className="explorer-elev-legend">
+            <span>{Math.round(profile.minE)} m</span>
+            <div className="explorer-legend-bar" />
+            <span>{Math.round(profile.maxE)} m</span>
+          </div>
+        </div>
+
+        {/* Replay controls — above elevation overlay */}
+        {hasReplayData && replayState !== 'idle' && (
+          <div className="explorer-replay-overlay">
+            <div className="explorer-replay-controls">
+              {replayState === 'playing' && (
+                <button className="explorer-replay-btn" onClick={pauseReplay}>
+                  <svg viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="3" width="4" height="18" /><rect x="15" y="3" width="4" height="18" /></svg>
+                </button>
+              )}
+              {replayState === 'paused' && (
+                <>
+                  <button className="explorer-replay-btn play" onClick={resumeReplay}>
+                    <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6,3 20,12 6,21" /></svg>
+                  </button>
+                  <button className="explorer-replay-btn stop" onClick={stopReplay}>
+                    <svg viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2" /></svg>
+                  </button>
+                </>
+              )}
               <div className="explorer-speed-selector">
                 {REPLAY_SPEED_OPTIONS.map((opt) => (
                   <button
@@ -926,7 +930,6 @@ export default function TrailElevationExplorer({ history = [] }) {
                     onClick={() => {
                       const oldSpeed = replaySpeed
                       const elapsed = performance.now() - replayStartRef.current
-                      // Adjust start time to maintain position at new speed
                       replayStartRef.current = performance.now() - (elapsed * oldSpeed) / opt.value
                       setReplaySpeed(opt.value)
                     }}
@@ -935,45 +938,22 @@ export default function TrailElevationExplorer({ history = [] }) {
                   </button>
                 ))}
               </div>
-            )}
-          </div>
-
-          {/* Scrub bar */}
-          {replayState !== 'idle' && (
-            <div className="explorer-scrub-wrap">
               <div className="explorer-scrub-bar" onClick={handleScrubClick}>
                 <div className="explorer-scrub-fill" style={{ width: `${replayProgress * 100}%` }} />
                 <div className="explorer-scrub-handle" style={{ left: `${replayProgress * 100}%` }} />
               </div>
-              <div className="explorer-scrub-labels">
-                <span>{formatDuration(replayElapsed)}</span>
-                <span>{formatDuration(replayDuration)}</span>
-              </div>
+              <span className="explorer-scrub-time">{formatDuration(replayElapsed)} / {formatDuration(replayDuration)}</span>
             </div>
-          )}
-        </div>
-      )}
+          </div>
+        )}
 
-      {/* Elevation chart */}
-      <div
-        ref={elevWrapRef}
-        className="explorer-elev-wrap"
-        onMouseMove={handleElevHover}
-        onTouchMove={handleElevHover}
-        onMouseLeave={handleElevLeave}
-      >
-        <canvas ref={elevCanvasRef} className="explorer-canvas" />
-        <div className="explorer-elev-label">Elevation Profile</div>
-      </div>
-
-      {/* Legend */}
-      <div className="explorer-legend">
-        <div className="explorer-legend-gradient">
-          <span className="explorer-legend-label">{Math.round(profile.minE)} m</span>
-          <div className="explorer-legend-bar" />
-          <span className="explorer-legend-label">{Math.round(profile.maxE)} m</span>
-        </div>
-        <span className="explorer-legend-caption">Colour encodes elevation · Interact anywhere to explore</span>
+        {/* Replay start button — center of map when idle */}
+        {hasReplayData && replayState === 'idle' && (
+          <button className="explorer-replay-start" onClick={startReplay}>
+            <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6,3 20,12 6,21" /></svg>
+            <span>Replay Run</span>
+          </button>
+        )}
       </div>
     </section>
   )
