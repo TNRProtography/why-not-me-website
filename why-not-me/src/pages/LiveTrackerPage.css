@@ -1,0 +1,478 @@
+/* ============ LIVE TRACKER PAGE ============ */
+
+.tracker-page {
+  min-height: 100vh;
+  background: var(--black);
+  position: relative;
+}
+
+/* ---- Hero strip ---- */
+.tracker-hero {
+  position: relative;
+  padding: 140px 40px 50px;
+  text-align: center;
+  overflow: hidden;
+}
+
+.tracker-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 120%, rgba(168,142,93,0.12), transparent 60%),
+    linear-gradient(180deg, rgba(13,13,13,0) 50%, rgba(13,13,13,1));
+  pointer-events: none;
+}
+
+.tracker-hero-inner {
+  position: relative;
+  z-index: 2;
+}
+
+.tracker-hero h1 {
+  font-family: var(--font-hero);
+  font-size: clamp(42px, 7vw, 88px);
+  line-height: 1;
+  margin-bottom: 12px;
+}
+
+.tracker-hero .tracker-subtitle {
+  color: var(--warm);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+}
+
+/* ---- Status bar ---- */
+.tracker-status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  padding: 16px 40px;
+  background: rgba(13,13,13,0.8);
+  backdrop-filter: blur(16px);
+  border-top: 1px solid rgba(168,142,93,0.12);
+  border-bottom: 1px solid rgba(168,142,93,0.12);
+  position: relative;
+  z-index: 10;
+  flex-wrap: wrap;
+}
+
+.tracker-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 80px;
+}
+
+.tracker-stat-value {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--white);
+  line-height: 1.2;
+}
+
+.tracker-stat-value.pace {
+  color: var(--gold);
+  font-size: 20px;
+}
+
+.tracker-stat-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--white-30);
+  line-height: 1;
+}
+
+/* ---- Live pulse ---- */
+.live-pulse {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+}
+
+.live-pulse .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #4ade80;
+  position: relative;
+}
+
+.live-pulse .dot::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  background: rgba(74, 222, 128, 0.3);
+  animation: livePulseRing 2s ease-out infinite;
+}
+
+.live-pulse.stale .dot {
+  background: var(--warm);
+}
+
+.live-pulse.stale .dot::after {
+  background: rgba(203, 178, 153, 0.3);
+}
+
+.live-pulse.offline .dot {
+  background: rgba(245,243,236,0.3);
+}
+
+.live-pulse.offline .dot::after {
+  animation: none;
+}
+
+@keyframes livePulseRing {
+  0% { transform: scale(1); opacity: 0.7; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+/* ---- Map container ---- */
+.tracker-map-wrap {
+  position: relative;
+  height: calc(100vh - 260px);
+  min-height: 480px;
+  max-height: 900px;
+  background: var(--black);
+}
+
+.tracker-map {
+  width: 100%;
+  height: 100%;
+}
+
+/* Override Leaflet tiles for dark aesthetic */
+.tracker-map .leaflet-tile-pane {
+  filter: brightness(0.86) contrast(1.04) saturate(0.7);
+}
+
+.tracker-map.basemap-satellite .leaflet-tile-pane {
+  filter: brightness(0.92) contrast(1.08) saturate(0.85);
+}
+
+.tracker-map .leaflet-control-attribution {
+  background: rgba(13,13,13,0.7) !important;
+  color: rgba(245,243,236,0.35) !important;
+  font-size: 9px !important;
+  backdrop-filter: blur(8px);
+}
+
+.tracker-map .leaflet-control-attribution a {
+  color: rgba(168,142,93,0.5) !important;
+}
+
+.tracker-map .leaflet-control-zoom {
+  border: none !important;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.5) !important;
+}
+
+.tracker-map .leaflet-control-zoom a {
+  background: rgba(13,13,13,0.85) !important;
+  color: var(--white) !important;
+  border: 1px solid rgba(168,142,93,0.15) !important;
+  backdrop-filter: blur(12px);
+  width: 34px !important;
+  height: 34px !important;
+  line-height: 34px !important;
+  font-size: 16px !important;
+}
+
+.tracker-map .leaflet-control-zoom a:hover {
+  background: rgba(168,142,93,0.2) !important;
+}
+
+/* ---- Basemap toggle ---- */
+.basemap-toggle {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 1000;
+  display: flex;
+  gap: 0;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+}
+
+.basemap-btn {
+  padding: 8px 14px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  background: rgba(13,13,13,0.82);
+  color: var(--white-50);
+  border: 1px solid rgba(168,142,93,0.1);
+  backdrop-filter: blur(12px);
+  cursor: pointer;
+  transition: all 0.35s var(--ease-cinematic);
+}
+
+.basemap-btn:first-child {
+  border-radius: 6px 0 0 6px;
+}
+
+.basemap-btn:last-child {
+  border-radius: 0 6px 6px 0;
+}
+
+.basemap-btn.active {
+  background: rgba(168,142,93,0.2);
+  color: var(--gold);
+  border-color: rgba(168,142,93,0.3);
+}
+
+.basemap-btn:hover:not(.active) {
+  background: rgba(245,243,236,0.06);
+  color: var(--white-70);
+}
+
+/* ---- Recenter button ---- */
+.recenter-btn {
+  position: absolute;
+  bottom: 24px;
+  right: 14px;
+  z-index: 1000;
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  background: rgba(13,13,13,0.85);
+  border: 1px solid rgba(168,142,93,0.15);
+  color: var(--white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  transition: all 0.35s var(--ease-cinematic);
+}
+
+.recenter-btn:hover {
+  background: rgba(168,142,93,0.2);
+  color: var(--gold);
+}
+
+.recenter-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* ---- Nicole custom marker ---- */
+.nicole-marker {
+  position: relative;
+  width: 52px;
+  height: 68px;
+}
+
+.nicole-marker-pin {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 52px;
+  height: 52px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  background: linear-gradient(135deg, var(--gold), #8b7342);
+  box-shadow:
+    0 4px 16px rgba(168,142,93,0.4),
+    0 8px 32px rgba(0,0,0,0.5),
+    inset 0 1px 0 rgba(255,255,255,0.15);
+  overflow: hidden;
+  border: 2.5px solid rgba(245,243,236,0.25);
+}
+
+.nicole-marker-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: rotate(45deg) scale(1.42);
+  transform-origin: center center;
+}
+
+.nicole-marker-shadow {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 28px;
+  height: 8px;
+  background: radial-gradient(ellipse, rgba(0,0,0,0.5), transparent 70%);
+  border-radius: 50%;
+}
+
+.nicole-marker-pulse {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(168,142,93,0.3);
+  animation: markerPulse 2.5s ease-out infinite;
+}
+
+@keyframes markerPulse {
+  0% { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(4.5); opacity: 0; }
+}
+
+/* ---- History path ---- */
+.tracker-trail {
+  stroke: var(--gold);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+  filter: drop-shadow(0 0 6px rgba(168,142,93,0.4));
+}
+
+/* ---- Info panel below map ---- */
+.tracker-info-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1px;
+  background: rgba(168,142,93,0.06);
+  border-top: 1px solid rgba(168,142,93,0.1);
+}
+
+.tracker-info-card {
+  padding: 28px 32px;
+  background: rgba(13,13,13,0.6);
+  backdrop-filter: blur(8px);
+}
+
+.tracker-info-card-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 8px;
+}
+
+.tracker-info-card-value {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--white);
+  line-height: 1.4;
+}
+
+.tracker-info-card-sub {
+  font-size: 12px;
+  color: var(--white-30);
+  margin-top: 4px;
+}
+
+/* ---- Loading / Error states ---- */
+.tracker-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 400px;
+  gap: 20px;
+}
+
+.tracker-loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 2px solid rgba(168,142,93,0.15);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.tracker-loading-text {
+  font-size: 12px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--white-30);
+  font-weight: 700;
+}
+
+.tracker-error {
+  text-align: center;
+  padding: 80px 40px;
+  color: var(--white-50);
+}
+
+.tracker-error h2 {
+  font-family: var(--font-hero);
+  font-size: 32px;
+  margin-bottom: 12px;
+  color: var(--white);
+}
+
+/* ---- Waiting state ---- */
+.tracker-waiting {
+  text-align: center;
+  padding: 120px 40px 80px;
+}
+
+.tracker-waiting h2 {
+  font-family: var(--font-hero);
+  font-size: clamp(28px, 4vw, 48px);
+  margin-bottom: 16px;
+}
+
+.tracker-waiting p {
+  color: var(--white-50);
+  max-width: 500px;
+  margin: 0 auto;
+  line-height: 1.8;
+}
+
+/* ---- Footer spacer ---- */
+.tracker-footer-spacer {
+  padding: 60px 40px;
+  text-align: center;
+}
+
+/* ---- Mobile ---- */
+body.is-mobile-view .tracker-hero {
+  padding: 120px 24px 36px;
+}
+
+body.is-mobile-view .tracker-status-bar {
+  gap: 16px;
+  padding: 14px 20px;
+}
+
+body.is-mobile-view .tracker-stat-value {
+  font-size: 15px;
+}
+
+body.is-mobile-view .tracker-stat-value.pace {
+  font-size: 17px;
+}
+
+body.is-mobile-view .tracker-map-wrap {
+  height: calc(100vh - 300px);
+  min-height: 360px;
+}
+
+body.is-mobile-view .tracker-info-strip {
+  grid-template-columns: 1fr 1fr;
+}
+
+body.is-mobile-view .tracker-info-card {
+  padding: 20px 18px;
+}

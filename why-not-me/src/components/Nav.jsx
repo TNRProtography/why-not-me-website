@@ -7,6 +7,7 @@ const navItems = [
   { to: '/', label: 'Home', end: true },
   { to: '/documentary', label: 'Documentary' },
   { to: '/queenstown-marathon', label: 'Marathon' },
+  { to: '/live', label: 'Live Tracker' },
 ]
 
 export default function Nav() {

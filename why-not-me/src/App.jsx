@@ -9,6 +9,7 @@ import HomePage from './pages/HomePage'
 import DocumentaryPage from './pages/DocumentaryPage'
 import DonatePage from './pages/DonatePage'
 import MarathonPage from './pages/MarathonPage'
+import LiveTrackerPage from './pages/LiveTrackerPage'
 
 function AnimatedRoutes() {
   const location = useLocation()
@@ -20,6 +21,7 @@ function AnimatedRoutes() {
         <Route path="/documentary" element={<DocumentaryPage />} />
         <Route path="/queenstown-marathon" element={<MarathonPage />} />
         <Route path="/donate" element={<DonatePage />} />
+        <Route path="/live" element={<LiveTrackerPage />} />
       </Routes>
     </AnimatePresence>
   )
