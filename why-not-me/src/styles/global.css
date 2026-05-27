@@ -1244,3 +1244,34 @@ body.is-mobile-view .portal-hero {
 body.is-mobile-view .hero-portal-aperture {
   width: clamp(24px, 8vw, 48px);
 }
+
+.scroll-zoom-focus {
+  transform-origin: var(--scroll-zoom-origin-x, 50%) var(--scroll-zoom-origin-y, 50%);
+  will-change: transform, opacity, filter;
+}
+
+.scroll-zoom-focus [data-portal-letter],
+.hero-portal-title [data-portal-letter] {
+  display: inline-block;
+  position: relative;
+  transform-origin: center center;
+}
+
+.scroll-zoom-focus [data-portal-letter]::after,
+.hero-portal-title [data-portal-letter]::after {
+  content: '';
+  position: absolute;
+  inset: 48% 18% 34%;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(245, 243, 236, 0.16), transparent 72%);
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.78);
+  transition: opacity 0.45s var(--ease-cinematic), transform 0.45s var(--ease-cinematic);
+}
+
+.scroll-zoom-focus:hover [data-portal-letter]::after,
+.hero-portal-title:hover [data-portal-letter]::after {
+  opacity: 1;
+  transform: scale(1.22);
+}
