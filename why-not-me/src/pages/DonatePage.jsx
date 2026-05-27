@@ -13,6 +13,7 @@
  */
 import PageTransition from '../components/PageTransition'
 import RevealOnScroll from '../components/RevealOnScroll'
+import ScrollZoomFocus from '../components/ScrollZoomFocus'
 
 export default function DonatePage() {
   return (
@@ -30,9 +31,11 @@ export default function DonatePage() {
         }} />
         <div className="donate-hero-content" style={{ position: 'relative', zIndex: 2, textAlign: 'center', padding: '0 20px' }}>
           <p className="section-label">Support the Cause</p>
-          <h1 style={{ fontFamily: 'var(--font-hero)', fontSize: 'clamp(40px, 8vw, 80px)', lineHeight: 1 }}>
-            Every dollar counts.
-          </h1>
+          <ScrollZoomFocus scaleTo={2} yTo={-84} blurTo={12} opacityTo={0} offset={['start 58%', 'end top']}>
+            <h1 style={{ fontFamily: 'var(--font-hero)', fontSize: 'clamp(40px, 8vw, 80px)', lineHeight: 1 }}>
+              Every dollar counts.
+            </h1>
+          </ScrollZoomFocus>
           <p style={{ marginTop: 15, color: 'var(--warm)', fontSize: 15, maxWidth: 550, marginLeft: 'auto', marginRight: 'auto' }}>
             All proceeds support Brain Tumour Support NZ, the charity Nicole has championed since 2022.
           </p>
@@ -88,9 +91,11 @@ export default function DonatePage() {
       {/* Social links */}
       <section className="donate-follow-section" style={{ textAlign: 'center', padding: '40px 40px 100px' }}>
         <RevealOnScroll>
-          <h3 style={{ fontFamily: 'var(--font-hero)', fontSize: 36, marginBottom: 15 }}>
-            Follow the journey.
-          </h3>
+          <ScrollZoomFocus scaleTo={1.58} yTo={-56} blurTo={8} opacityTo={0.18}>
+            <h3 style={{ fontFamily: 'var(--font-hero)', fontSize: 36, marginBottom: 15 }}>
+              Follow the journey.
+            </h3>
+          </ScrollZoomFocus>
           <p className="section-body" style={{ maxWidth: 600, margin: '0 auto' }}>
             Keep up with Nicole's marathon training, her recovery, and the Why Not Me? campaign across social media.
           </p>

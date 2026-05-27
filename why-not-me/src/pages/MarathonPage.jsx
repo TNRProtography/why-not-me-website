@@ -3,6 +3,7 @@ import { motion, useScroll, useTransform } from 'framer-motion'
 import { useRef } from 'react'
 import PageTransition from '../components/PageTransition'
 import RevealOnScroll from '../components/RevealOnScroll'
+import ScrollZoomFocus from '../components/ScrollZoomFocus'
 import './MarathonPage.css'
 
 const historyItems = [
@@ -80,13 +81,15 @@ export default function MarathonPage() {
           >
             Queenstown Marathon
           </motion.p>
-          <motion.h1
-            initial={{ opacity: 0, y: 42, filter: 'blur(12px)' }}
-            animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-            transition={{ duration: 1.15, delay: 0.42, ease: [0.19, 1, 0.22, 1] }}
-          >
-            Why this finish line matters.
-          </motion.h1>
+          <ScrollZoomFocus className="marathon-hero-title-focus" scaleTo={2.32} yTo={-105} blurTo={15} opacityTo={0} offset={['start 58%', 'end top']}>
+            <motion.h1
+              initial={{ opacity: 0, y: 42, filter: 'blur(12px)' }}
+              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+              transition={{ duration: 1.15, delay: 0.42, ease: [0.19, 1, 0.22, 1] }}
+            >
+              Why this finish line matters.
+            </motion.h1>
+          </ScrollZoomFocus>
           <motion.p
             className="marathon-page-hero-quote"
             initial={{ opacity: 0, y: 22 }}
@@ -102,7 +105,7 @@ export default function MarathonPage() {
         <div className="marathon-intro-grid">
           <RevealOnScroll direction="left" className="marathon-intro-copy">
             <p className="section-label">The Reason</p>
-            <h2 className="section-title">It is not about proving she was never scared.</h2>
+            <ScrollZoomFocus origin="left"><h2 className="section-title">It is not about proving she was never scared.</h2></ScrollZoomFocus>
             <div className="gold-line" />
             <div className="section-body">
               <p>The Queenstown Marathon matters because it sits at the end of a story that has already asked too much of Nicole. It follows seizures, scans, four brain surgeries, chemo, radiation, long hospital corridors, and the kind of fatigue that does not disappear just because treatment ends.</p>
@@ -123,7 +126,7 @@ export default function MarathonPage() {
         <div className="marathon-video-grid">
           <RevealOnScroll direction="left" className="marathon-video-copy">
             <p className="section-label">2026 Announcement</p>
-            <h2 className="section-title">The moment the next chapter became real.</h2>
+            <ScrollZoomFocus origin="left"><h2 className="section-title">The moment the next chapter became real.</h2></ScrollZoomFocus>
             <div className="gold-line" />
             <div className="section-body">
               <p>The marathon announcement is not just a training update. It is the point where the campaign turns from remembering what happened into building toward what comes next.</p>
@@ -151,7 +154,7 @@ export default function MarathonPage() {
         <RevealOnScroll>
           <div className="marathon-section-heading">
             <p className="section-label">The Running History</p>
-            <h2 className="section-title">The road to Queenstown started years ago.</h2>
+            <ScrollZoomFocus><h2 className="section-title">The road to Queenstown started years ago.</h2></ScrollZoomFocus>
           </div>
         </RevealOnScroll>
 
@@ -173,7 +176,7 @@ export default function MarathonPage() {
         <div className="marathon-dunedin-grid">
           <RevealOnScroll direction="left" className="marathon-dunedin-copy">
             <p className="section-label">Dunedin Half Marathon</p>
-            <h2 className="section-title">The day Uncle Andy ran beside her.</h2>
+            <ScrollZoomFocus origin="left"><h2 className="section-title">The day Uncle Andy ran beside her.</h2></ScrollZoomFocus>
             <div className="gold-line" />
             <div className="section-body">
               <p>Dunedin became one of those days that stays with you. Nicole had already decided to challenge herself and use the half marathon to raise money for Brain Tumour Support NZ, but it became even more meaningful when Uncle Andy asked to run it with her.</p>
@@ -198,7 +201,7 @@ export default function MarathonPage() {
         <div className="marathon-vengeance-bg" />
         <RevealOnScroll className="marathon-vengeance-card">
           <p className="section-label">A Little Bit of Vengeance</p>
-          <h2 className="section-title">This time, it is personal.</h2>
+          <ScrollZoomFocus><h2 className="section-title">This time, it is personal.</h2></ScrollZoomFocus>
           <div className="gold-line" style={{ margin: '24px auto' }} />
           <div className="section-body" style={{ maxWidth: 780, textAlign: 'center', margin: '0 auto' }}>
             <p>Nicole has said she was still on chemo in 2023 and was disappointed with her result. This time her aspiration is to push herself hard and see how far she can take it.</p>
@@ -219,7 +222,7 @@ export default function MarathonPage() {
           </RevealOnScroll>
           <RevealOnScroll direction="right">
             <p className="section-label">Why Queenstown</p>
-            <h2 className="section-title">A beautiful place for an ugly fight.</h2>
+            <ScrollZoomFocus origin="left"><h2 className="section-title">A beautiful place for an ugly fight.</h2></ScrollZoomFocus>
             <div className="gold-line" />
             <div className="section-body">
               <p>Queenstown is a place that feels big enough for the story. It has mountains, water, distance, and a finish line that people can picture. For Nicole, it also carries history. She has been there before, while still carrying treatment in her body.</p>
@@ -235,7 +238,7 @@ export default function MarathonPage() {
       <section className="marathon-cta-section">
         <RevealOnScroll>
           <p className="section-label">Follow the Build</p>
-          <h2 className="section-title">Run with her, share the story, back the cause.</h2>
+          <ScrollZoomFocus><h2 className="section-title">Run with her, share the story, back the cause.</h2></ScrollZoomFocus>
           <p className="section-body" style={{ maxWidth: 680, margin: '0 auto', textAlign: 'center' }}>
             The marathon gives the campaign a physical goal, but the purpose is bigger than the race. It is about raising money for Brain Tumour Support NZ, helping people talk about cancer without fear, and making sure families facing brain tumours feel less alone.
           </p>

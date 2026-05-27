@@ -1,12 +1,15 @@
 import { Link } from 'react-router-dom'
+import ScrollZoomFocus from './ScrollZoomFocus'
 import './Footer.css'
 
 export default function Footer() {
   return (
     <footer className="site-footer">
-      <Link to="/" aria-label="Why Not Me home">
-        <img src="/images/logos/logo-white-transparent.png" alt="Why Not Me?" className="footer-logo" />
-      </Link>
+      <ScrollZoomFocus className="footer-logo-scroll-focus" scaleTo={1.9} yTo={-54} blurTo={8} opacityTo={0.18}>
+        <Link to="/" aria-label="Why Not Me home">
+          <img src="/images/logos/logo-white-transparent.png" alt="Why Not Me?" className="footer-logo" />
+        </Link>
+      </ScrollZoomFocus>
 
       <div className="footer-links">
         <a href="https://braintumoursupport.org.nz" target="_blank" rel="noopener noreferrer">Brain Tumour Support NZ</a>

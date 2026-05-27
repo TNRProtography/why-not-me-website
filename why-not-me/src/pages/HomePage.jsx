@@ -30,6 +30,7 @@ import { Link } from 'react-router-dom'
 import { motion, useScroll, useTransform } from 'framer-motion'
 import PageTransition from '../components/PageTransition'
 import RevealOnScroll from '../components/RevealOnScroll'
+import ScrollZoomFocus from '../components/ScrollZoomFocus'
 import Lightbox from '../components/Lightbox'
 import './HomePage.css'
 
@@ -63,14 +64,16 @@ export default function HomePage() {
         <div className="hero-overlay" />
         <div className="hero-light" />
         <motion.div className="hero-content" style={{ opacity: heroOpacity }}>
-          <motion.h1
-            className="hero-title"
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
-          >
-            Why Not Me?
-          </motion.h1>
+          <ScrollZoomFocus className="hero-title-scroll-focus" scaleTo={2.55} yTo={-110} blurTo={16} opacityTo={0} offset={['start 58%', 'end top']}>
+            <motion.h1
+              className="hero-title"
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 1, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+            >
+              Why Not Me?
+            </motion.h1>
+          </ScrollZoomFocus>
           <motion.p
             className="hero-subtitle"
             initial={{ opacity: 0 }}
@@ -110,7 +113,7 @@ export default function HomePage() {
           </RevealOnScroll>
           <RevealOnScroll direction="right">
             <p className="section-label">Nicole's Story</p>
-            <h2 className="section-title">Ten years. Four surgeries. Another marathon to run.</h2>
+            <ScrollZoomFocus origin="left"><h2 className="section-title">Ten years. Four surgeries. Another marathon to run.</h2></ScrollZoomFocus>
             <div className="gold-line" />
             <div className="section-body">
               <p>At 16, Nicole White was behind the wheel when she had her first seizure. By May 2017, she had a brain tumour diagnosis, and by November that year, her first brain surgery. She was told it would not come back. It came back. Again and again.</p>
@@ -148,7 +151,7 @@ export default function HomePage() {
         <div className="tumour-grid">
           <RevealOnScroll direction="left">
             <p className="section-label">The Tumour</p>
-            <h2 className="section-title" style={{ fontSize: 'clamp(44px, 7vw, 90px)' }}>PLNTY.</h2>
+            <ScrollZoomFocus origin="left" scaleTo={2.05}><h2 className="section-title" style={{ fontSize: 'clamp(44px, 7vw, 90px)' }}>PLNTY.</h2></ScrollZoomFocus>
             <h3 className="tumour-subtitle">One of only a few.</h3>
             <div className="gold-line" />
             <div className="section-body">
@@ -179,7 +182,7 @@ export default function HomePage() {
           </RevealOnScroll>
           <RevealOnScroll direction="right" className="treatment-text">
             <p className="section-label">Treatment</p>
-            <h2 className="section-title">The reality behind the resilience.</h2>
+            <ScrollZoomFocus origin="left"><h2 className="section-title">The reality behind the resilience.</h2></ScrollZoomFocus>
             <div className="gold-line" />
             <div className="section-body">
               <p>Nicole did not tolerate her treatment well. She had four brain surgeries in total. The first was in November 2017 at age 17. It was her first surgery of any kind. She woke up in the recovery room crying, overwhelmed and very sick.</p>
@@ -199,7 +202,7 @@ export default function HomePage() {
         <RevealOnScroll>
           <div style={{ textAlign: 'center', marginBottom: 80 }}>
             <p className="section-label">Key Timeline</p>
-            <h2 className="section-title">A decade of fighting.</h2>
+            <ScrollZoomFocus><h2 className="section-title">A decade of fighting.</h2></ScrollZoomFocus>
           </div>
         </RevealOnScroll>
         <div className="timeline">
@@ -302,7 +305,7 @@ export default function HomePage() {
           <RevealOnScroll>
             <div style={{ textAlign: 'center', marginBottom: 80 }}>
               <p className="section-label">In Their Own Words</p>
-              <h2 className="section-title">The people around her.</h2>
+              <ScrollZoomFocus><h2 className="section-title">The people around her.</h2></ScrollZoomFocus>
             </div>
           </RevealOnScroll>
 
@@ -328,7 +331,7 @@ export default function HomePage() {
         <RevealOnScroll>
           <div style={{ textAlign: 'center', marginBottom: 60 }}>
             <p className="section-label">Brain Tumour Facts</p>
-            <h2 className="section-title">The numbers behind the silence.</h2>
+            <ScrollZoomFocus><h2 className="section-title">The numbers behind the silence.</h2></ScrollZoomFocus>
           </div>
         </RevealOnScroll>
         <div className="facts-grid">
@@ -350,7 +353,7 @@ export default function HomePage() {
         <div className="marathon-film-light" />
         <RevealOnScroll className="marathon-content">
           <p className="section-label">Queenstown Marathon</p>
-          <h2 className="section-title">Not just another finish line.</h2>
+          <ScrollZoomFocus><h2 className="section-title">Not just another finish line.</h2></ScrollZoomFocus>
           <div className="gold-line" style={{ margin: '20px auto' }} />
           <div className="section-body" style={{ maxWidth: '100%', textAlign: 'center', margin: '0 auto' }}>
             <p>At this stage Nicole is focussing on getting her body moving again. It has had a long and gruelling 12 months of treatment and surgeries. Although she is 12 months post all that, it still takes a massive toll on her body.</p>
@@ -376,7 +379,7 @@ export default function HomePage() {
       <section style={{ padding: '120px 40px', textAlign: 'center' }}>
         <RevealOnScroll>
           <p className="section-label">The Documentary</p>
-          <h2 className="section-title">A Little Bit of Vengeance.</h2>
+          <ScrollZoomFocus><h2 className="section-title">A Little Bit of Vengeance.</h2></ScrollZoomFocus>
           <div className="gold-line" style={{ margin: '20px auto' }} />
           <p className="section-body" style={{ maxWidth: 600, margin: '0 auto 40px' }}>
             The full story, told by Nicole and the people closest to her. From diagnosis to remission, from the waiting rooms to the finish line. Released May 22, 2026.
@@ -390,7 +393,7 @@ export default function HomePage() {
         <div className="connect-bg" style={{ backgroundImage: 'url(/images/lores/coast-gaze.jpg)' }} />
         <RevealOnScroll className="connect-inner">
           <p className="section-label">Get Involved</p>
-          <h2 className="section-title">Run with me.</h2>
+          <ScrollZoomFocus><h2 className="section-title">Run with me.</h2></ScrollZoomFocus>
           <p className="section-body" style={{ maxWidth: 600, margin: '0 auto' }}>
             Nicole is available for print and digital interviews, TV and radio appearances, podcast features, brain tumour awareness campaigns, marathon and fundraising coverage, and health and wellness storytelling.
           </p>

@@ -364,3 +364,62 @@ body.is-mobile-view .donate-card-grid {
 body.is-mobile-view .donate-card {
   padding: 34px 24px !important;
 }
+
+/* ============ CINEMATIC SCROLL ZOOM ============ */
+.scroll-zoom-focus {
+  position: relative;
+  display: block;
+  max-width: 100%;
+  transform-origin: center center;
+  transform-style: preserve-3d;
+  will-change: transform, opacity, filter;
+  backface-visibility: hidden;
+  z-index: 2;
+}
+
+.scroll-zoom-focus[data-origin='left'] {
+  transform-origin: left center;
+}
+
+.scroll-zoom-focus[data-origin='right'] {
+  transform-origin: right center;
+}
+
+.scroll-zoom-focus > .section-title,
+.scroll-zoom-focus > h1,
+.scroll-zoom-focus > h2,
+.scroll-zoom-focus > h3 {
+  will-change: transform;
+}
+
+.hero-title-scroll-focus,
+.marathon-hero-title-focus {
+  width: 100%;
+  transform-origin: center center;
+}
+
+.footer-logo-scroll-focus {
+  display: inline-block;
+  margin: 0 auto;
+}
+
+.page-cinema-content section {
+  perspective: 1200px;
+}
+
+@media (min-width: 821px) {
+  .section-title:hover,
+  .hero-title:hover,
+  .marathon-page-hero h1:hover {
+    text-shadow: 0 0 32px rgba(203, 178, 153, 0.18);
+  }
+}
+
+body.is-mobile-view .scroll-zoom-focus {
+  transform-origin: center center;
+}
+
+body.is-mobile-view .scroll-zoom-focus[data-origin='left'],
+body.is-mobile-view .scroll-zoom-focus[data-origin='right'] {
+  transform-origin: center center;
+}
