@@ -18,21 +18,11 @@ const SITE_COLORS = {
   white: '#F5F3EC',
 }
 
-const BASEMAPS = {
-  dark: {
-    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
-    label: 'Dark',
-    className: 'basemap-dark',
-    maxZoom: 19,
-  },
-  satellite: {
-    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    attribution: '&copy; Esri, Maxar, Earthstar Geographics',
-    label: 'Satellite',
-    className: 'basemap-satellite',
-    maxZoom: 19,
-  },
+const BASEMAP = {
+  url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
+  className: 'basemap-dark',
+  maxZoom: 19,
 }
 
 function formatAge(seconds) {
@@ -313,8 +303,7 @@ function createCourseMarkerIcon(L, label, type) {
 export default function LiveTrackerPage() {
   const mapContainerRef = useRef(null)
   const mapRef = useRef(null)
-  const tileLayersRef = useRef({})
-  const currentBasemapRef = useRef(null)
+  const tileLayerRef = useRef(null)
   const markerRef = useRef(null)
   const routeLayerRef = useRef(null)
   const trailLayerRef = useRef(null)
@@ -332,7 +321,6 @@ export default function LiveTrackerPage() {
   const [mapReady, setMapReady] = useState(false)
   const [error, setError] = useState(null)
   const [apiStatus, setApiStatus] = useState('loading') // 'loading' | 'live' | 'waiting' | 'error'
-  const [basemap, setBasemap] = useState('dark')
   const [showStartEnd, setShowStartEnd] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [now, setNow] = useState(Date.now())
@@ -341,6 +329,7 @@ export default function LiveTrackerPage() {
   const lastGpsTimestampRef = useRef(null)
   const lastNewDataTimeRef = useRef(null)
   const [trackingStatus, setTrackingStatus] = useState('waiting') // 'live' | 'stale' | 'dead' | 'waiting'
+  const [summaryNow, setSummaryNow] = useState(Date.now())
 
   const routeLatLngs = useMemo(() => kmlTrackPath.map(point => [point.lat, point.lng]), [kmlTrackPath])
   const sortedHistory = useMemo(() => sortHistory(history), [history])
@@ -403,6 +392,62 @@ export default function LiveTrackerPage() {
     const interval = setInterval(tick, 5000)
     return () => clearInterval(interval)
   }, [])
+
+  useEffect(() => {
+    const interval = setInterval(() => setSummaryNow(Date.now()), 60000)
+    return () => clearInterval(interval)
+  }, [])
+
+  const recent500mSummary = useMemo(() => {
+    summaryNow
+    const all = [...sortedHistory]
+    if (data?.location?.lat != null && data?.location?.lng != null) all.push(data)
+    const pts = all
+      .map((p) => ({
+        lat: p?.location?.lat,
+        lng: p?.location?.lng,
+        altitudeM: p?.location?.altitudeM,
+        timeMs: getPointReceivedTimeMs(p),
+      }))
+      .filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng) && p.timeMs != null)
+      .sort((a, b) => a.timeMs - b.timeMs)
+
+    if (pts.length < 2) return null
+    const kept = [pts[pts.length - 1]]
+    let coveredKm = 0
+    for (let i = pts.length - 2; i >= 0; i--) {
+      const seg = haversineKm(pts[i], pts[i + 1])
+      coveredKm += seg
+      kept.unshift(pts[i])
+      if (coveredKm >= 0.5) break
+    }
+    if (kept.length < 2) return null
+    const first = kept[0]
+    const last = kept[kept.length - 1]
+    const durationSec = Math.max(1, (last.timeMs - first.timeMs) / 1000)
+    let climbM = 0
+    let descentM = 0
+    for (let i = 1; i < kept.length; i++) {
+      const a = kept[i - 1].altitudeM
+      const b = kept[i].altitudeM
+      if (Number.isFinite(a) && Number.isFinite(b)) {
+        const delta = b - a
+        if (delta > 0) climbM += delta
+        else descentM += Math.abs(delta)
+      }
+    }
+    const netElevationM = Number.isFinite(first.altitudeM) && Number.isFinite(last.altitudeM)
+      ? last.altitudeM - first.altitudeM
+      : null
+
+    return {
+      distanceM: coveredKm * 1000,
+      avgSpeedKmh: (coveredKm / durationSec) * 3600,
+      climbM,
+      descentM,
+      netElevationM,
+    }
+  }, [sortedHistory, data, summaryNow])
 
   // ---- Data fetching (pull every 10s, detect new vs stale vs dead) ----
   const fetchData = useCallback(async ({ force = false } = {}) => {
@@ -563,15 +608,8 @@ export default function LiveTrackerPage() {
         attributionControl: true,
       })
 
-      const config = BASEMAPS[basemap]
-
-      // Pre-create all tile layers, show only the active one
-      Object.entries(BASEMAPS).forEach(([key, cfg]) => {
-        const layer = createTileLayer(L, cfg).addTo(map)
-        if (key !== basemap) layer.setOpacity(0)
-        tileLayersRef.current[key] = layer
-      })
-      currentBasemapRef.current = basemap
+      const layer = createTileLayer(L, BASEMAP).addTo(map)
+      tileLayerRef.current = layer
 
       routeLayerRef.current = L.layerGroup().addTo(map)
       trailLayerRef.current = L.layerGroup().addTo(map)
@@ -602,8 +640,7 @@ export default function LiveTrackerPage() {
       }
       mapRef.current = null
       mapInitializedRef.current = false
-      tileLayersRef.current = {}
-      currentBasemapRef.current = null
+      tileLayerRef.current = null
       routeLayerRef.current = null
       trailLayerRef.current = null
       setMapReady(false)
@@ -776,25 +813,6 @@ export default function LiveTrackerPage() {
       }
     }
   }, [mapReady, data, sortedHistory])
-
-  // ---- Basemap switch ----
-  useEffect(() => {
-    if (!mapRef.current || !window.L) return
-    if (currentBasemapRef.current === basemap) return
-
-    // Hide all layers, show the selected one
-    Object.entries(tileLayersRef.current).forEach(([key, layer]) => {
-      layer.setOpacity(key === basemap ? 1 : 0)
-    })
-    currentBasemapRef.current = basemap
-
-    // Update container class for CSS filter overrides
-    const el = mapContainerRef.current
-    if (el) {
-      Object.values(BASEMAPS).forEach(({ className }) => el.classList.remove(className))
-      el.classList.add(BASEMAPS[basemap].className)
-    }
-  }, [basemap])
 
   // ---- Recenter ----
   const handleRecenter = () => {
@@ -1144,7 +1162,7 @@ export default function LiveTrackerPage() {
         >
           <div
             ref={mapContainerRef}
-            className={`tracker-map ${BASEMAPS[basemap].className}`}
+            className={`tracker-map ${BASEMAP.className}`}
           />
 
           {/* Refresh indicator */}
@@ -1167,19 +1185,6 @@ export default function LiveTrackerPage() {
               </span>
             </div>
           )}
-
-          {/* Basemap toggle */}
-          <div className="basemap-toggle">
-            {Object.entries(BASEMAPS).map(([key, config]) => (
-              <button
-                key={key}
-                className={`basemap-btn ${basemap === key ? 'active' : ''}`}
-                onClick={() => setBasemap(key)}
-              >
-                {config.label}
-              </button>
-            ))}
-          </div>
 
           {/* Route options */}
           <label className="route-toggle">
@@ -1278,6 +1283,20 @@ export default function LiveTrackerPage() {
               {displayPace ? `Current: ${displayPace} /km` : 'Awaiting GPS points'}
               {avgPace ? ` · Avg: ${avgPace} /km` : ''}
               {clientSpeed.segments.length > 0 ? ` · ${clientSpeed.segments.length} segments` : ''}
+            </div>
+          </div>
+
+          <div className="tracker-info-card">
+            <div className="tracker-info-card-label">Last 500m Summary</div>
+            <div className="tracker-info-card-value">
+              {recent500mSummary
+                ? `${Math.round(recent500mSummary.distanceM)}m · ${recent500mSummary.avgSpeedKmh.toFixed(1)} km/h`
+                : "--"}
+            </div>
+            <div className="tracker-info-card-sub">
+              {recent500mSummary
+                ? `Net ${recent500mSummary.netElevationM == null ? "--" : `${recent500mSummary.netElevationM >= 0 ? "+" : ""}${Math.round(recent500mSummary.netElevationM)}m`} · Climb ${Math.round(recent500mSummary.climbM)}m · Descent ${Math.round(recent500mSummary.descentM)}m`
+                : "Awaiting enough recent points"}
             </div>
           </div>
 
