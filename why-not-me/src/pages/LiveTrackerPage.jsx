@@ -1201,6 +1201,7 @@ export default function LiveTrackerPage() {
   const avgPace = formatMinPerKm(avgKmh)
 
   const totalDistanceKm = clientSpeed.totalKm > 0 ? clientSpeed.totalKm : null
+  const progressSpeedColor = speedColor(displayKmh)
 
   return (
     <PageTransition>
@@ -1388,7 +1389,7 @@ export default function LiveTrackerPage() {
                     {!raceProgress.started ? ' · Waiting for start line pass' : ''}
                   </div>
                   <div style={{ position: 'relative', height: 8, background: 'rgba(255,255,255,0.08)', borderRadius: 999 }}>
-                    <div style={{ width: `${progressPct}%`, height: '100%', borderRadius: 999, background: 'linear-gradient(90deg,#7A6A4A,#A88E5D,#E0C58E)' }} />
+                    <div style={{ width: `${progressPct}%`, height: '100%', borderRadius: 999, background: `linear-gradient(90deg, ${progressSpeedColor}, ${SITE_COLORS.warm})` }} />
                     {SPLIT_MARKERS_KM.map((km) => (
                       <span key={km} style={{ position: 'absolute', left: `${(km / MARATHON_DISTANCE_KM) * 100}%`, top: -5, width: 2, height: 18, background: 'rgba(245,243,236,0.35)' }} />
                     ))}
