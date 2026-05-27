@@ -323,6 +323,27 @@ function buildRouteSegments(routePoints) {
   return segments
 }
 
+function getNearestRoutePoint(routePoints, location) {
+  if (!Array.isArray(routePoints) || routePoints.length === 0 || !location) return null
+  if (!Number.isFinite(location.lat) || !Number.isFinite(location.lng)) return null
+
+  let nearest = null
+  let bestScore = Infinity
+
+  routePoints.forEach((point, index) => {
+    if (!Number.isFinite(point.lat) || !Number.isFinite(point.lng)) return
+    const dLat = point.lat - location.lat
+    const dLng = point.lng - location.lng
+    const score = dLat * dLat + dLng * dLng
+    if (score < bestScore) {
+      bestScore = score
+      nearest = { ...point, index }
+    }
+  })
+
+  return nearest
+}
+
 function getNearestRoutePointByDistance(routePoints, distanceKm) {
   if (!Array.isArray(routePoints) || !routePoints.length) return null
   let travelled = 0
@@ -398,6 +419,12 @@ export default function LiveTrackerPage() {
   const routeSegments = useMemo(() => buildRouteSegments(kmlTrackPath), [kmlTrackPath])
   const sortedHistory = useMemo(() => sortHistory(history), [history])
   const elevationProfile = useMemo(() => buildElevationProfile(kmlTrackPath), [kmlTrackPath])
+  const routeElevationStats = useMemo(() => {
+    const elevations = kmlTrackPath.map(point => point.elevation).filter(Number.isFinite)
+    const min = elevations.length ? Math.min(...elevations) : 0
+    const max = elevations.length ? Math.max(...elevations) : 1
+    return { min, max, range: Math.max(1, max - min) }
+  }, [kmlTrackPath])
   const lastReceivedAt = useMemo(() => getLatestReceivedAt(data, sortedHistory), [data, sortedHistory])
   const lastReceivedAgeSeconds = lastReceivedAt
     ? Math.max(0, Math.floor((now - lastReceivedAt.getTime()) / 1000))
@@ -710,6 +737,17 @@ export default function LiveTrackerPage() {
         const prev = points[i - 1]
         const curr = points[i]
         const kmh = getSpeedKmh(curr)
+        const prevRoutePoint = getNearestRoutePoint(kmlTrackPath, prev.location)
+        const currRoutePoint = getNearestRoutePoint(kmlTrackPath, curr.location)
+        const prevElevation = prevRoutePoint?.elevation
+        const currElevation = currRoutePoint?.elevation
+        const segmentElevation = Number.isFinite(currElevation)
+          ? currElevation
+          : (Number.isFinite(prevElevation) ? prevElevation : null)
+        const elevationNorm = Number.isFinite(segmentElevation)
+          ? (segmentElevation - routeElevationStats.min) / routeElevationStats.range
+          : 0.35
+        const trailColor = elevationNorm > 0.68 ? SITE_COLORS.white : elevationNorm > 0.34 ? SITE_COLORS.warm : SITE_COLORS.gold
 
         const segment = L.polyline(
           [
@@ -717,9 +755,9 @@ export default function LiveTrackerPage() {
             [curr.location.lat, curr.location.lng],
           ],
           {
-            color: SITE_COLORS.warm,
-            weight: 3.5,
-            opacity: 0.9,
+            color: trailColor,
+            weight: 3.2 + (elevationNorm * 3.2),
+            opacity: 0.74 + (elevationNorm * 0.2),
             lineCap: 'round',
             lineJoin: 'round',
           }
@@ -736,6 +774,7 @@ export default function LiveTrackerPage() {
             <strong style="color:${SITE_COLORS.gold}">${label}</strong><br/>
             ${kmh != null ? `${Number(kmh).toFixed ? Number(kmh).toFixed(1) : kmh} km/h` : 'No speed'}
             ${paceStr ? ` · ${paceStr} /km` : ''}<br/>
+            ${Number.isFinite(segmentElevation) ? `${Math.round(segmentElevation)} m elevation<br/>` : ''}
             <span style="opacity:0.6">${time}</span>
           </div>`,
           { className: 'tracker-popup' }
@@ -762,7 +801,7 @@ export default function LiveTrackerPage() {
         ).addTo(trailLayerRef.current)
       }
     }
-  }, [data, sortedHistory])
+  }, [data, sortedHistory, kmlTrackPath, routeElevationStats])
 
   // ---- Basemap switch ----
   useEffect(() => {
