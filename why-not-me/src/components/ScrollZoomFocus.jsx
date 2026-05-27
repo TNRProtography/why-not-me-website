@@ -49,10 +49,15 @@ export default function ScrollZoomFocus({
     mass: 0.78,
   })
 
-  const scale = useTransform(smoothProgress, [0, 0.42, 0.78, 1], [0.965, 1, 1.035, finalScaleTo])
-  const y = useTransform(smoothProgress, [0, 0.5, 0.82, 1], [22, 0, -4, finalYTo])
-  const opacity = useTransform(smoothProgress, [0, 0.55, 0.82, 1], [0.92, 1, 1, opacityTo])
-  const filter = useTransform(smoothProgress, [0, 0.18, 0.76, 1], ['blur(8px) brightness(0.82)', 'blur(0px) brightness(1)', 'blur(0px) brightness(1.06)', `blur(${finalBlurTo}px) brightness(1.16)`])
+  // Keep the element perfectly readable at rest. The previous version blurred the
+  // first frame, which meant hero titles or headings that started high in the
+  // viewport could stay soft with no way for the user to scroll them into focus.
+  // This now behaves more like a camera push: clear and present first, then it
+  // expands, lifts, blooms, and dissolves only as the user moves past it.
+  const scale = useTransform(smoothProgress, [0, 0.48, 0.78, 1], [1, 1, 1.035, finalScaleTo])
+  const y = useTransform(smoothProgress, [0, 0.5, 0.82, 1], [0, 0, -4, finalYTo])
+  const opacity = useTransform(smoothProgress, [0, 0.62, 0.84, 1], [1, 1, 1, opacityTo])
+  const filter = useTransform(smoothProgress, [0, 0.68, 0.86, 1], ['blur(0px) brightness(1)', 'blur(0px) brightness(1)', 'blur(0px) brightness(1.06)', `blur(${finalBlurTo}px) brightness(1.16)`])
   const letterSpacing = useTransform(smoothProgress, [0, 0.72, 1], ['0em', '0.004em', '0.038em'])
   const textShadow = useTransform(
     smoothProgress,
