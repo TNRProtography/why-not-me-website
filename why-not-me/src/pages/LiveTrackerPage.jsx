@@ -386,7 +386,7 @@ export default function LiveTrackerPage() {
     try {
       // Double cache-bust: query param + unique header to defeat CDN/edge/browser caches
       const cacheBust = `${Date.now()}-${Math.random().toString(36).slice(2)}`
-      const res = await fetch(`${API_BASE}/api/state?history=1&limit=2000&_=${cacheBust}`, {
+      const res = await fetch(`${API_BASE}/api/state?history=1&_=${cacheBust}`, {
         method: 'GET',
         cache: 'no-store',
         signal: controller.signal,
