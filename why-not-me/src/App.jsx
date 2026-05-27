@@ -12,8 +12,13 @@
  *   /              -> HomePage (scrolling homepage with all main sections)
  *   /documentary   -> DocumentaryPage (YouTube embed + sharing)
  *   /donate        -> DonatePage (donation links + charity info)
- *   /sponsorship   -> SponsorshipPage (tiers, what sponsors get)
- *   /media         -> MediaPage (press kit, usage guidelines, contact)
+ *   /sponsorship   -> SponsorshipPage (DISABLED - file still in repo, re-enable below)
+ *   /media         -> MediaPage (DISABLED - file still in repo, re-enable below)
+ *
+ * TO RE-ENABLE SPONSORSHIP OR MEDIA:
+ *   1. Uncomment the imports below
+ *   2. Uncomment the <Route> lines in AnimatedRoutes
+ *   3. Uncomment the nav links in src/components/Nav.jsx
  *
  * TO ADD A NEW PAGE:
  *   1. Create a new file in src/pages/
@@ -31,8 +36,8 @@ import ScrollToTop from './components/ScrollToTop'
 import HomePage from './pages/HomePage'
 import DocumentaryPage from './pages/DocumentaryPage'
 import DonatePage from './pages/DonatePage'
-import SponsorshipPage from './pages/SponsorshipPage'
-import MediaPage from './pages/MediaPage'
+// import SponsorshipPage from './pages/SponsorshipPage'  // DISABLED - uncomment to re-enable
+// import MediaPage from './pages/MediaPage'              // DISABLED - uncomment to re-enable
 
 /* AnimatedRoutes needs useLocation which requires being inside BrowserRouter */
 function AnimatedRoutes() {
@@ -43,8 +48,8 @@ function AnimatedRoutes() {
         <Route path="/" element={<HomePage />} />
         <Route path="/documentary" element={<DocumentaryPage />} />
         <Route path="/donate" element={<DonatePage />} />
-        <Route path="/sponsorship" element={<SponsorshipPage />} />
-        <Route path="/media" element={<MediaPage />} />
+        {/* <Route path="/sponsorship" element={<SponsorshipPage />} /> */}
+        {/* <Route path="/media" element={<MediaPage />} /> */}
       </Routes>
     </AnimatePresence>
   )

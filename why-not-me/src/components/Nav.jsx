@@ -49,8 +49,8 @@ export default function Nav() {
         <div className="nav-links">
           <NavLink to="/" end className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'}>Home</NavLink>
           <NavLink to="/documentary" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'}>Documentary</NavLink>
-          <NavLink to="/sponsorship" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'}>Sponsorship</NavLink>
-          <NavLink to="/media" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'}>Media</NavLink>
+          {/* <NavLink to="/sponsorship" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'}>Sponsorship</NavLink> */}
+          {/* <NavLink to="/media" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'}>Media</NavLink> */}
           <NavLink to="/donate" className="nav-donate-btn">Donate</NavLink>
         </div>
 
@@ -76,8 +76,8 @@ export default function Nav() {
           >
             <NavLink to="/" onClick={closeMobile}>Home</NavLink>
             <NavLink to="/documentary" onClick={closeMobile}>Documentary</NavLink>
-            <NavLink to="/sponsorship" onClick={closeMobile}>Sponsorship</NavLink>
-            <NavLink to="/media" onClick={closeMobile}>Media</NavLink>
+            {/* <NavLink to="/sponsorship" onClick={closeMobile}>Sponsorship</NavLink> */}
+            {/* <NavLink to="/media" onClick={closeMobile}>Media</NavLink> */}
             <NavLink to="/donate" onClick={closeMobile}>Donate</NavLink>
           </motion.div>
         )}
