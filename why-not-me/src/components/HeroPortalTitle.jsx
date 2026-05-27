@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { motion, useMotionTemplate, useMotionValueEvent, useReducedMotion, useScroll, useSpring, useTransform } from 'framer-motion'
+import { useReducedMotion } from 'framer-motion'
 
 function getCompactView() {
   if (typeof window === 'undefined') return false
@@ -8,25 +8,37 @@ function getCompactView() {
 
 const useIsomorphicLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect
 
+const clamp = (value, min = 0, max = 1) => Math.min(max, Math.max(min, value))
+const easeInOutCubic = (value) => {
+  const t = clamp(value)
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
+}
+const easeOutCubic = (value) => 1 - Math.pow(1 - clamp(value), 3)
+
 export default function HeroPortalTitle({
   children,
   targetRef,
   className = '',
   desktopScale = 42,
   mobileScale = 25,
-  offset = ['start start', 'end end'],
 }) {
+  const wrapRef = useRef(null)
   const titleRef = useRef(null)
+  const tunnelRef = useRef(null)
+  const apertureRef = useRef(null)
+  const floodRef = useRef(null)
   const reduceMotion = useReducedMotion()
   const [compactView, setCompactView] = useState(getCompactView)
-  const [portal, setPortal] = useState({
+  const geometryRef = useRef({
     originX: 50,
     originY: 50,
-    x: 0,
-    y: 0,
+    finalX: 0,
+    finalY: 0,
     localX: 0,
     localY: 0,
+    scale: 90,
   })
+  const tickingRef = useRef(false)
 
   useEffect(() => {
     const query = window.matchMedia('(max-width: 820px)')
@@ -42,17 +54,89 @@ export default function HeroPortalTitle({
     }
   }, [])
 
+  const applyPortal = () => {
+    tickingRef.current = false
+
+    const target = targetRef?.current
+    const title = titleRef.current
+    const aperture = apertureRef.current
+    const tunnel = tunnelRef.current
+    const flood = floodRef.current
+
+    if (!target || !title || typeof window === 'undefined') return
+
+    const targetRect = target.getBoundingClientRect()
+    const travelDistance = Math.max(1, targetRect.height - window.innerHeight)
+    const progress = reduceMotion ? 0 : clamp(-targetRect.top / travelDistance)
+
+    target.style.setProperty('--portal-progress', progress.toFixed(4))
+    target.classList.toggle('is-portal-primed', progress > 0.03)
+    target.classList.toggle('is-portal-travelling', progress > 0.18)
+    target.classList.toggle('is-portal-commit', progress > 0.66)
+    target.classList.toggle('is-portal-complete', progress > 0.96)
+
+    const { originX, originY, finalX, finalY, localX, localY, scale: maximumScale } = geometryRef.current
+
+    const travel = clamp((progress - 0.045) / 0.72)
+    const zoom = easeInOutCubic(travel)
+    const lateZoom = easeOutCubic(clamp((progress - 0.58) / 0.34))
+    const scale = 1 + (maximumScale - 1) * zoom + maximumScale * 0.28 * lateZoom
+    const x = finalX * zoom
+    const y = finalY * zoom
+    const fade = 1 - Math.pow(clamp((progress - 0.78) / 0.18), 1.35)
+    const blur = progress < 0.72 ? 0 : Math.round(clamp((progress - 0.72) / 0.24) * 30)
+    const brightness = 1 + clamp((progress - 0.42) / 0.44) * 1.25
+    const tracking = zoom * 0.12
+
+    title.style.transformOrigin = `${originX}% ${originY}%`
+    title.style.transform = `translate3d(${x.toFixed(2)}px, ${y.toFixed(2)}px, 0) scale(${scale.toFixed(4)})`
+    title.style.opacity = clamp(fade, 0, 1).toFixed(3)
+    title.style.filter = `blur(${blur}px) brightness(${brightness.toFixed(3)})`
+    title.style.letterSpacing = `${tracking.toFixed(4)}em`
+    title.style.textShadow = `0 ${Math.round(14 + zoom * 110)}px ${Math.round(50 + zoom * 270)}px rgba(245, 243, 236, ${Math.min(0.88, 0.22 + zoom * 0.66).toFixed(3)})`
+
+    if (aperture) {
+      const apertureTravel = easeInOutCubic(clamp((progress - 0.16) / 0.64))
+      const apertureScale = 0.22 + apertureTravel * 160
+      const apertureOpacity = progress < 0.18 ? 0 : progress > 0.94 ? 0 : clamp((progress - 0.18) / 0.18) * clamp((0.94 - progress) / 0.1)
+      aperture.style.left = `${localX}px`
+      aperture.style.top = `${localY}px`
+      aperture.style.transform = `translate(-50%, -50%) translate3d(${(finalX * apertureTravel).toFixed(2)}px, ${(finalY * apertureTravel).toFixed(2)}px, 0) scale(${apertureScale.toFixed(3)})`
+      aperture.style.opacity = clamp(apertureOpacity, 0, 0.95).toFixed(3)
+      aperture.style.filter = `blur(${Math.round(6 + apertureTravel * 32)}px)`
+    }
+
+    if (tunnel) {
+      const tunnelOpacity = progress < 0.22 ? 0 : progress > 0.96 ? 0 : clamp((progress - 0.22) / 0.34) * clamp((0.96 - progress) / 0.1)
+      tunnel.style.opacity = clamp(tunnelOpacity, 0, 0.98).toFixed(3)
+      tunnel.style.transform = `scale(${(0.94 + zoom * 0.48).toFixed(3)})`
+    }
+
+    if (flood) {
+      const floodOpacity = progress < 0.64 ? 0 : progress > 0.98 ? 0 : clamp((progress - 0.64) / 0.26) * clamp((0.98 - progress) / 0.1)
+      flood.style.opacity = clamp(floodOpacity, 0, 0.82).toFixed(3)
+      flood.style.transform = `scale(${(0.72 + lateZoom * 1.05).toFixed(3)})`
+    }
+  }
+
+  const requestPortalUpdate = () => {
+    if (tickingRef.current) return
+    tickingRef.current = true
+    window.requestAnimationFrame(applyPortal)
+  }
+
   useIsomorphicLayoutEffect(() => {
-    const node = titleRef.current
-    if (!node || typeof window === 'undefined') return undefined
+    const title = titleRef.current
+    const target = targetRef?.current
+    if (!title || !target || typeof window === 'undefined') return undefined
 
     let frame
 
     const measurePortalLetter = () => {
-      const letter = node.querySelector('[data-portal-letter]')
-      const target = letter || node
-      const titleBox = node.getBoundingClientRect()
-      const letterBox = target.getBoundingClientRect()
+      const letter = title.querySelector('[data-portal-letter]')
+      const portalTarget = letter || title
+      const titleBox = title.getBoundingClientRect()
+      const letterBox = portalTarget.getBoundingClientRect()
 
       if (!titleBox.width || !titleBox.height || !letterBox.width || !letterBox.height) return
 
@@ -60,15 +144,22 @@ export default function HeroPortalTitle({
       const letterCenterY = letterBox.top + letterBox.height / 2
       const titleOriginX = ((letterCenterX - titleBox.left) / titleBox.width) * 100
       const titleOriginY = ((letterCenterY - titleBox.top) / titleBox.height) * 100
+      const minimumScale = compactView ? 62 : 104
+      const requestedScale = compactView ? mobileScale : desktopScale
 
-      setPortal({
+      geometryRef.current = {
         originX: Number.isFinite(titleOriginX) ? titleOriginX : 50,
         originY: Number.isFinite(titleOriginY) ? titleOriginY : 50,
-        x: Math.round(window.innerWidth / 2 - letterCenterX),
-        y: Math.round(window.innerHeight / 2 - letterCenterY),
+        finalX: Math.round(window.innerWidth / 2 - letterCenterX),
+        finalY: Math.round(window.innerHeight / 2 - letterCenterY),
         localX: Math.round(letterCenterX - titleBox.left),
         localY: Math.round(letterCenterY - titleBox.top),
-      })
+        scale: Math.max(requestedScale, minimumScale),
+      }
+
+      target.style.setProperty('--portal-origin-x', `${geometryRef.current.originX}%`)
+      target.style.setProperty('--portal-origin-y', `${geometryRef.current.originY}%`)
+      applyPortal()
     }
 
     const scheduleMeasure = () => {
@@ -77,12 +168,13 @@ export default function HeroPortalTitle({
     }
 
     scheduleMeasure()
-    const timeouts = [120, 360, 760].map((time) => window.setTimeout(scheduleMeasure, time))
-    const fontReady = document.fonts?.ready?.then(scheduleMeasure).catch(() => {})
-
+    const timeouts = [120, 360, 760, 1250].map((time) => window.setTimeout(scheduleMeasure, time))
     const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(scheduleMeasure) : null
-    observer?.observe(node)
+    observer?.observe(title)
+    observer?.observe(target)
+    document.fonts?.ready?.then(scheduleMeasure).catch(() => {})
 
+    window.addEventListener('scroll', requestPortalUpdate, { passive: true })
     window.addEventListener('resize', scheduleMeasure, { passive: true })
     window.addEventListener('orientationchange', scheduleMeasure)
 
@@ -90,91 +182,15 @@ export default function HeroPortalTitle({
       window.cancelAnimationFrame(frame)
       timeouts.forEach((timeout) => window.clearTimeout(timeout))
       observer?.disconnect()
+      window.removeEventListener('scroll', requestPortalUpdate)
       window.removeEventListener('resize', scheduleMeasure)
       window.removeEventListener('orientationchange', scheduleMeasure)
-      void fontReady
+      target.style.removeProperty('--portal-progress')
+      target.style.removeProperty('--portal-origin-x')
+      target.style.removeProperty('--portal-origin-y')
+      target.classList.remove('is-portal-primed', 'is-portal-travelling', 'is-portal-commit', 'is-portal-complete')
     }
-  }, [children, compactView])
-
-  const { scrollYProgress } = useScroll({
-    target: targetRef,
-    offset,
-  })
-
-  useMotionValueEvent(scrollYProgress, 'change', (latest) => {
-    const node = targetRef?.current
-    if (!node) return
-
-    const safeProgress = Math.max(0, Math.min(1, latest || 0))
-    node.style.setProperty('--portal-progress', safeProgress.toFixed(4))
-    node.classList.toggle('is-portal-primed', safeProgress > 0.06)
-    node.classList.toggle('is-portal-travelling', safeProgress > 0.24)
-    node.classList.toggle('is-portal-commit', safeProgress > 0.74)
-    node.classList.toggle('is-portal-complete', safeProgress > 0.94)
-  })
-
-  useEffect(() => {
-    const node = targetRef?.current
-    if (!node) return undefined
-
-    node.style.setProperty('--portal-progress', '0')
-    return () => {
-      node.style.removeProperty('--portal-progress')
-      node.classList.remove('is-portal-primed', 'is-portal-travelling', 'is-portal-commit', 'is-portal-complete')
-    }
-  }, [targetRef])
-
-  const smoothProgress = useSpring(scrollYProgress, {
-    stiffness: 82,
-    damping: 28,
-    mass: 0.55,
-  })
-
-  const requestedScale = compactView ? mobileScale : desktopScale
-  const minimumScale = compactView ? 44 : 72
-  const finalScale = Math.max(requestedScale, minimumScale)
-  const finalX = compactView ? portal.x * 0.98 : portal.x
-  const finalY = compactView ? portal.y * 0.96 : portal.y
-
-  const scale = useTransform(
-    smoothProgress,
-    [0, 0.12, 0.28, 0.46, 0.64, 0.82, 0.94, 1],
-    [1, 1.02, 1.8, 7.5, 24, finalScale * 0.92, finalScale * 1.08, finalScale * 1.22]
-  )
-  const x = useTransform(smoothProgress, [0, 0.18, 0.42, 0.7, 0.9, 1], [0, 0, finalX * 0.18, finalX * 0.72, finalX, finalX])
-  const y = useTransform(smoothProgress, [0, 0.18, 0.42, 0.7, 0.9, 1], [0, 0, finalY * 0.18, finalY * 0.72, finalY, finalY])
-  const opacity = useTransform(smoothProgress, [0, 0.8, 0.92, 0.98, 1], [1, 1, 0.86, 0.22, 0])
-  const filter = useTransform(
-    smoothProgress,
-    [0, 0.5, 0.72, 0.88, 1],
-    ['blur(0px) brightness(1)', 'blur(0px) brightness(1.12)', 'blur(0px) brightness(1.42)', 'blur(7px) brightness(1.86)', 'blur(28px) brightness(2.18)']
-  )
-  const letterSpacing = useTransform(smoothProgress, [0, 0.38, 0.72, 1], ['0em', '0.006em', '0.052em', '0.18em'])
-  const textShadow = useTransform(
-    smoothProgress,
-    [0, 0.42, 0.72, 0.92, 1],
-    [
-      '0 12px 50px rgba(0,0,0,0.46)',
-      '0 24px 96px rgba(203,178,153,0.24)',
-      '0 52px 160px rgba(245,243,236,0.28)',
-      '0 90px 260px rgba(245,243,236,0.62)',
-      '0 120px 320px rgba(245,243,236,0.86)',
-    ]
-  )
-
-  const apertureX = useTransform(smoothProgress, [0, 0.2, 0.7, 0.92, 1], [0, 0, finalX * 0.72, finalX, finalX])
-  const apertureY = useTransform(smoothProgress, [0, 0.2, 0.7, 0.92, 1], [0, 0, finalY * 0.72, finalY, finalY])
-  const apertureScale = useTransform(smoothProgress, [0, 0.32, 0.52, 0.72, 0.88, 1], [0.18, 0.18, 7.5, 32, 92, 145])
-  const apertureOpacity = useTransform(smoothProgress, [0, 0.28, 0.48, 0.82, 0.98, 1], [0, 0, 0.48, 0.95, 0.52, 0])
-  const apertureBlur = useTransform(smoothProgress, [0, 0.58, 0.86, 1], ['blur(7px)', 'blur(12px)', 'blur(24px)', 'blur(38px)'])
-
-  const tunnelOpacity = useTransform(smoothProgress, [0, 0.34, 0.58, 0.9, 1], [0, 0, 0.58, 0.98, 0])
-  const tunnelScale = useTransform(smoothProgress, [0.36, 1], [0.78, 1.36])
-  const tunnelMaskSize = useTransform(smoothProgress, [0.34, 0.52, 0.72, 0.9, 1], ['0vmax', '4vmax', '22vmax', '76vmax', '130vmax'])
-  const tunnelMask = useMotionTemplate`radial-gradient(circle at 50% 50%, transparent 0vmax, transparent ${tunnelMaskSize}, black calc(${tunnelMaskSize} + 1.4vmax))`
-
-  const floodOpacity = useTransform(smoothProgress, [0, 0.68, 0.84, 0.96, 1], [0, 0, 0.24, 0.82, 0])
-  const floodScale = useTransform(smoothProgress, [0.66, 1], [0.64, 1.48])
+  }, [children, compactView, desktopScale, mobileScale, reduceMotion, targetRef])
 
   if (reduceMotion) {
     return (
@@ -185,54 +201,13 @@ export default function HeroPortalTitle({
   }
 
   return (
-    <div className={`hero-portal-wrap ${className}`.trim()}>
-      <motion.div
-        className="hero-portal-tunnel"
-        aria-hidden="true"
-        style={{
-          opacity: tunnelOpacity,
-          scale: tunnelScale,
-          WebkitMaskImage: tunnelMask,
-          maskImage: tunnelMask,
-        }}
-      />
-      <motion.div
-        className="hero-portal-aperture"
-        aria-hidden="true"
-        style={{
-          left: portal.localX,
-          top: portal.localY,
-          x: apertureX,
-          y: apertureY,
-          scale: apertureScale,
-          opacity: apertureOpacity,
-          filter: apertureBlur,
-        }}
-      />
-      <motion.div
-        className="hero-portal-flood"
-        aria-hidden="true"
-        style={{
-          opacity: floodOpacity,
-          scale: floodScale,
-        }}
-      />
-      <motion.div
-        ref={titleRef}
-        className="hero-portal-title"
-        style={{
-          scale,
-          x,
-          y,
-          opacity,
-          filter,
-          letterSpacing,
-          textShadow,
-          transformOrigin: `${portal.originX}% ${portal.originY}%`,
-        }}
-      >
+    <div className={`hero-portal-wrap ${className}`.trim()} ref={wrapRef}>
+      <div className="hero-portal-tunnel" aria-hidden="true" ref={tunnelRef} />
+      <div className="hero-portal-aperture" aria-hidden="true" ref={apertureRef} />
+      <div className="hero-portal-flood" aria-hidden="true" ref={floodRef} />
+      <div ref={titleRef} className="hero-portal-title">
         {children}
-      </motion.div>
+      </div>
     </div>
   )
 }

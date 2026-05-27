@@ -1099,3 +1099,148 @@ body.is-mobile-view .portal-hero + section {
     filter: none !important;
   }
 }
+
+/* ============ HEADING PORTAL V3: FORCED SCROLL ZOOM ============
+   The title transform is now driven directly from scroll position in
+   HeroPortalTitle.jsx so the heading visibly zooms through the chosen letter
+   before the page content is released. */
+.portal-hero {
+  --portal-progress: 0;
+  min-height: 330svh !important;
+  background: var(--black) !important;
+  overflow: visible !important;
+  isolation: isolate !important;
+}
+
+.portal-hero-stage {
+  position: sticky !important;
+  top: 0 !important;
+  height: 100svh !important;
+  min-height: 640px !important;
+  overflow: hidden !important;
+  z-index: 20 !important;
+  opacity: 1 !important;
+  transform: none !important;
+  filter: none !important;
+  contain: paint;
+}
+
+.portal-hero + section {
+  margin-top: 0 !important;
+  position: relative;
+  z-index: 4;
+}
+
+.hero-portal-wrap {
+  position: relative !important;
+  z-index: 40 !important;
+  width: 100%;
+  pointer-events: none;
+  transform-style: preserve-3d;
+  perspective: 1400px;
+}
+
+.hero-portal-title {
+  position: relative !important;
+  z-index: 4 !important;
+  display: block !important;
+  width: 100%;
+  transform: translate3d(0, 0, 0) scale(1);
+  transform-origin: var(--portal-origin-x, 50%) var(--portal-origin-y, 50%) !important;
+  will-change: transform, opacity, filter, letter-spacing, text-shadow !important;
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+  isolation: isolate;
+}
+
+.hero-portal-title h1,
+.hero-portal-title .hero-title {
+  display: inline-block !important;
+  transform: translateZ(0);
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+.portal-letter-target {
+  position: relative;
+  display: inline-block;
+  transform-origin: center center;
+  color: inherit;
+}
+
+.portal-letter-target::before {
+  content: '';
+  position: absolute;
+  inset: 12% 16%;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(13,13,13,0.46), rgba(13,13,13,0.1) 58%, transparent 74%);
+  box-shadow:
+    inset 0 0 18px rgba(0,0,0,0.48),
+    0 0 calc(18px + (var(--portal-progress) * 44px)) rgba(245,243,236,0.22);
+  opacity: clamp(0.18, calc(var(--portal-progress) * 1.2), 0.86);
+  pointer-events: none;
+}
+
+.hero-portal-tunnel,
+.hero-portal-flood {
+  position: fixed !important;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transform-origin: center center;
+  will-change: opacity, transform;
+}
+
+.hero-portal-tunnel {
+  z-index: 1;
+  background:
+    radial-gradient(circle at 50% 50%, transparent 0%, rgba(13,13,13,0.12) 18%, rgba(13,13,13,0.82) 62%, rgba(13,13,13,0.98) 100%),
+    radial-gradient(circle at 50% 50%, rgba(245,243,236,0.08), transparent 18%);
+  backdrop-filter: blur(2px);
+}
+
+.hero-portal-flood {
+  z-index: 8;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(245,243,236,0.92) 0%, rgba(203,178,153,0.46) 16%, rgba(13,13,13,0.18) 50%, transparent 74%);
+  mix-blend-mode: screen;
+}
+
+.hero-portal-aperture {
+  position: absolute !important;
+  width: clamp(26px, 3.1vw, 58px);
+  aspect-ratio: 1;
+  border-radius: 999px;
+  z-index: 3 !important;
+  pointer-events: none;
+  opacity: 0;
+  background:
+    radial-gradient(circle, transparent 0 30%, rgba(245,243,236,0.78) 37%, rgba(203,178,153,0.38) 52%, transparent 72%);
+  box-shadow:
+    0 0 26px rgba(245,243,236,0.42),
+    0 0 90px rgba(203,178,153,0.28),
+    inset 0 0 18px rgba(0,0,0,0.5);
+  mix-blend-mode: screen;
+  transform-origin: center center;
+  will-change: opacity, transform, filter;
+}
+
+.portal-hero-stage::after {
+  z-index: 30 !important;
+  opacity: clamp(0.18, calc(0.24 + (var(--portal-progress) * 0.66)), 0.94) !important;
+  transition: none !important;
+}
+
+.portal-hero.is-portal-complete .portal-hero-stage {
+  opacity: 0.04 !important;
+  filter: blur(20px) brightness(1.28) !important;
+  transition: opacity 120ms linear, filter 120ms linear;
+}
+
+body.is-mobile-view .portal-hero {
+  min-height: 300svh !important;
+}
+
+body.is-mobile-view .hero-portal-aperture {
+  width: clamp(24px, 8vw, 48px);
+}
