@@ -163,6 +163,15 @@ function speedLabel(kmh) {
   return 'Sprint'
 }
 
+function speedColor(kmh) {
+  // Brand-aligned progression: cooler/dimmer when slow, warmer/brighter when faster.
+  if (kmh == null || kmh < 2) return '#7A6A4A' // <2 km/h: near-stationary
+  if (kmh < 5) return '#8E7A56' // 2-5 km/h: walking
+  if (kmh < 8) return '#A88E5D' // 5-8 km/h: jogging
+  if (kmh < 10) return '#C3A873' // 8-10 km/h: steady run
+  return '#E0C58E' // 10+ km/h: strong pace
+}
+
 function formatMinPerKm(kmh) {
   if (!kmh || kmh <= 0.5) return null
   const minutesPerKm = 60 / kmh
@@ -777,7 +786,7 @@ export default function LiveTrackerPage() {
             [curr.location.lat, curr.location.lng],
           ],
           {
-            color: SITE_COLORS.warm,
+            color: speedColor(kmh),
             weight: 3.5,
             opacity: 0.9,
             lineCap: 'round',
@@ -814,7 +823,7 @@ export default function LiveTrackerPage() {
             [data.location.lat, data.location.lng],
           ],
           {
-            color: SITE_COLORS.warm,
+            color: speedColor(displayKmh),
             weight: 3.5,
             opacity: 0.9,
             lineCap: 'round',
