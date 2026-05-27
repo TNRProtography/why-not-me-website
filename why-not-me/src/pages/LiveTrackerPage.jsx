@@ -482,15 +482,9 @@ export default function LiveTrackerPage() {
       if (!window.L) return false
       const L = window.L
 
-      const center = data?.location
-        ? [data.location.lat, data.location.lng]
-        : DEFAULT_CENTER
-
-      const zoom = data?.location ? 14 : DEFAULT_ZOOM
-
       const map = L.map(mapContainerRef.current, {
-        center,
-        zoom,
+        center: DEFAULT_CENTER,
+        zoom: DEFAULT_ZOOM,
         zoomControl: true,
         attributionControl: true,
       })
@@ -518,7 +512,7 @@ export default function LiveTrackerPage() {
       const timeout = setTimeout(() => clearInterval(interval), 10000)
       return () => { clearInterval(interval); clearTimeout(timeout) }
     }
-  }, [data, basemap])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---- Draw KML course path ----
   useEffect(() => {
@@ -568,7 +562,7 @@ export default function LiveTrackerPage() {
 
   // ---- Update marker + trail when data changes ----
   useEffect(() => {
-    if (!mapRef.current || !window.L) return
+    if (!mapReady || !mapRef.current || !window.L) return
     const L = window.L
     const map = mapRef.current
 
@@ -595,6 +589,9 @@ export default function LiveTrackerPage() {
       } else {
         markerRef.current.setLatLng([lat, lng])
       }
+
+      // Pan to Nicole's position on first data load
+      map.setView([lat, lng], Math.max(map.getZoom(), 14), { animate: true })
     }
 
     // Build live trail from fresh worker history.
@@ -661,7 +658,7 @@ export default function LiveTrackerPage() {
         ).addTo(trailLayerRef.current)
       }
     }
-  }, [data, sortedHistory])
+  }, [mapReady, data, sortedHistory])
 
   // ---- Basemap switch ----
   useEffect(() => {
