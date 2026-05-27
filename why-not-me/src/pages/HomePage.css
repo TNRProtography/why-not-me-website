@@ -27,7 +27,7 @@
   position: absolute;
   inset: -10%; /* Slightly larger than viewport so parallax doesn't show edges */
   background-size: cover;
-  background-position: center;
+  background-position: center 46%;
 }
 .hero-overlay {
   position: absolute;
@@ -104,6 +104,7 @@
   width: 100%;
   aspect-ratio: 3/4;
   object-fit: cover;
+  object-position: 58% 46%;
   filter: brightness(0.9);
   transition: transform 0.6s ease, filter 0.6s ease;
 }
@@ -212,11 +213,17 @@
   width: 100%;
   aspect-ratio: 3/4;
   object-fit: cover;
+  object-position: center;
   filter: brightness(0.75) saturate(0.8);
   cursor: pointer;
   transition: filter 0.5s ease;
 }
 .treatment-images img:hover { filter: brightness(0.95) saturate(1); }
+
+.treatment-images img:nth-child(1) { object-position: 50% 42%; }
+.treatment-images img:nth-child(2) { object-position: 52% 48%; }
+.treatment-images img:nth-child(3) { object-position: 42% 52%; }
+.treatment-images img:nth-child(4) { object-position: 50% 48%; }
 .treatment-text {
   padding: 40px 80px;
   display: flex;
@@ -288,6 +295,7 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center;
   aspect-ratio: 1/1;
   filter: brightness(0.85);
   cursor: pointer;
@@ -303,6 +311,13 @@
   grid-column: span 2;
   aspect-ratio: 2/1;
 }
+
+.photo-grid img:nth-child(1) { object-position: 50% 42%; }
+.photo-grid img:nth-child(2) { object-position: 58% 48%; }
+.photo-grid img:nth-child(3) { object-position: 50% 54%; }
+.photo-grid img:nth-child(4) { object-position: 66% 50%; }
+.photo-grid img:nth-child(5) { object-position: 52% 50%; }
+.photo-grid img:nth-child(6) { object-position: 50% 38%; }
 
 /* ============ QUOTES ============ */
 .quotes-section {
@@ -396,7 +411,7 @@
   position: absolute;
   inset: 0;
   background-size: cover;
-  background-position: center;
+  background-position: 74% center;
   filter: brightness(0.25);
 }
 .marathon-content {
@@ -433,7 +448,7 @@
   position: absolute;
   inset: 0;
   background-size: cover;
-  background-position: center;
+  background-position: center 43%;
   filter: brightness(0.18);
 }
 .connect-inner {
@@ -610,7 +625,7 @@ body.is-mobile-view .hero {
 
 body.is-mobile-view .hero-bg {
   inset: -14%;
-  background-position: center top;
+  background-position: 60% top;
   filter: brightness(0.62) saturate(0.82);
 }
 
@@ -751,6 +766,12 @@ body.is-mobile-view .photo-grid .span-2 {
 body.is-mobile-view .photo-grid img {
   aspect-ratio: 4/5;
 }
+
+body.is-mobile-view .photo-grid img:nth-child(1) { object-position: 50% 40%; }
+body.is-mobile-view .photo-grid img:nth-child(4) { object-position: 70% 50%; }
+body.is-mobile-view .photo-grid img:nth-child(6) { object-position: 50% 34%; }
+body.is-mobile-view .marathon-bg { background-position: 75% center; }
+body.is-mobile-view .connect-bg { background-position: center 40%; }
 
 body.is-mobile-view .quote-block {
   margin-bottom: 46px;

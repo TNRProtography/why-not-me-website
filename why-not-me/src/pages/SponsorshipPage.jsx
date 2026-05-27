@@ -129,7 +129,7 @@ export default function SponsorshipPage() {
         <div style={{
           position: 'absolute', inset: 0,
           backgroundImage: 'url(/images/lores/rain-run.jpg)',
-          backgroundSize: 'cover', backgroundPosition: 'center',
+          backgroundSize: 'cover', backgroundPosition: '52% 44%',
           filter: 'brightness(0.2)',
         }} />
         <div style={{ position: 'relative', zIndex: 2, textAlign: 'center', padding: '0 20px' }}>
@@ -292,7 +292,7 @@ export default function SponsorshipPage() {
         <div style={{
           position: 'absolute', inset: 0,
           backgroundImage: 'url(/images/lores/bridge-back.jpg)',
-          backgroundSize: 'cover', backgroundPosition: 'center',
+          backgroundSize: 'cover', backgroundPosition: '50% 44%',
           filter: 'brightness(0.15)',
         }} />
         <RevealOnScroll>

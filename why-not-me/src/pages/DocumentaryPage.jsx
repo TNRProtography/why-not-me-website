@@ -30,7 +30,7 @@ export default function DocumentaryPage() {
         <div style={{
           position: 'absolute', inset: 0,
           backgroundImage: 'url(/images/lores/autumn-dance.jpg)',
-          backgroundSize: 'cover', backgroundPosition: 'center',
+          backgroundSize: 'cover', backgroundPosition: 'center 48%',
           filter: 'brightness(0.2)', transform: 'scale(1.05)',
         }} />
         <div className="documentary-hero-content" style={{ position: 'relative', zIndex: 2, textAlign: 'center', padding: '0 20px' }}>

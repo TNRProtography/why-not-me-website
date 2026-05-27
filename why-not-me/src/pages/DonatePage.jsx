@@ -26,7 +26,7 @@ export default function DonatePage() {
         <div style={{
           position: 'absolute', inset: 0,
           backgroundImage: 'url(/images/lores/tree-branch.jpg)',
-          backgroundSize: 'cover', backgroundPosition: 'center',
+          backgroundSize: 'cover', backgroundPosition: 'center 22%',
           filter: 'brightness(0.25)',
         }} />
         <div className="donate-hero-content" style={{ position: 'relative', zIndex: 2, textAlign: 'center', padding: '0 20px' }}>

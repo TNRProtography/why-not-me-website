@@ -38,7 +38,7 @@ export default function MediaPage() {
         <div style={{
           position: 'absolute', inset: 0,
           backgroundImage: 'url(/images/lores/coastal-wide.jpg)',
-          backgroundSize: 'cover', backgroundPosition: 'center',
+          backgroundSize: 'cover', backgroundPosition: 'center 42%',
           filter: 'brightness(0.2)',
         }} />
         <div style={{ position: 'relative', zIndex: 2, textAlign: 'center', padding: '0 20px' }}>
