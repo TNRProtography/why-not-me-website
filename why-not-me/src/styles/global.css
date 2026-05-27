@@ -938,3 +938,164 @@ body.is-mobile-view .hero-portal-aperture {
     display: none !important;
   }
 }
+
+/* ============ HEADING PORTAL V2 FIX ============
+   The first section now behaves like an actual pinned title portal rather than
+   a normal page section with animated text. The next section no longer scrolls
+   up underneath the hero before the letter zoom has finished. */
+.portal-hero {
+  --portal-progress: 0;
+  min-height: 285svh !important;
+  overflow: visible !important;
+  background: var(--charcoal);
+  isolation: isolate;
+}
+
+.portal-hero-stage {
+  position: sticky !important;
+  top: 0 !important;
+  height: 100svh !important;
+  min-height: 640px;
+  overflow: hidden !important;
+  z-index: 8 !important;
+  animation: none !important;
+  opacity: 1 !important;
+  transform: none !important;
+  filter: none !important;
+  background: var(--charcoal);
+}
+
+.portal-hero + section {
+  margin-top: 0 !important;
+  position: relative;
+  z-index: 9;
+}
+
+.portal-hero + section::before {
+  height: 22svh;
+  top: -22svh;
+  z-index: 0;
+  background: linear-gradient(180deg, rgba(13,13,13,0), rgba(13,13,13,0.82) 54%, var(--charcoal) 100%);
+}
+
+.portal-hero-stage::after {
+  animation: none !important;
+  opacity: clamp(0.28, calc(0.42 + (var(--portal-progress) * 0.55)), 0.96) !important;
+  background:
+    radial-gradient(circle at 50% 49%, transparent 0%, transparent 18%, rgba(0,0,0,0.18) 42%, rgba(0,0,0,0.68) 100%),
+    linear-gradient(180deg, rgba(0,0,0,0.22), rgba(0,0,0,0.1) 44%, rgba(0,0,0,0.55));
+  mix-blend-mode: multiply;
+}
+
+.portal-hero.is-portal-commit .portal-hero-stage::after {
+  opacity: 0.96 !important;
+}
+
+.portal-hero.is-portal-complete .portal-hero-stage {
+  opacity: 0.02 !important;
+  filter: blur(18px) brightness(1.25) !important;
+  transition: opacity 160ms linear, filter 160ms linear;
+}
+
+.portal-hero.is-portal-complete .hero-portal-tunnel,
+.portal-hero.is-portal-complete .hero-portal-flood,
+.portal-hero.is-portal-complete .hero-portal-aperture {
+  opacity: 0 !important;
+  transition: opacity 120ms linear;
+}
+
+.hero-portal-wrap {
+  z-index: 12 !important;
+  perspective: 1200px;
+}
+
+.hero-portal-title {
+  will-change: transform, opacity, filter, letter-spacing !important;
+  transform-origin: var(--portal-origin-x, 50%) var(--portal-origin-y, 50%);
+}
+
+.hero-portal-title h1,
+.hero-portal-title .hero-title {
+  transform: translateZ(0);
+  text-rendering: geometricPrecision;
+}
+
+.portal-letter-target {
+  color: inherit;
+  transform: translateZ(0);
+}
+
+.portal-letter-target::before {
+  inset: 18% 20% 18%;
+  background:
+    radial-gradient(circle, rgba(7,7,7,0.74) 0%, rgba(13,13,13,0.48) 48%, rgba(203,178,153,0.2) 76%, transparent 100%);
+  box-shadow:
+    inset 0 0 18px rgba(0,0,0,0.72),
+    0 0 28px rgba(245,243,236,0.16),
+    0 0 62px rgba(203,178,153,0.14);
+  opacity: clamp(0.18, calc(var(--portal-progress) * 1.15), 0.82);
+}
+
+.portal-letter-target::after {
+  opacity: clamp(0.12, calc(var(--portal-progress) * 1.65), 0.88);
+  filter: blur(10px);
+}
+
+.hero-portal-tunnel {
+  z-index: 5;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(245,243,236,0.05), rgba(13,13,13,0.42) 40%, rgba(0,0,0,0.93) 100%),
+    repeating-radial-gradient(circle at 50% 50%, rgba(203,178,153,0.08) 0 1px, transparent 1px 12px);
+  backdrop-filter: blur(2px);
+}
+
+.hero-portal-flood {
+  z-index: 13;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(255,250,236,0.88) 0%, rgba(221,202,167,0.42) 16%, rgba(13,13,13,0.35) 54%, transparent 74%);
+}
+
+.hero-portal-aperture {
+  z-index: 11;
+  background:
+    radial-gradient(circle, rgba(255,255,255,0.06) 0 24%, rgba(245,243,236,0.86) 34%, rgba(203,178,153,0.24) 54%, transparent 76%);
+  box-shadow:
+    0 0 32px rgba(245,243,236,0.32),
+    0 0 110px rgba(203,178,153,0.24),
+    0 0 220px rgba(255,255,255,0.12);
+}
+
+.hero-portal-depth {
+  z-index: 3;
+  opacity: clamp(0.52, calc(0.58 + (var(--portal-progress) * 0.34)), 0.9);
+}
+
+body.is-mobile-view .portal-hero {
+  min-height: 245svh !important;
+}
+
+body.is-mobile-view .portal-hero-stage {
+  min-height: 100svh !important;
+  align-items: flex-end;
+  padding-bottom: 104px;
+}
+
+body.is-mobile-view .portal-hero + section {
+  margin-top: 0 !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portal-hero {
+    min-height: 100svh !important;
+  }
+
+  .portal-hero + section {
+    margin-top: 0 !important;
+  }
+
+  .portal-hero-stage {
+    position: relative !important;
+    opacity: 1 !important;
+    filter: none !important;
+  }
+}

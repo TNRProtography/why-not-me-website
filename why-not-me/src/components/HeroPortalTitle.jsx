@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { motion, useMotionTemplate, useReducedMotion, useScroll, useSpring, useTransform } from 'framer-motion'
+import { motion, useMotionTemplate, useMotionValueEvent, useReducedMotion, useScroll, useSpring, useTransform } from 'framer-motion'
 
 function getCompactView() {
   if (typeof window === 'undefined') return false
@@ -101,32 +101,55 @@ export default function HeroPortalTitle({
     offset,
   })
 
+  useMotionValueEvent(scrollYProgress, 'change', (latest) => {
+    const node = targetRef?.current
+    if (!node) return
+
+    const safeProgress = Math.max(0, Math.min(1, latest || 0))
+    node.style.setProperty('--portal-progress', safeProgress.toFixed(4))
+    node.classList.toggle('is-portal-primed', safeProgress > 0.06)
+    node.classList.toggle('is-portal-travelling', safeProgress > 0.24)
+    node.classList.toggle('is-portal-commit', safeProgress > 0.74)
+    node.classList.toggle('is-portal-complete', safeProgress > 0.94)
+  })
+
+  useEffect(() => {
+    const node = targetRef?.current
+    if (!node) return undefined
+
+    node.style.setProperty('--portal-progress', '0')
+    return () => {
+      node.style.removeProperty('--portal-progress')
+      node.classList.remove('is-portal-primed', 'is-portal-travelling', 'is-portal-commit', 'is-portal-complete')
+    }
+  }, [targetRef])
+
   const smoothProgress = useSpring(scrollYProgress, {
-    stiffness: 58,
-    damping: 24,
-    mass: 0.72,
+    stiffness: 82,
+    damping: 28,
+    mass: 0.55,
   })
 
   const requestedScale = compactView ? mobileScale : desktopScale
-  const minimumScale = compactView ? 28 : 46
+  const minimumScale = compactView ? 44 : 72
   const finalScale = Math.max(requestedScale, minimumScale)
-  const finalX = compactView ? portal.x * 0.94 : portal.x
-  const finalY = compactView ? portal.y * 0.9 : portal.y
+  const finalX = compactView ? portal.x * 0.98 : portal.x
+  const finalY = compactView ? portal.y * 0.96 : portal.y
 
   const scale = useTransform(
     smoothProgress,
-    [0, 0.14, 0.34, 0.58, 0.78, 0.94, 1],
-    [1, 1, 1.35, 5.4, 18, finalScale, finalScale * 1.12]
+    [0, 0.12, 0.28, 0.46, 0.64, 0.82, 0.94, 1],
+    [1, 1.02, 1.8, 7.5, 24, finalScale * 0.92, finalScale * 1.08, finalScale * 1.22]
   )
-  const x = useTransform(smoothProgress, [0, 0.18, 0.5, 0.82, 1], [0, 0, finalX * 0.36, finalX, finalX])
-  const y = useTransform(smoothProgress, [0, 0.18, 0.5, 0.82, 1], [0, 0, finalY * 0.36, finalY, finalY])
-  const opacity = useTransform(smoothProgress, [0, 0.84, 0.95, 1], [1, 1, 0.38, 0])
+  const x = useTransform(smoothProgress, [0, 0.18, 0.42, 0.7, 0.9, 1], [0, 0, finalX * 0.18, finalX * 0.72, finalX, finalX])
+  const y = useTransform(smoothProgress, [0, 0.18, 0.42, 0.7, 0.9, 1], [0, 0, finalY * 0.18, finalY * 0.72, finalY, finalY])
+  const opacity = useTransform(smoothProgress, [0, 0.8, 0.92, 0.98, 1], [1, 1, 0.86, 0.22, 0])
   const filter = useTransform(
     smoothProgress,
-    [0, 0.58, 0.78, 0.92, 1],
-    ['blur(0px) brightness(1)', 'blur(0px) brightness(1.08)', 'blur(0px) brightness(1.28)', 'blur(5px) brightness(1.62)', 'blur(24px) brightness(1.95)']
+    [0, 0.5, 0.72, 0.88, 1],
+    ['blur(0px) brightness(1)', 'blur(0px) brightness(1.12)', 'blur(0px) brightness(1.42)', 'blur(7px) brightness(1.86)', 'blur(28px) brightness(2.18)']
   )
-  const letterSpacing = useTransform(smoothProgress, [0, 0.42, 0.82, 1], ['0em', '0.006em', '0.04em', '0.14em'])
+  const letterSpacing = useTransform(smoothProgress, [0, 0.38, 0.72, 1], ['0em', '0.006em', '0.052em', '0.18em'])
   const textShadow = useTransform(
     smoothProgress,
     [0, 0.42, 0.72, 0.92, 1],
@@ -139,19 +162,19 @@ export default function HeroPortalTitle({
     ]
   )
 
-  const apertureX = useTransform(smoothProgress, [0, 0.2, 0.82, 1], [0, 0, finalX, finalX])
-  const apertureY = useTransform(smoothProgress, [0, 0.2, 0.82, 1], [0, 0, finalY, finalY])
-  const apertureScale = useTransform(smoothProgress, [0, 0.34, 0.58, 0.76, 0.92, 1], [0.24, 0.24, 4.8, 18, 56, 104])
-  const apertureOpacity = useTransform(smoothProgress, [0, 0.34, 0.54, 0.84, 0.98, 1], [0, 0, 0.36, 0.9, 0.48, 0])
-  const apertureBlur = useTransform(smoothProgress, [0, 0.62, 0.9, 1], ['blur(7px)', 'blur(11px)', 'blur(20px)', 'blur(32px)'])
+  const apertureX = useTransform(smoothProgress, [0, 0.2, 0.7, 0.92, 1], [0, 0, finalX * 0.72, finalX, finalX])
+  const apertureY = useTransform(smoothProgress, [0, 0.2, 0.7, 0.92, 1], [0, 0, finalY * 0.72, finalY, finalY])
+  const apertureScale = useTransform(smoothProgress, [0, 0.32, 0.52, 0.72, 0.88, 1], [0.18, 0.18, 7.5, 32, 92, 145])
+  const apertureOpacity = useTransform(smoothProgress, [0, 0.28, 0.48, 0.82, 0.98, 1], [0, 0, 0.48, 0.95, 0.52, 0])
+  const apertureBlur = useTransform(smoothProgress, [0, 0.58, 0.86, 1], ['blur(7px)', 'blur(12px)', 'blur(24px)', 'blur(38px)'])
 
-  const tunnelOpacity = useTransform(smoothProgress, [0, 0.4, 0.64, 0.9, 1], [0, 0, 0.48, 0.96, 0])
-  const tunnelScale = useTransform(smoothProgress, [0.42, 1], [0.82, 1.28])
-  const tunnelMaskSize = useTransform(smoothProgress, [0.38, 0.58, 0.78, 0.94, 1], ['0vmax', '3vmax', '16vmax', '64vmax', '118vmax'])
+  const tunnelOpacity = useTransform(smoothProgress, [0, 0.34, 0.58, 0.9, 1], [0, 0, 0.58, 0.98, 0])
+  const tunnelScale = useTransform(smoothProgress, [0.36, 1], [0.78, 1.36])
+  const tunnelMaskSize = useTransform(smoothProgress, [0.34, 0.52, 0.72, 0.9, 1], ['0vmax', '4vmax', '22vmax', '76vmax', '130vmax'])
   const tunnelMask = useMotionTemplate`radial-gradient(circle at 50% 50%, transparent 0vmax, transparent ${tunnelMaskSize}, black calc(${tunnelMaskSize} + 1.4vmax))`
 
-  const floodOpacity = useTransform(smoothProgress, [0, 0.7, 0.86, 0.97, 1], [0, 0, 0.16, 0.68, 0])
-  const floodScale = useTransform(smoothProgress, [0.7, 1], [0.7, 1.35])
+  const floodOpacity = useTransform(smoothProgress, [0, 0.68, 0.84, 0.96, 1], [0, 0, 0.24, 0.82, 0])
+  const floodScale = useTransform(smoothProgress, [0.66, 1], [0.64, 1.48])
 
   if (reduceMotion) {
     return (
