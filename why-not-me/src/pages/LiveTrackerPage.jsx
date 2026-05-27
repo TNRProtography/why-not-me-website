@@ -378,12 +378,12 @@ export default function LiveTrackerPage() {
     }
   }, [])
 
-  // Keep relative received times honest while the page is open.
+  // Keep relative received times honest while the page is open (1s cadence).
   useEffect(() => {
     const tick = () => {
       setNow(Date.now())
     }
-    const interval = setInterval(tick, 5000)
+    const interval = setInterval(tick, 1000)
     return () => clearInterval(interval)
   }, [])
 
@@ -538,7 +538,17 @@ export default function LiveTrackerPage() {
 
   useEffect(() => {
     fetchData({ force: true })
-    const interval = setInterval(() => fetchData(), POLL_INTERVAL)
+    let cancelled = false
+    let timeoutId = null
+
+    const scheduleNextPoll = () => {
+      if (cancelled) return
+      timeoutId = setTimeout(async () => {
+        await fetchData()
+        scheduleNextPoll()
+      }, POLL_INTERVAL)
+    }
+    scheduleNextPoll()
 
     const recover = () => {
       setNow(Date.now())
@@ -558,7 +568,8 @@ export default function LiveTrackerPage() {
     document.addEventListener('visibilitychange', onVisibilityChange)
 
     return () => {
-      clearInterval(interval)
+      cancelled = true
+      if (timeoutId) clearTimeout(timeoutId)
       window.removeEventListener('focus', recover)
       window.removeEventListener('online', recover)
       window.removeEventListener('pageshow', recover)
