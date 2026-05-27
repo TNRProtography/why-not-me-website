@@ -4,6 +4,7 @@ import { useRef } from 'react'
 import PageTransition from '../components/PageTransition'
 import RevealOnScroll from '../components/RevealOnScroll'
 import ScrollZoomFocus from '../components/ScrollZoomFocus'
+import HeroPortalTitle from '../components/HeroPortalTitle'
 import './MarathonPage.css'
 
 const historyItems = [
@@ -58,47 +59,54 @@ export default function MarathonPage() {
   const heroY = useTransform(scrollYProgress, [0, 1], ['0%', '26%'])
   const heroScale = useTransform(scrollYProgress, [0, 1], [1.04, 1.16])
   const titleY = useTransform(scrollYProgress, [0, 1], ['0%', '-18%'])
-  const titleOpacity = useTransform(scrollYProgress, [0, 0.75], [1, 0])
+  const heroSupportOpacity = useTransform(scrollYProgress, [0, 0.28, 0.58], [1, 0.85, 0])
+  const heroSupportY = useTransform(scrollYProgress, [0, 0.58], ['0%', '20%'])
 
   return (
     <PageTransition>
-      <section className="marathon-page-hero" ref={heroRef}>
-        <motion.div
-          className="marathon-page-hero-bg"
-          style={{
-            backgroundImage: 'url(/images/lores/coastal-run-2.jpg)',
-            y: heroY,
-            scale: heroScale,
-          }}
-        />
-        <div className="marathon-page-hero-overlay" />
-        <motion.div className="marathon-page-hero-content" style={{ y: titleY, opacity: titleOpacity }}>
-          <motion.p
-            className="section-label"
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.9, delay: 0.25, ease: [0.19, 1, 0.22, 1] }}
-          >
-            Queenstown Marathon
-          </motion.p>
-          <ScrollZoomFocus className="marathon-hero-title-focus" scaleTo={2.32} yTo={-105} blurTo={15} opacityTo={0} offset={['start 58%', 'end top']}>
-            <motion.h1
-              initial={{ opacity: 0, y: 42, filter: 'blur(12px)' }}
-              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-              transition={{ duration: 1.15, delay: 0.42, ease: [0.19, 1, 0.22, 1] }}
+      <section className="marathon-page-hero portal-hero" ref={heroRef}>
+        <div className="portal-hero-stage">
+          <motion.div
+            className="marathon-page-hero-bg"
+            style={{
+              backgroundImage: 'url(/images/lores/coastal-run-2.jpg)',
+              y: heroY,
+              scale: heroScale,
+            }}
+          />
+          <div className="marathon-page-hero-overlay" />
+          <div className="hero-portal-depth" aria-hidden="true" />
+          <motion.div className="marathon-page-hero-content" style={{ y: titleY }}>
+            <motion.div style={{ opacity: heroSupportOpacity, y: heroSupportY }}>
+              <motion.p
+                className="section-label"
+                initial={{ opacity: 0, y: 24 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.9, delay: 0.25, ease: [0.19, 1, 0.22, 1] }}
+              >
+                Queenstown Marathon
+              </motion.p>
+            </motion.div>
+            <HeroPortalTitle targetRef={heroRef} className="marathon-hero-title-focus" desktopScale={16.5} mobileScale={9.8}>
+              <motion.h1
+                initial={{ opacity: 0, y: 42, filter: 'blur(12px)' }}
+                animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                transition={{ duration: 1.15, delay: 0.42, ease: [0.19, 1, 0.22, 1] }}
+              >
+                Why this finish line m<span className="portal-letter-target" data-portal-letter>a</span>tters.
+              </motion.h1>
+            </HeroPortalTitle>
+            <motion.p
+              className="marathon-page-hero-quote"
+              style={{ opacity: heroSupportOpacity, y: heroSupportY }}
+              initial={{ opacity: 0, y: 22 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 1, delay: 0.75, ease: [0.19, 1, 0.22, 1] }}
             >
-              Why this finish line matters.
-            </motion.h1>
-          </ScrollZoomFocus>
-          <motion.p
-            className="marathon-page-hero-quote"
-            initial={{ opacity: 0, y: 22 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1, delay: 0.75, ease: [0.19, 1, 0.22, 1] }}
-          >
-            &ldquo;Running 42Ks is easier than going through radiation and chemo.&rdquo;
-          </motion.p>
-        </motion.div>
+              &ldquo;Running 42Ks is easier than going through radiation and chemo.&rdquo;
+            </motion.p>
+          </motion.div>
+        </div>
       </section>
 
       <section className="marathon-intro-section">

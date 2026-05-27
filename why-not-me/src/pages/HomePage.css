@@ -833,3 +833,59 @@ body.is-mobile-view .social-links {
     grid-template-columns: 1fr;
   }
 }
+
+/* ============ HERO LETTER PORTAL OVERRIDES ============ */
+.hero.portal-hero {
+  height: auto;
+  min-height: 160svh;
+  overflow: visible;
+  display: block;
+  align-items: initial;
+  justify-content: initial;
+}
+
+.hero.portal-hero .portal-hero-stage {
+  min-height: 680px;
+}
+
+.hero.portal-hero .hero-bg,
+.hero.portal-hero .hero-overlay,
+.hero.portal-hero .hero-light {
+  position: absolute;
+}
+
+.hero.portal-hero .hero-content {
+  width: min(1240px, 100%);
+  margin: 0 auto;
+}
+
+.hero.portal-hero .hero-scroll-indicator {
+  position: absolute;
+}
+
+body.is-mobile-view .hero.portal-hero {
+  min-height: 146svh !important;
+}
+
+body.is-mobile-view .hero.portal-hero .portal-hero-stage {
+  min-height: 100svh;
+  align-items: flex-end;
+  padding-bottom: 106px;
+}
+
+body.is-mobile-view .hero.portal-hero .hero-content {
+  text-align: left;
+  padding: 0;
+}
+
+body.is-mobile-view .hero.portal-hero .hero-title {
+  font-size: clamp(62px, 20vw, 108px);
+  line-height: 0.9;
+}
+
+body.is-mobile-view .hero.portal-hero .hero-subtitle,
+body.is-mobile-view .hero.portal-hero .hero-tagline {
+  max-width: 360px;
+  margin-left: 0;
+  margin-right: 0;
+}

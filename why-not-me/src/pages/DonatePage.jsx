@@ -11,34 +11,38 @@
  * TO UPDATE LINKS: Edit the href values on the <a> tags below.
  * ============================================================
  */
+import { useRef } from 'react'
 import PageTransition from '../components/PageTransition'
 import RevealOnScroll from '../components/RevealOnScroll'
 import ScrollZoomFocus from '../components/ScrollZoomFocus'
+import HeroPortalTitle from '../components/HeroPortalTitle'
 
 export default function DonatePage() {
+  const heroRef = useRef(null)
+
   return (
     <PageTransition>
       {/* Hero */}
-      <section className="donate-hero" style={{
-        height: '50vh', position: 'relative', overflow: 'hidden',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}>
-        <div style={{
-          position: 'absolute', inset: 0,
-          backgroundImage: 'url(/images/lores/tree-branch.jpg)',
-          backgroundSize: 'cover', backgroundPosition: 'center 22%',
-          filter: 'brightness(0.25)',
-        }} />
-        <div className="donate-hero-content" style={{ position: 'relative', zIndex: 2, textAlign: 'center', padding: '0 20px' }}>
-          <p className="section-label">Support the Cause</p>
-          <ScrollZoomFocus scaleTo={2} yTo={-84} blurTo={12} opacityTo={0} offset={['start 58%', 'end top']}>
-            <h1 style={{ fontFamily: 'var(--font-hero)', fontSize: 'clamp(40px, 8vw, 80px)', lineHeight: 1 }}>
-              Every dollar counts.
-            </h1>
-          </ScrollZoomFocus>
-          <p style={{ marginTop: 15, color: 'var(--warm)', fontSize: 15, maxWidth: 550, marginLeft: 'auto', marginRight: 'auto' }}>
-            All proceeds support Brain Tumour Support NZ, the charity Nicole has championed since 2022.
-          </p>
+      <section className="donate-hero portal-hero" ref={heroRef}>
+        <div className="portal-hero-stage">
+          <div style={{
+            position: 'absolute', inset: 0,
+            backgroundImage: 'url(/images/lores/tree-branch.jpg)',
+            backgroundSize: 'cover', backgroundPosition: 'center 22%',
+            filter: 'brightness(0.25)',
+          }} />
+          <div className="hero-portal-depth" aria-hidden="true" />
+          <div className="donate-hero-content" style={{ position: 'relative', zIndex: 2, textAlign: 'center', padding: '0 20px' }}>
+            <p className="section-label">Support the Cause</p>
+            <HeroPortalTitle targetRef={heroRef} desktopScale={15.5} mobileScale={9.1}>
+              <h1 style={{ fontFamily: 'var(--font-hero)', fontSize: 'clamp(40px, 8vw, 80px)', lineHeight: 1 }}>
+                Every d<span className="portal-letter-target" data-portal-letter>o</span>llar counts.
+              </h1>
+            </HeroPortalTitle>
+            <p style={{ marginTop: 15, color: 'var(--warm)', fontSize: 15, maxWidth: 550, marginLeft: 'auto', marginRight: 'auto' }}>
+              All proceeds support Brain Tumour Support NZ, the charity Nicole has championed since 2022.
+            </p>
+          </div>
         </div>
       </section>
 

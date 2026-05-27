@@ -620,3 +620,172 @@ body.is-mobile-view .scroll-zoom-focus[data-origin='left'],
 body.is-mobile-view .scroll-zoom-focus[data-origin='right'] {
   transform-origin: center center;
 }
+
+/* ============ PAGE-OPENING LETTER PORTAL ============ */
+.portal-hero {
+  position: relative;
+  min-height: 150svh;
+  overflow: visible;
+  padding: 0 !important;
+  display: block !important;
+  isolation: isolate;
+}
+
+.portal-hero-stage {
+  position: sticky;
+  top: 0;
+  width: 100%;
+  height: 100svh;
+  min-height: 640px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  isolation: isolate;
+}
+
+.hero-portal-wrap {
+  position: relative;
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  z-index: 4;
+  pointer-events: none;
+  transform-style: preserve-3d;
+}
+
+.hero-portal-title {
+  position: relative;
+  display: block;
+  width: 100%;
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+  will-change: transform, opacity, filter;
+  z-index: 2;
+}
+
+.hero-portal-title h1,
+.hero-portal-title .hero-title {
+  position: relative;
+  display: inline-block;
+  max-width: min(1180px, 92vw);
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+.portal-letter-target {
+  position: relative;
+  display: inline-block;
+  transform-style: preserve-3d;
+}
+
+.portal-letter-target::after {
+  content: '';
+  position: absolute;
+  inset: 28% 22% 24%;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(245,243,236,0.2), rgba(245,243,236,0) 66%);
+  opacity: 0.2;
+  filter: blur(8px);
+  pointer-events: none;
+}
+
+.hero-portal-glow {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(44vw, 520px);
+  aspect-ratio: 1;
+  margin-left: calc(min(44vw, 520px) / -2);
+  margin-top: calc(min(44vw, 520px) / -2);
+  border-radius: 999px;
+  background:
+    radial-gradient(circle, rgba(245,243,236,0.22) 0%, rgba(203,178,153,0.14) 22%, rgba(168,142,93,0.05) 44%, transparent 68%);
+  filter: blur(16px);
+  mix-blend-mode: screen;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.hero-portal-depth {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 50% 49%, rgba(245,243,236,0.08), transparent 18%),
+    radial-gradient(circle at 50% 52%, transparent 0%, transparent 34%, rgba(0,0,0,0.16) 58%, rgba(0,0,0,0.54) 100%);
+  mix-blend-mode: screen;
+  opacity: 0.64;
+}
+
+.documentary-hero.portal-hero,
+.donate-hero.portal-hero {
+  height: auto !important;
+  min-height: 145svh !important;
+}
+
+.documentary-hero.portal-hero .portal-hero-stage,
+.donate-hero.portal-hero .portal-hero-stage {
+  min-height: 560px;
+}
+
+.documentary-hero-content,
+.donate-hero-content {
+  width: min(1040px, 100%);
+}
+
+.documentary-hero-content > .section-label,
+.donate-hero-content > .section-label {
+  position: relative;
+  z-index: 5;
+}
+
+body.is-mobile-view .portal-hero {
+  min-height: 142svh !important;
+}
+
+body.is-mobile-view .portal-hero-stage {
+  min-height: 100svh;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0 22px 104px;
+}
+
+body.is-mobile-view .hero-portal-title h1,
+body.is-mobile-view .hero-portal-title .hero-title {
+  max-width: 100%;
+}
+
+body.is-mobile-view .documentary-hero.portal-hero,
+body.is-mobile-view .donate-hero.portal-hero {
+  min-height: 140svh !important;
+  height: auto !important;
+  padding: 0 !important;
+}
+
+body.is-mobile-view .documentary-hero.portal-hero .portal-hero-stage,
+body.is-mobile-view .donate-hero.portal-hero .portal-hero-stage {
+  padding-top: 0 !important;
+  padding-bottom: 98px !important;
+  align-items: flex-end !important;
+}
+
+body.is-mobile-view .documentary-hero-content,
+body.is-mobile-view .donate-hero-content {
+  padding: 0 !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portal-hero,
+  .documentary-hero.portal-hero,
+  .donate-hero.portal-hero {
+    min-height: 100svh !important;
+  }
+
+  .portal-hero-stage {
+    position: relative;
+    min-height: 100svh;
+  }
+}

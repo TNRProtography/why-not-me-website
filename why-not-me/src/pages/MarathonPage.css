@@ -755,3 +755,45 @@ body.is-mobile-view .marathon-cta-buttons {
     font-size: 18px;
   }
 }
+
+/* ============ HERO LETTER PORTAL OVERRIDES ============ */
+.marathon-page-hero.portal-hero {
+  height: auto;
+  min-height: 160svh;
+  overflow: visible;
+  display: block;
+  align-items: initial;
+  justify-content: initial;
+  text-align: center;
+}
+
+.marathon-page-hero.portal-hero .portal-hero-stage {
+  min-height: 720px;
+}
+
+.marathon-page-hero.portal-hero .marathon-page-hero-bg,
+.marathon-page-hero.portal-hero .marathon-page-hero-overlay {
+  position: absolute;
+}
+
+.marathon-page-hero.portal-hero .marathon-page-hero-content {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+}
+
+body.is-mobile-view .marathon-page-hero.portal-hero {
+  min-height: 146svh !important;
+  padding: 0 !important;
+}
+
+body.is-mobile-view .marathon-page-hero.portal-hero .portal-hero-stage {
+  min-height: 100svh;
+  align-items: flex-end;
+  padding: 0 22px 110px;
+}
+
+body.is-mobile-view .marathon-page-hero.portal-hero .marathon-page-hero-content {
+  width: 100%;
+  padding: 0;
+  text-align: left;
+}

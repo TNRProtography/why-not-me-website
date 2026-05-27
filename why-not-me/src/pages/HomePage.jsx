@@ -31,6 +31,7 @@ import { motion, useScroll, useTransform } from 'framer-motion'
 import PageTransition from '../components/PageTransition'
 import RevealOnScroll from '../components/RevealOnScroll'
 import ScrollZoomFocus from '../components/ScrollZoomFocus'
+import HeroPortalTitle from '../components/HeroPortalTitle'
 import Lightbox from '../components/Lightbox'
 import './HomePage.css'
 
@@ -45,60 +46,66 @@ export default function HomePage() {
   })
   const heroY = useTransform(scrollYProgress, [0, 1], ['0%', '30%'])
   const heroScale = useTransform(scrollYProgress, [0, 1], [1, 1.1])
-  const heroOpacity = useTransform(scrollYProgress, [0, 0.8], [1, 0])
+  const heroSupportOpacity = useTransform(scrollYProgress, [0, 0.26, 0.56], [1, 0.82, 0])
+  const heroSupportY = useTransform(scrollYProgress, [0, 0.56], ['0%', '22%'])
 
   return (
     <PageTransition>
       <Lightbox src={lightbox} onClose={() => setLightbox(null)} />
 
       {/* ========== 1. HERO ========== */}
-      <section className="hero" ref={heroRef}>
-        <motion.div
-          className="hero-bg"
-          style={{
-            backgroundImage: 'url(/images/lores/hero-running-coast.jpg)',
-            y: heroY,
-            scale: heroScale,
-          }}
-        />
-        <div className="hero-overlay" />
-        <div className="hero-light" />
-        <motion.div className="hero-content" style={{ opacity: heroOpacity }}>
-          <ScrollZoomFocus className="hero-title-scroll-focus" scaleTo={2.55} yTo={-110} blurTo={16} opacityTo={0} offset={['start 58%', 'end top']}>
-            <motion.h1
-              className="hero-title"
-              initial={{ opacity: 0, y: 40 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 1, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
-            >
-              Why Not Me?
-            </motion.h1>
-          </ScrollZoomFocus>
-          <motion.p
-            className="hero-subtitle"
+      <section className="hero portal-hero" ref={heroRef}>
+        <div className="portal-hero-stage">
+          <motion.div
+            className="hero-bg"
+            style={{
+              backgroundImage: 'url(/images/lores/hero-running-coast.jpg)',
+              y: heroY,
+              scale: heroScale,
+            }}
+          />
+          <div className="hero-overlay" />
+          <div className="hero-light" />
+          <div className="hero-portal-depth" aria-hidden="true" />
+          <motion.div className="hero-content">
+            <HeroPortalTitle targetRef={heroRef} className="hero-title-scroll-focus" desktopScale={18} mobileScale={10.5}>
+              <motion.h1
+                className="hero-title"
+                initial={{ opacity: 0, y: 40 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 1, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+              >
+                Why N<span className="portal-letter-target" data-portal-letter>o</span>t Me?
+              </motion.h1>
+            </HeroPortalTitle>
+            <motion.div style={{ opacity: heroSupportOpacity, y: heroSupportY }}>
+              <motion.p
+                className="hero-subtitle"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 1, delay: 0.7 }}
+              >
+                Nicole White &middot; Brain Tumour Survivor
+              </motion.p>
+              <motion.p
+                className="hero-tagline"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 1, delay: 1 }}
+              >
+                "Follow my journey as my legs get stronger and my hair gets longer."
+              </motion.p>
+            </motion.div>
+          </motion.div>
+          <motion.div
+            className="hero-scroll-indicator"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 1, delay: 0.7 }}
+            transition={{ delay: 1.5 }}
           >
-            Nicole White &middot; Brain Tumour Survivor
-          </motion.p>
-          <motion.p
-            className="hero-tagline"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1, delay: 1 }}
-          >
-            "Follow my journey as my legs get stronger and my hair gets longer."
-          </motion.p>
-        </motion.div>
-        <motion.div
-          className="hero-scroll-indicator"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.5 }}
-        >
-          <span />
-        </motion.div>
+            <span />
+          </motion.div>
+        </div>
       </section>
 
       {/* ========== 2. NICOLE'S STORY ========== */}

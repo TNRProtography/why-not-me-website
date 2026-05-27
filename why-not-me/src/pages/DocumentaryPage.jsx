@@ -15,36 +15,40 @@
  * ============================================================
  */
 import { Link } from 'react-router-dom'
+import { useRef } from 'react'
 import PageTransition from '../components/PageTransition'
 import RevealOnScroll from '../components/RevealOnScroll'
 import ScrollZoomFocus from '../components/ScrollZoomFocus'
+import HeroPortalTitle from '../components/HeroPortalTitle'
 
 export default function DocumentaryPage() {
+  const heroRef = useRef(null)
+
   return (
     <PageTransition>
       {/* Hero banner */}
-      <section className="documentary-hero" style={{
-        height: '60vh', position: 'relative', overflow: 'hidden',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}>
-        <div style={{
-          position: 'absolute', inset: 0,
-          backgroundImage: 'url(/images/lores/autumn-dance.jpg)',
-          backgroundSize: 'cover', backgroundPosition: 'center 48%',
-          filter: 'brightness(0.2)', transform: 'scale(1.05)',
-        }} />
-        <div className="documentary-hero-content" style={{ position: 'relative', zIndex: 2, textAlign: 'center', padding: '0 20px' }}>
-          <p className="section-label">The Documentary</p>
-          <ScrollZoomFocus scaleTo={2.15} yTo={-94} blurTo={14} opacityTo={0} offset={['start 58%', 'end top']}>
-            <h1 style={{
-              fontFamily: 'var(--font-hero)',
-              fontSize: 'clamp(40px, 8vw, 100px)',
-              lineHeight: 1,
-            }}>A Little Bit of Vengeance.</h1>
-          </ScrollZoomFocus>
-          <p style={{ marginTop: 15, color: 'var(--warm)', fontSize: 14, letterSpacing: 2 }}>
-            RELEASED MAY 22, 2026
-          </p>
+      <section className="documentary-hero portal-hero" ref={heroRef}>
+        <div className="portal-hero-stage">
+          <div style={{
+            position: 'absolute', inset: 0,
+            backgroundImage: 'url(/images/lores/autumn-dance.jpg)',
+            backgroundSize: 'cover', backgroundPosition: 'center 48%',
+            filter: 'brightness(0.2)', transform: 'scale(1.05)',
+          }} />
+          <div className="hero-portal-depth" aria-hidden="true" />
+          <div className="documentary-hero-content" style={{ position: 'relative', zIndex: 2, textAlign: 'center', padding: '0 20px' }}>
+            <p className="section-label">The Documentary</p>
+            <HeroPortalTitle targetRef={heroRef} desktopScale={16.5} mobileScale={9.4}>
+              <h1 style={{
+                fontFamily: 'var(--font-hero)',
+                fontSize: 'clamp(40px, 8vw, 100px)',
+                lineHeight: 1,
+              }}>A Little Bit <span className="portal-letter-target" data-portal-letter>o</span>f Vengeance.</h1>
+            </HeroPortalTitle>
+            <p style={{ marginTop: 15, color: 'var(--warm)', fontSize: 14, letterSpacing: 2 }}>
+              RELEASED MAY 22, 2026
+            </p>
+          </div>
         </div>
       </section>
 
