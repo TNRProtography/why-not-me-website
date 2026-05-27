@@ -277,8 +277,7 @@ export default function TrailElevationExplorer({ history = [] }) {
       const config = BASEMAPS[basemap]
       tileLayerRef.current = L.tileLayer(config.url, {
         attribution: config.attribution,
-        maxZoom: config.maxZoom,
-        keepBuffer: 3,
+        maxZoom: config.maxZoom || 19,
       }).addTo(map)
       currentBasemapRef.current = basemap
 
@@ -336,10 +335,15 @@ export default function TrailElevationExplorer({ history = [] }) {
     // Add new tile layer
     tileLayerRef.current = L.tileLayer(config.url, {
       attribution: config.attribution,
-      maxZoom: config.maxZoom,
-      keepBuffer: 3,
+      maxZoom: config.maxZoom || 19,
     }).addTo(map)
     currentBasemapRef.current = basemap
+
+    // Force Leaflet to load tiles at current view
+    map.invalidateSize()
+    const center = map.getCenter()
+    const zoom = map.getZoom()
+    map.setView(center, zoom, { animate: false })
 
     // Update container class for CSS filter overrides
     const el = mapContainerRef.current
