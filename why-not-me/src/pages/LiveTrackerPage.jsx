@@ -4,6 +4,7 @@ import PageTransition from '../components/PageTransition'
 import './LiveTrackerPage.css'
 
 const API_BASE = 'https://marathon-tracking-proxy.why-not-me-nicole-white.workers.dev'
+const API_ENDPOINT = `${API_BASE}/live.json`
 const POLL_INTERVAL = 10000
 const KML_ROUTE_URL = '/data/queenstown-marathon.kml'
 
@@ -418,16 +419,19 @@ export default function LiveTrackerPage() {
 
     try {
       const cacheBust = `${Date.now()}-${Math.random().toString(36).slice(2)}`
-      const res = await fetch(`${API_BASE}/api/state?history=1&_=${cacheBust}`, {
+      const res = await fetch(`${API_ENDPOINT}?_=${cacheBust}`, {
         method: 'GET',
         cache: 'no-store',
         signal: controller.signal,
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const json = await res.json()
+      const payload = await res.json()
+      const latest = payload?.latest && typeof payload.latest === 'object' ? payload.latest : null
+      const normalizedData = latest
+      const normalizedHistory = Array.isArray(payload?.history) ? payload.history : []
 
-      if (json.status === 'waiting') {
-        setData(json)
+      if (payload?.status === 'waiting' || !normalizedData) {
+        setData(null)
         setHistory([])
         setApiStatus('waiting')
         setTrackingStatus('waiting')
@@ -437,7 +441,7 @@ export default function LiveTrackerPage() {
       }
 
       // Detect whether this is genuinely new GPS data
-      const incomingGpsTimestamp = json.gpsTimestamp || null
+      const incomingGpsTimestamp = normalizedData?.gpsTimestamp || normalizedData?.time || null
       const previousGpsTimestamp = lastGpsTimestampRef.current
 
       const isNewData = incomingGpsTimestamp && incomingGpsTimestamp !== previousGpsTimestamp
@@ -460,8 +464,8 @@ export default function LiveTrackerPage() {
         // else keep current status
       }
 
-      setData(json)
-      setHistory(Array.isArray(json.history) ? json.history : [])
+      setData(normalizedData)
+      setHistory(normalizedHistory)
       setApiStatus('live')
       setError(null)
       setNow(Date.now())
