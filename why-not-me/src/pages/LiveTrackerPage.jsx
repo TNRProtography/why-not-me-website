@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import PageTransition from '../components/PageTransition'
 import './LiveTrackerPage.css'
 
-const API_BASE = 'https://why-not-me-live-tracker.why-not-me-nicole-white.workers.dev'
+const API_BASE = 'https://marathon-tracking-proxy.why-not-me-nicole-white.workers.dev'
 const POLL_INTERVAL = 10000
 const KML_ROUTE_URL = '/data/queenstown-marathon.kml'
 
