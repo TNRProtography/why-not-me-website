@@ -177,7 +177,7 @@ export default function TrailElevationExplorer({ history = [] }) {
   const [mapReady, setMapReady] = useState(false)
   const mapContainerRef = useRef(null)
   const mapRef = useRef(null)
-  const tileLayerRef = useRef(null)
+  const tileLayersRef = useRef({})
   const currentBasemapRef = useRef(null)
   const routeLayerRef = useRef(null)
   const mapInitRef = useRef(false)
@@ -275,10 +275,16 @@ export default function TrailElevationExplorer({ history = [] }) {
       })
 
       const config = BASEMAPS[basemap]
-      tileLayerRef.current = L.tileLayer(config.url, {
-        attribution: config.attribution,
-        maxZoom: config.maxZoom || 19,
-      }).addTo(map)
+
+      // Pre-create all tile layers, show only the active one
+      Object.entries(BASEMAPS).forEach(([key, cfg]) => {
+        const layer = L.tileLayer(cfg.url, {
+          attribution: cfg.attribution,
+          maxZoom: cfg.maxZoom || 19,
+        }).addTo(map)
+        if (key !== basemap) layer.setOpacity(0)
+        tileLayersRef.current[key] = layer
+      })
       currentBasemapRef.current = basemap
 
       routeLayerRef.current = L.layerGroup().addTo(map)
@@ -310,7 +316,7 @@ export default function TrailElevationExplorer({ history = [] }) {
       }
       mapRef.current = null
       mapInitRef.current = false
-      tileLayerRef.current = null
+      tileLayersRef.current = {}
       currentBasemapRef.current = null
       routeLayerRef.current = null
       replayTrailRef.current = null
@@ -323,33 +329,17 @@ export default function TrailElevationExplorer({ history = [] }) {
     if (!mapRef.current || !window.L) return
     if (currentBasemapRef.current === basemap) return
 
-    const L = window.L
-    const map = mapRef.current
-    const config = BASEMAPS[basemap]
-
-    // Remove old tile layer
-    if (tileLayerRef.current && map.hasLayer(tileLayerRef.current)) {
-      map.removeLayer(tileLayerRef.current)
-    }
-
-    // Add new tile layer
-    tileLayerRef.current = L.tileLayer(config.url, {
-      attribution: config.attribution,
-      maxZoom: config.maxZoom || 19,
-    }).addTo(map)
+    // Hide all layers, show the selected one
+    Object.entries(tileLayersRef.current).forEach(([key, layer]) => {
+      layer.setOpacity(key === basemap ? 1 : 0)
+    })
     currentBasemapRef.current = basemap
-
-    // Force Leaflet to load tiles at current view
-    map.invalidateSize()
-    const center = map.getCenter()
-    const zoom = map.getZoom()
-    map.setView(center, zoom, { animate: false })
 
     // Update container class for CSS filter overrides
     const el = mapContainerRef.current
     if (el) {
       Object.values(BASEMAPS).forEach(({ className }) => el.classList.remove(className))
-      el.classList.add(config.className)
+      el.classList.add(BASEMAPS[basemap].className)
     }
   }, [basemap])
 
