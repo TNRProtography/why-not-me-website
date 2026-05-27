@@ -950,3 +950,51 @@ body.is-mobile-view .elevation-chart {
   border-radius: 2px;
   background: linear-gradient(90deg, rgb(85,120,100), rgb(165,170,120), rgb(245,220,140));
 }
+
+/* ============ TRACKING ALERT ============ */
+
+.tracking-alert {
+  position: absolute;
+  top: 50px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  border-radius: 8px;
+  backdrop-filter: blur(16px);
+  font-family: 'Montserrat', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  max-width: 90%;
+  animation: alertSlideIn 0.4s ease-out;
+}
+
+.tracking-alert.stale {
+  background: rgba(180, 140, 60, 0.2);
+  border: 1px solid rgba(180, 140, 60, 0.35);
+  color: #D4A84A;
+}
+
+.tracking-alert.dead {
+  background: rgba(180, 60, 60, 0.2);
+  border: 1px solid rgba(180, 60, 60, 0.35);
+  color: #D46A4A;
+}
+
+.tracking-alert-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.tracking-alert-text {
+  line-height: 1.4;
+}
+
+@keyframes alertSlideIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}

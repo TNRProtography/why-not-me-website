@@ -4,7 +4,7 @@ import PageTransition from '../components/PageTransition'
 import './LiveTrackerPage.css'
 
 const API_BASE = 'https://why-not-me-live-tracker.why-not-me-nicole-white.workers.dev'
-const POLL_INTERVAL = 8000
+const POLL_INTERVAL = 10000
 const KML_ROUTE_URL = '/data/queenstown-marathon.kml'
 
 // Queenstown Marathon start area — default when no tracker data
@@ -336,6 +336,10 @@ export default function LiveTrackerPage() {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [now, setNow] = useState(Date.now())
   const [elevHoverIdx, setElevHoverIdx] = useState(null)
+  const hasInitialPanRef = useRef(false)
+  const lastGpsTimestampRef = useRef(null)
+  const lastNewDataTimeRef = useRef(null)
+  const [trackingStatus, setTrackingStatus] = useState('waiting') // 'live' | 'stale' | 'dead' | 'waiting'
 
   const routeLatLngs = useMemo(() => kmlTrackPath.map(point => [point.lat, point.lng]), [kmlTrackPath])
   const sortedHistory = useMemo(() => sortHistory(history), [history])
@@ -384,14 +388,22 @@ export default function LiveTrackerPage() {
     }
   }, [])
 
-  // Keep relative received times honest while the page is open.
+  // Keep relative received times and tracking status honest while the page is open.
   useEffect(() => {
-    const tick = () => setNow(Date.now())
-    const interval = setInterval(tick, 15000)
+    const tick = () => {
+      setNow(Date.now())
+      // Update tracking status based on time since last new data
+      const timeSinceNew = lastNewDataTimeRef.current ? Date.now() - lastNewDataTimeRef.current : null
+      if (timeSinceNew != null) {
+        if (timeSinceNew > 120000) setTrackingStatus('dead')
+        else if (timeSinceNew > 60000) setTrackingStatus('stale')
+      }
+    }
+    const interval = setInterval(tick, 5000)
     return () => clearInterval(interval)
   }, [])
 
-  // ---- Data fetching ----
+  // ---- Data fetching (pull every 10s, detect new vs stale vs dead) ----
   const fetchData = useCallback(async ({ force = false } = {}) => {
     if (fetchInFlightRef.current && !force) return
     if (force && fetchControllerRef.current) fetchControllerRef.current.abort()
@@ -402,11 +414,9 @@ export default function LiveTrackerPage() {
     fetchInFlightRef.current = true
     setIsRefreshing(true)
 
-    // Hard timeout — if the request hangs, abort after 12 seconds
     const timeoutId = setTimeout(() => controller.abort(), 12000)
 
     try {
-      // Double cache-bust: query param + unique header to defeat CDN/edge/browser caches
       const cacheBust = `${Date.now()}-${Math.random().toString(36).slice(2)}`
       const res = await fetch(`${API_BASE}/api/state?history=1&_=${cacheBust}`, {
         method: 'GET',
@@ -416,9 +426,43 @@ export default function LiveTrackerPage() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const json = await res.json()
 
+      if (json.status === 'waiting') {
+        setData(json)
+        setHistory([])
+        setApiStatus('waiting')
+        setTrackingStatus('waiting')
+        setError(null)
+        setNow(Date.now())
+        return
+      }
+
+      // Detect whether this is genuinely new GPS data
+      const incomingGpsTimestamp = json.gpsTimestamp || null
+      const previousGpsTimestamp = lastGpsTimestampRef.current
+
+      const isNewData = incomingGpsTimestamp && incomingGpsTimestamp !== previousGpsTimestamp
+
+      if (isNewData) {
+        lastGpsTimestampRef.current = incomingGpsTimestamp
+        lastNewDataTimeRef.current = Date.now()
+        setTrackingStatus('live')
+      } else {
+        // Same GPS timestamp — phone hasn't sent a new location
+        const timeSinceLastNew = lastNewDataTimeRef.current
+          ? Date.now() - lastNewDataTimeRef.current
+          : null
+
+        if (timeSinceLastNew != null && timeSinceLastNew > 120000) {
+          setTrackingStatus('dead') // 2+ minutes: tracking has stopped
+        } else if (timeSinceLastNew != null && timeSinceLastNew > 60000) {
+          setTrackingStatus('stale') // 1+ minute: something might be wrong
+        }
+        // else keep current status
+      }
+
       setData(json)
       setHistory(Array.isArray(json.history) ? json.history : [])
-      setApiStatus(json.status === 'waiting' ? 'waiting' : 'live')
+      setApiStatus('live')
       setError(null)
       setNow(Date.now())
     } catch (err) {
@@ -638,8 +682,11 @@ export default function LiveTrackerPage() {
         markerRef.current.setLatLng([lat, lng])
       }
 
-      // Pan to Nicole's position on first data load
-      map.setView([lat, lng], Math.max(map.getZoom(), 14), { animate: true })
+      // Only pan to Nicole's position on the very first data load
+      if (!hasInitialPanRef.current) {
+        map.setView([lat, lng], Math.max(map.getZoom(), 14), { animate: true })
+        hasInitialPanRef.current = true
+      }
     }
 
     // Build live trail from fresh worker history.
@@ -911,22 +958,18 @@ export default function LiveTrackerPage() {
 
   // ---- Derived display values ----
   const isWaiting = apiStatus === 'waiting' && !lastReceivedAt
-  const signalClass = lastReceivedAgeSeconds == null
-    ? 'offline'
-    : lastReceivedAgeSeconds > 600
-      ? 'offline'
-      : lastReceivedAgeSeconds > 120
-        ? 'stale'
-        : ''
-  const signalLabel = isWaiting
-    ? 'Waiting'
-    : lastReceivedAgeSeconds == null
-      ? 'No Signal'
-      : lastReceivedAgeSeconds > 600
-        ? 'Signal Old'
-        : lastReceivedAgeSeconds > 120
-          ? 'Recent'
-          : 'Live'
+  const signalClass = trackingStatus === 'dead' ? 'offline'
+    : trackingStatus === 'stale' ? 'stale'
+    : trackingStatus === 'live' ? ''
+    : isWaiting ? 'offline'
+    : lastReceivedAgeSeconds == null ? 'offline'
+    : ''
+  const signalLabel = isWaiting ? 'Waiting'
+    : trackingStatus === 'dead' ? 'Tracking Lost'
+    : trackingStatus === 'stale' ? 'Signal Stale'
+    : trackingStatus === 'live' ? 'Live'
+    : lastReceivedAgeSeconds == null ? 'No Signal'
+    : 'Live'
   const speed = data?.speed || {}
   const session = data?.session || {}
   const sessionDuration = formatDuration(session.startedAt, now)
@@ -1105,6 +1148,19 @@ export default function LiveTrackerPage() {
             <div className="map-refresh-indicator" aria-live="polite">
               <span className="map-refresh-spinner" />
               <span>Refreshing</span>
+            </div>
+          )}
+
+          {/* Tracking alert */}
+          {(trackingStatus === 'stale' || trackingStatus === 'dead') && (
+            <div className={`tracking-alert ${trackingStatus === 'dead' ? 'dead' : 'stale'}`}>
+              <span className="tracking-alert-icon">{trackingStatus === 'dead' ? '⚠' : '⏳'}</span>
+              <span className="tracking-alert-text">
+                {trackingStatus === 'dead'
+                  ? 'Tracking has stopped — no new GPS data received for over 2 minutes'
+                  : 'No new GPS data for over 1 minute — signal may be weak'
+                }
+              </span>
             </div>
           )}
 
