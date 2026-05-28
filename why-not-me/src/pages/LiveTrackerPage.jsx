@@ -3,7 +3,8 @@ import { motion } from 'framer-motion'
 import PageTransition from '../components/PageTransition'
 import './LiveTrackerPage.css'
 
-const API_BASE = 'https://why-not-me-live-tracker.why-not-me-nicole-white.workers.dev'
+const API_BASE = 'https://marathon-tracking-proxy.why-not-me-nicole-white.workers.dev'
+const API_ENDPOINT = `${API_BASE}/live.json`
 const POLL_INTERVAL = 10000
 const KML_ROUTE_URL = '/data/queenstown-marathon.kml'
 
@@ -17,22 +18,22 @@ const SITE_COLORS = {
   white: '#F5F3EC',
 }
 
-const BASEMAPS = {
-  dark: {
-    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
-    label: 'Dark',
-    className: 'basemap-dark',
-    maxZoom: 19,
-  },
-  satellite: {
-    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    attribution: '&copy; Esri, Maxar, Earthstar Geographics',
-    label: 'Satellite',
-    className: 'basemap-satellite',
-    maxZoom: 19,
-  },
+const BASEMAP = {
+  url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
+  className: 'basemap-dark',
+  maxZoom: 19,
 }
+
+const MARATHON_DISTANCE_KM = 42.2
+const SPLIT_MARKERS_KM = [1, 5, 10, 15, 20, 21.1, 25, 30, 35, 40, 42.2]
+const SPECTATOR_ZONES = [
+  { id: 'zone-1', label: 'Spectator Zone 1', lat: -44.988056, lng: 168.811444 },
+  { id: 'zone-2', label: 'Spectator Zone 2', lat: -44.997111, lng: 168.756722 },
+  { id: 'zone-3', label: 'Spectator Zone 3', lat: -45.030639, lng: 168.659472 },
+  { id: 'zone-4', label: 'Spectator Zone 4', lat: -45.029111, lng: 168.66 },
+]
+const START_DETECTION_RADIUS_KM = 0.12
 
 function formatAge(seconds) {
   if (seconds == null) return ''
@@ -94,16 +95,17 @@ function getPointReceivedTimeMs(point) {
   if (!point) return null
 
   const candidates = [
+    point.gpsTimestamp,
+    point.time,
+    point.location?.timestamp,
+    point.timestamp,
+    point.ownTracks?.tst,
     point.receivedAt,
     point.lastReceivedAt,
     point.ingestedAt,
     point.location?.receivedAt,
     point.location?.lastReceivedAt,
     point.ownTracks?.receivedAt,
-    point.ownTracks?.tst,
-    point.gpsTimestamp,
-    point.location?.timestamp,
-    point.timestamp,
   ]
 
   for (const candidate of candidates) {
@@ -169,6 +171,15 @@ function speedLabel(kmh) {
   if (kmh <= 12) return 'Running'
   if (kmh <= 16) return 'Fast run'
   return 'Sprint'
+}
+
+function speedColor(kmh) {
+  // Brand-aligned progression: cooler/dimmer when slow, warmer/brighter when faster.
+  if (kmh == null || kmh < 2) return '#7A6A4A' // <2 km/h: near-stationary
+  if (kmh < 5) return '#8E7A56' // 2-5 km/h: walking
+  if (kmh < 8) return '#A88E5D' // 5-8 km/h: jogging
+  if (kmh < 10) return '#C3A873' // 8-10 km/h: steady run
+  return '#E0C58E' // 10+ km/h: strong pace
 }
 
 function formatMinPerKm(kmh) {
@@ -312,8 +323,7 @@ function createCourseMarkerIcon(L, label, type) {
 export default function LiveTrackerPage() {
   const mapContainerRef = useRef(null)
   const mapRef = useRef(null)
-  const tileLayersRef = useRef({})
-  const currentBasemapRef = useRef(null)
+  const tileLayerRef = useRef(null)
   const markerRef = useRef(null)
   const routeLayerRef = useRef(null)
   const trailLayerRef = useRef(null)
@@ -324,6 +334,9 @@ export default function LiveTrackerPage() {
   const elevCanvasRef = useRef(null)
   const elevWrapRef = useRef(null)
   const hoverMarkerRef = useRef(null)
+  const splitLayerRef = useRef(null)
+  const spectatorLayerRef = useRef(null)
+  const userLocationRef = useRef({ marker: null, accuracy: null })
 
   const [data, setData] = useState(null)
   const [history, setHistory] = useState([])
@@ -331,22 +344,58 @@ export default function LiveTrackerPage() {
   const [mapReady, setMapReady] = useState(false)
   const [error, setError] = useState(null)
   const [apiStatus, setApiStatus] = useState('loading') // 'loading' | 'live' | 'waiting' | 'error'
-  const [basemap, setBasemap] = useState('dark')
   const [showStartEnd, setShowStartEnd] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [now, setNow] = useState(Date.now())
   const [elevHoverIdx, setElevHoverIdx] = useState(null)
   const hasInitialPanRef = useRef(false)
   const lastGpsTimestampRef = useRef(null)
-  const lastNewDataTimeRef = useRef(null)
   const [trackingStatus, setTrackingStatus] = useState('waiting') // 'live' | 'stale' | 'dead' | 'waiting'
+  const [summaryNow, setSummaryNow] = useState(Date.now())
 
   const routeLatLngs = useMemo(() => kmlTrackPath.map(point => [point.lat, point.lng]), [kmlTrackPath])
   const sortedHistory = useMemo(() => sortHistory(history), [history])
+  const raceProgress = useMemo(() => {
+    const points = sortedHistory.filter((p) => p?.location?.lat != null && p?.location?.lng != null)
+    if (points.length < 2 || kmlTrackPath.length < 2) return { started: false, startTimeMs: null, progressKm: 0, splitTimes: {} }
+    const start = kmlTrackPath[0]
+    const startIdx = points.findIndex((p) => (
+      haversineKm(
+        { lat: p.location.lat, lng: p.location.lng },
+        { lat: start.lat, lng: start.lng }
+      ) <= START_DETECTION_RADIUS_KM
+    ))
+    if (startIdx < 0 || startIdx >= points.length - 1) {
+      return { started: false, startTimeMs: null, progressKm: 0, splitTimes: {} }
+    }
+
+    const startedPoints = points.slice(startIdx)
+    let cumKm = 0
+    let nextIdx = 0
+    const out = {}
+    for (let i = 1; i < startedPoints.length && nextIdx < SPLIT_MARKERS_KM.length; i++) {
+      const prev = startedPoints[i - 1]
+      const curr = startedPoints[i]
+      cumKm += haversineKm({ lat: prev.location.lat, lng: prev.location.lng }, { lat: curr.location.lat, lng: curr.location.lng })
+      while (nextIdx < SPLIT_MARKERS_KM.length && cumKm >= SPLIT_MARKERS_KM[nextIdx]) {
+        out[SPLIT_MARKERS_KM[nextIdx]] = getPointReceivedTimeMs(curr)
+        nextIdx += 1
+      }
+    }
+    return {
+      started: true,
+      startTimeMs: getPointReceivedTimeMs(startedPoints[0]),
+      progressKm: Math.min(MARATHON_DISTANCE_KM, cumKm),
+      splitTimes: out,
+    }
+  }, [sortedHistory, kmlTrackPath])
+  const splitTimes = raceProgress.splitTimes
   const lastReceivedAt = useMemo(() => getLatestReceivedAt(data, sortedHistory), [data, sortedHistory])
   const lastReceivedAgeSeconds = lastReceivedAt
     ? Math.max(0, Math.floor((now - lastReceivedAt.getTime()) / 1000))
     : null
+  const progressKm = raceProgress.progressKm
+  const progressPct = Math.max(0, Math.min(100, (progressKm / MARATHON_DISTANCE_KM) * 100))
 
   // ---- Elevation profile from KML ----
   const elevProfile = useMemo(() => {
@@ -388,20 +437,85 @@ export default function LiveTrackerPage() {
     }
   }, [])
 
-  // Keep relative received times and tracking status honest while the page is open.
+  // Keep relative received times honest while the page is open (1s cadence).
   useEffect(() => {
     const tick = () => {
       setNow(Date.now())
-      // Update tracking status based on time since last new data
-      const timeSinceNew = lastNewDataTimeRef.current ? Date.now() - lastNewDataTimeRef.current : null
-      if (timeSinceNew != null) {
-        if (timeSinceNew > 120000) setTrackingStatus('dead')
-        else if (timeSinceNew > 60000) setTrackingStatus('stale')
-      }
     }
-    const interval = setInterval(tick, 5000)
+    const interval = setInterval(tick, 1000)
     return () => clearInterval(interval)
   }, [])
+
+  // Tracking status is based on how old the last received location is.
+  useEffect(() => {
+    if (apiStatus === 'waiting' || !lastReceivedAt) {
+      setTrackingStatus('waiting')
+      return
+    }
+    if (lastReceivedAgeSeconds > 300) {
+      setTrackingStatus('dead') // 5+ minutes
+    } else if (lastReceivedAgeSeconds > 60) {
+      setTrackingStatus('stale') // 1+ minute
+    } else {
+      setTrackingStatus('live')
+    }
+  }, [apiStatus, lastReceivedAt, lastReceivedAgeSeconds])
+
+  useEffect(() => {
+    const interval = setInterval(() => setSummaryNow(Date.now()), 60000)
+    return () => clearInterval(interval)
+  }, [])
+
+  const recent500mSummary = useMemo(() => {
+    summaryNow
+    const all = [...sortedHistory]
+    if (data?.location?.lat != null && data?.location?.lng != null) all.push(data)
+    const pts = all
+      .map((p) => ({
+        lat: p?.location?.lat,
+        lng: p?.location?.lng,
+        altitudeM: p?.location?.altitudeM,
+        timeMs: getPointReceivedTimeMs(p),
+      }))
+      .filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng) && p.timeMs != null)
+      .sort((a, b) => a.timeMs - b.timeMs)
+
+    if (pts.length < 2) return null
+    const kept = [pts[pts.length - 1]]
+    let coveredKm = 0
+    for (let i = pts.length - 2; i >= 0; i--) {
+      const seg = haversineKm(pts[i], pts[i + 1])
+      coveredKm += seg
+      kept.unshift(pts[i])
+      if (coveredKm >= 0.5) break
+    }
+    if (kept.length < 2) return null
+    const first = kept[0]
+    const last = kept[kept.length - 1]
+    const durationSec = Math.max(1, (last.timeMs - first.timeMs) / 1000)
+    let climbM = 0
+    let descentM = 0
+    for (let i = 1; i < kept.length; i++) {
+      const a = kept[i - 1].altitudeM
+      const b = kept[i].altitudeM
+      if (Number.isFinite(a) && Number.isFinite(b)) {
+        const delta = b - a
+        if (delta > 0) climbM += delta
+        else descentM += Math.abs(delta)
+      }
+    }
+    const netElevationM = Number.isFinite(first.altitudeM) && Number.isFinite(last.altitudeM)
+      ? last.altitudeM - first.altitudeM
+      : null
+
+    return {
+      distanceM: coveredKm * 1000,
+      avgSpeedKmh: (coveredKm / durationSec) * 3600,
+      climbM,
+      descentM,
+      netElevationM,
+    }
+  }, [sortedHistory, data, summaryNow])
 
   // ---- Data fetching (pull every 10s, detect new vs stale vs dead) ----
   const fetchData = useCallback(async ({ force = false } = {}) => {
@@ -418,16 +532,30 @@ export default function LiveTrackerPage() {
 
     try {
       const cacheBust = `${Date.now()}-${Math.random().toString(36).slice(2)}`
-      const res = await fetch(`${API_BASE}/api/state?history=1&_=${cacheBust}`, {
+      const res = await fetch(`${API_ENDPOINT}?_=${cacheBust}`, {
         method: 'GET',
         cache: 'no-store',
         signal: controller.signal,
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const json = await res.json()
+      const payload = await res.json()
+      const latest = payload?.latest && typeof payload.latest === 'object' ? payload.latest : null
+      const normalizedHistory = Array.isArray(payload?.history) ? payload.history : []
 
-      if (json.status === 'waiting') {
-        setData(json)
+      const freshestHistoryPoint = [...normalizedHistory]
+        .filter((p) => p?.location?.lat != null && p?.location?.lng != null)
+        .sort((a, b) => (getPointReceivedTimeMs(b) ?? 0) - (getPointReceivedTimeMs(a) ?? 0))[0] ?? null
+
+      const normalizedData = (() => {
+        if (!latest) return freshestHistoryPoint
+        if (!freshestHistoryPoint) return latest
+        const latestTs = getPointReceivedTimeMs(latest) ?? 0
+        const historyTs = getPointReceivedTimeMs(freshestHistoryPoint) ?? 0
+        return historyTs > latestTs ? freshestHistoryPoint : latest
+      })()
+
+      if (payload?.status === 'waiting' || !normalizedData) {
+        setData(null)
         setHistory([])
         setApiStatus('waiting')
         setTrackingStatus('waiting')
@@ -436,32 +564,12 @@ export default function LiveTrackerPage() {
         return
       }
 
-      // Detect whether this is genuinely new GPS data
-      const incomingGpsTimestamp = json.gpsTimestamp || null
-      const previousGpsTimestamp = lastGpsTimestampRef.current
+      // Keep last timestamp reference for debugging/consistency checks.
+      const incomingGpsTimestamp = normalizedData?.gpsTimestamp || normalizedData?.time || null
+      if (incomingGpsTimestamp) lastGpsTimestampRef.current = incomingGpsTimestamp
 
-      const isNewData = incomingGpsTimestamp && incomingGpsTimestamp !== previousGpsTimestamp
-
-      if (isNewData) {
-        lastGpsTimestampRef.current = incomingGpsTimestamp
-        lastNewDataTimeRef.current = Date.now()
-        setTrackingStatus('live')
-      } else {
-        // Same GPS timestamp — phone hasn't sent a new location
-        const timeSinceLastNew = lastNewDataTimeRef.current
-          ? Date.now() - lastNewDataTimeRef.current
-          : null
-
-        if (timeSinceLastNew != null && timeSinceLastNew > 120000) {
-          setTrackingStatus('dead') // 2+ minutes: tracking has stopped
-        } else if (timeSinceLastNew != null && timeSinceLastNew > 60000) {
-          setTrackingStatus('stale') // 1+ minute: something might be wrong
-        }
-        // else keep current status
-      }
-
-      setData(json)
-      setHistory(Array.isArray(json.history) ? json.history : [])
+      setData(normalizedData)
+      setHistory(normalizedHistory)
       setApiStatus('live')
       setError(null)
       setNow(Date.now())
@@ -489,7 +597,17 @@ export default function LiveTrackerPage() {
 
   useEffect(() => {
     fetchData({ force: true })
-    const interval = setInterval(() => fetchData(), POLL_INTERVAL)
+    let cancelled = false
+    let timeoutId = null
+
+    const scheduleNextPoll = () => {
+      if (cancelled) return
+      timeoutId = setTimeout(async () => {
+        await fetchData()
+        scheduleNextPoll()
+      }, POLL_INTERVAL)
+    }
+    scheduleNextPoll()
 
     const recover = () => {
       setNow(Date.now())
@@ -509,7 +627,8 @@ export default function LiveTrackerPage() {
     document.addEventListener('visibilitychange', onVisibilityChange)
 
     return () => {
-      clearInterval(interval)
+      cancelled = true
+      if (timeoutId) clearTimeout(timeoutId)
       window.removeEventListener('focus', recover)
       window.removeEventListener('online', recover)
       window.removeEventListener('pageshow', recover)
@@ -559,18 +678,13 @@ export default function LiveTrackerPage() {
         attributionControl: true,
       })
 
-      const config = BASEMAPS[basemap]
-
-      // Pre-create all tile layers, show only the active one
-      Object.entries(BASEMAPS).forEach(([key, cfg]) => {
-        const layer = createTileLayer(L, cfg).addTo(map)
-        if (key !== basemap) layer.setOpacity(0)
-        tileLayersRef.current[key] = layer
-      })
-      currentBasemapRef.current = basemap
+      const layer = createTileLayer(L, BASEMAP).addTo(map)
+      tileLayerRef.current = layer
 
       routeLayerRef.current = L.layerGroup().addTo(map)
       trailLayerRef.current = L.layerGroup().addTo(map)
+      splitLayerRef.current = L.layerGroup().addTo(map)
+      spectatorLayerRef.current = L.layerGroup().addTo(map)
 
       mapRef.current = map
       mapInitializedRef.current = true
@@ -598,10 +712,11 @@ export default function LiveTrackerPage() {
       }
       mapRef.current = null
       mapInitializedRef.current = false
-      tileLayersRef.current = {}
-      currentBasemapRef.current = null
+      tileLayerRef.current = null
       routeLayerRef.current = null
       trailLayerRef.current = null
+      splitLayerRef.current = null
+      spectatorLayerRef.current = null
       setMapReady(false)
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -651,6 +766,47 @@ export default function LiveTrackerPage() {
       map.fitBounds(coursePath.getBounds(), { padding: [36, 36], maxZoom: 13 })
     }
   }, [mapReady, routeLatLngs, showStartEnd, data?.location, sortedHistory.length])
+
+  useEffect(() => {
+    if (!mapReady || !window.L || !splitLayerRef.current || !routeLatLngs.length) return
+    const L = window.L
+    splitLayerRef.current.clearLayers()
+    const routePts = kmlTrackPath
+    if (routePts.length < 2) return
+    let cumKm = 0
+    let nextIdx = 0
+    for (let i = 1; i < routePts.length && nextIdx < SPLIT_MARKERS_KM.length; i++) {
+      const a = routePts[i - 1]
+      const b = routePts[i]
+      cumKm += haversineKm(a, b)
+      while (nextIdx < SPLIT_MARKERS_KM.length && cumKm >= SPLIT_MARKERS_KM[nextIdx]) {
+        const splitKm = SPLIT_MARKERS_KM[nextIdx]
+        const label = splitKm === 21.1 ? 'Half' : splitKm === 42.2 ? 'F' : `${splitKm}`
+        const t = splitTimes[splitKm]
+        L.marker([b.lat, b.lng], {
+          icon: createCourseMarkerIcon(L, label, splitKm === 42.2 ? 'finish' : 'split'),
+          zIndexOffset: 650,
+        }).bindTooltip(
+          t ? `${label} km · ${new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : `${label} km · pending`,
+          { direction: 'top', offset: [0, -14], className: 'course-tooltip' }
+        ).addTo(splitLayerRef.current)
+        nextIdx += 1
+      }
+    }
+  }, [mapReady, kmlTrackPath, splitTimes, now])
+
+  useEffect(() => {
+    if (!mapReady || !window.L || !spectatorLayerRef.current) return
+    const L = window.L
+    spectatorLayerRef.current.clearLayers()
+    SPECTATOR_ZONES.forEach((zone) => {
+      L.marker([zone.lat, zone.lng], {
+        icon: createCourseMarkerIcon(L, '👥', 'split'),
+        zIndexOffset: 620,
+      }).bindTooltip(zone.label, { direction: 'top', offset: [0, -14], className: 'course-tooltip' })
+        .addTo(spectatorLayerRef.current)
+    })
+  }, [mapReady])
 
   // ---- Update marker + trail when data changes ----
   useEffect(() => {
@@ -725,7 +881,7 @@ export default function LiveTrackerPage() {
             [curr.location.lat, curr.location.lng],
           ],
           {
-            color: SITE_COLORS.warm,
+            color: speedColor(kmh),
             weight: 3.5,
             opacity: 0.9,
             lineCap: 'round',
@@ -762,7 +918,7 @@ export default function LiveTrackerPage() {
             [data.location.lat, data.location.lng],
           ],
           {
-            color: SITE_COLORS.warm,
+            color: speedColor(displayKmh),
             weight: 3.5,
             opacity: 0.9,
             lineCap: 'round',
@@ -772,25 +928,6 @@ export default function LiveTrackerPage() {
       }
     }
   }, [mapReady, data, sortedHistory])
-
-  // ---- Basemap switch ----
-  useEffect(() => {
-    if (!mapRef.current || !window.L) return
-    if (currentBasemapRef.current === basemap) return
-
-    // Hide all layers, show the selected one
-    Object.entries(tileLayersRef.current).forEach(([key, layer]) => {
-      layer.setOpacity(key === basemap ? 1 : 0)
-    })
-    currentBasemapRef.current = basemap
-
-    // Update container class for CSS filter overrides
-    const el = mapContainerRef.current
-    if (el) {
-      Object.values(BASEMAPS).forEach(({ className }) => el.classList.remove(className))
-      el.classList.add(BASEMAPS[basemap].className)
-    }
-  }, [basemap])
 
   // ---- Recenter ----
   const handleRecenter = () => {
@@ -817,6 +954,29 @@ export default function LiveTrackerPage() {
     historyPoints.forEach(p => bounds.extend([p.location.lat, p.location.lng]))
     if (data?.location) bounds.extend([data.location.lat, data.location.lng])
     mapRef.current.fitBounds(bounds, { padding: [40, 40], maxZoom: 16, duration: 1 })
+  }
+
+  const handleCenterOnMe = () => {
+    if (!navigator.geolocation || !mapRef.current || !window.L) return
+    navigator.geolocation.getCurrentPosition((pos) => {
+      const { latitude, longitude, accuracy } = pos.coords
+      const L = window.L
+      const map = mapRef.current
+      if (!userLocationRef.current.marker) {
+        userLocationRef.current.marker = L.circleMarker([latitude, longitude], {
+          radius: 6, color: '#66A3FF', fillColor: '#66A3FF', fillOpacity: 1, weight: 2,
+        }).addTo(map)
+      } else userLocationRef.current.marker.setLatLng([latitude, longitude])
+      if (!userLocationRef.current.accuracy) {
+        userLocationRef.current.accuracy = L.circle([latitude, longitude], {
+          radius: accuracy || 25, color: '#66A3FF', fillColor: '#66A3FF', fillOpacity: 0.12, weight: 1,
+        }).addTo(map)
+      } else {
+        userLocationRef.current.accuracy.setLatLng([latitude, longitude])
+        userLocationRef.current.accuracy.setRadius(accuracy || 25)
+      }
+      map.flyTo([latitude, longitude], Math.max(map.getZoom(), 14), { duration: 1 })
+    })
   }
 
   // ---- Elevation canvas drawing ----
@@ -972,7 +1132,7 @@ export default function LiveTrackerPage() {
     : 'Live'
   const speed = data?.speed || {}
   const session = data?.session || {}
-  const sessionDuration = formatDuration(session.startedAt, now)
+  const sessionDuration = formatDuration(raceProgress.startTimeMs || session.startedAt, now)
 
   // Compute speed and pace with full precision from raw data
   // Prefer calculatedKmh (higher precision) over worker-rounded kmh
@@ -1041,6 +1201,7 @@ export default function LiveTrackerPage() {
   const avgPace = formatMinPerKm(avgKmh)
 
   const totalDistanceKm = clientSpeed.totalKm > 0 ? clientSpeed.totalKm : null
+  const progressSpeedColor = speedColor(displayKmh)
 
   return (
     <PageTransition>
@@ -1070,7 +1231,6 @@ export default function LiveTrackerPage() {
             </motion.h1>
           </div>
         </motion.div>
-
         {/* Live stats */}
         <motion.div
           className="tracker-status-bar"
@@ -1140,7 +1300,7 @@ export default function LiveTrackerPage() {
         >
           <div
             ref={mapContainerRef}
-            className={`tracker-map ${BASEMAPS[basemap].className}`}
+            className={`tracker-map ${BASEMAP.className}`}
           />
 
           {/* Refresh indicator */}
@@ -1157,25 +1317,12 @@ export default function LiveTrackerPage() {
               <span className="tracking-alert-icon">{trackingStatus === 'dead' ? '⚠' : '⏳'}</span>
               <span className="tracking-alert-text">
                 {trackingStatus === 'dead'
-                  ? 'Tracking has stopped — no new GPS data received for over 2 minutes'
+                  ? 'Tracking has stopped — no location received for over 5 minutes'
                   : 'No new GPS data for over 1 minute — signal may be weak'
                 }
               </span>
             </div>
           )}
-
-          {/* Basemap toggle */}
-          <div className="basemap-toggle">
-            {Object.entries(BASEMAPS).map(([key, config]) => (
-              <button
-                key={key}
-                className={`basemap-btn ${basemap === key ? 'active' : ''}`}
-                onClick={() => setBasemap(key)}
-              >
-                {config.label}
-              </button>
-            ))}
-          </div>
 
           {/* Route options */}
           <label className="route-toggle">
@@ -1202,6 +1349,12 @@ export default function LiveTrackerPage() {
                 </svg>
               </button>
             )}
+            <button className="recenter-btn" onClick={handleCenterOnMe} title="Centre on me">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="5" />
+                <path d="M12 1v4m0 14v4M1 12h4m14 0h4" />
+              </svg>
+            </button>
           </div>
 
           {/* Elevation overlay — bottom of map */}
@@ -1229,6 +1382,18 @@ export default function LiveTrackerPage() {
                   <span>{Math.round(elevProfile.minE)} m</span>
                   <div className="elev-legend-bar" />
                   <span>{Math.round(elevProfile.maxE)} m</span>
+                </div>
+                <div style={{ marginTop: 10 }}>
+                  <div style={{ color: 'var(--white-70)', fontSize: 11, marginBottom: 6, letterSpacing: 0.6 }}>
+                    Progress: {progressPct.toFixed(1)}% · {progressKm.toFixed(2)} km covered · {(MARATHON_DISTANCE_KM - progressKm).toFixed(2)} km remaining
+                    {!raceProgress.started ? ' · Waiting for start line pass' : ''}
+                  </div>
+                  <div style={{ position: 'relative', height: 8, background: 'rgba(255,255,255,0.08)', borderRadius: 999 }}>
+                    <div style={{ width: `${progressPct}%`, height: '100%', borderRadius: 999, background: `linear-gradient(90deg, ${progressSpeedColor}, ${SITE_COLORS.warm})` }} />
+                    {SPLIT_MARKERS_KM.map((km) => (
+                      <span key={km} style={{ position: 'absolute', left: `${(km / MARATHON_DISTANCE_KM) * 100}%`, top: -5, width: 2, height: 18, background: 'rgba(245,243,236,0.35)' }} />
+                    ))}
+                  </div>
                 </div>
               </div>
             </>
@@ -1274,6 +1439,20 @@ export default function LiveTrackerPage() {
               {displayPace ? `Current: ${displayPace} /km` : 'Awaiting GPS points'}
               {avgPace ? ` · Avg: ${avgPace} /km` : ''}
               {clientSpeed.segments.length > 0 ? ` · ${clientSpeed.segments.length} segments` : ''}
+            </div>
+          </div>
+
+          <div className="tracker-info-card">
+            <div className="tracker-info-card-label">Last 500m Summary</div>
+            <div className="tracker-info-card-value">
+              {recent500mSummary
+                ? `${Math.round(recent500mSummary.distanceM)}m · ${recent500mSummary.avgSpeedKmh.toFixed(1)} km/h`
+                : "--"}
+            </div>
+            <div className="tracker-info-card-sub">
+              {recent500mSummary
+                ? `Net ${recent500mSummary.netElevationM == null ? "--" : `${recent500mSummary.netElevationM >= 0 ? "+" : ""}${Math.round(recent500mSummary.netElevationM)}m`} · Climb ${Math.round(recent500mSummary.climbM)}m · Descent ${Math.round(recent500mSummary.descentM)}m`
+                : "Awaiting enough recent points"}
             </div>
           </div>
 
