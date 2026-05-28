@@ -366,6 +366,8 @@ export default function LiveTrackerPage() {
   const [data, setData] = useState(null)
   const [history, setHistory] = useState([])
   const [kmlTrackPath, setKmlTrackPath] = useState([])
+  const [kmlSourceName, setKmlSourceName] = useState('queenstown-marathon.kml')
+  const [kmlError, setKmlError] = useState(null)
   const [mapReady, setMapReady] = useState(false)
   const [error, setError] = useState(null)
   const [apiStatus, setApiStatus] = useState('loading') // 'loading' | 'live' | 'waiting' | 'error'
@@ -424,26 +426,29 @@ export default function LiveTrackerPage() {
 
   // ---- Elevation profile from KML ----
   const elevProfile = useMemo(() => {
-    if (kmlTrackPath.length < 2) return null
-    let dist = 0, minE = Infinity, maxE = -Infinity, gain = 0, loss = 0, prev = null
-    const pts = kmlTrackPath.map((pt, i) => {
-      if (i > 0) dist += haversineKm(kmlTrackPath[i - 1], pt)
-      if (pt.elevation != null) {
-        if (prev != null) {
-          const d = pt.elevation - prev
-          if (d > 0) gain += d; else loss -= d
-        }
-        minE = Math.min(minE, pt.elevation)
-        maxE = Math.max(maxE, pt.elevation)
-        prev = pt.elevation
-      }
-      return { ...pt, distanceKm: dist }
-    })
-    const elevRange = (maxE - minE) || 1
-    return { pts, totalKm: dist, minE, maxE, gain, loss, elevRange }
+    const profile = buildElevationProfile(kmlTrackPath)
+    if (!profile) return null
+    return {
+      pts: kmlTrackPath.map((pt, idx) => ({ ...pt, distanceKm: profile.points[idx]?.distanceKm ?? 0 })),
+      totalKm: profile.totalDistanceKm,
+      minE: profile.minElevation,
+      maxE: profile.maxElevation,
+      gain: profile.elevationGain,
+      loss: profile.elevationLoss,
+      elevRange: Math.max(1, profile.maxElevation - profile.minElevation),
+    }
   }, [kmlTrackPath])
 
   // ---- KML course path ----
+  const loadKmlFromText = useCallback((kmlText, sourceName) => {
+    const parsed = parseKmlRoute(kmlText)
+    if (parsed.length < 2) throw new Error('KML must contain a LineString with at least 2 coordinates.')
+    setKmlTrackPath(parsed)
+    setKmlSourceName(sourceName)
+    setKmlError(null)
+    setElevHoverIdx(null)
+  }, [])
+
   useEffect(() => {
     let isMounted = true
 
@@ -453,13 +458,37 @@ export default function LiveTrackerPage() {
         return res.text()
       })
       .then((kmlText) => {
-        if (isMounted) setKmlTrackPath(parseKmlRoute(kmlText))
+        if (!isMounted) return
+        loadKmlFromText(kmlText, 'queenstown-marathon.kml')
       })
-      .catch((err) => console.warn('Could not load Queenstown Marathon KML route', err))
+      .catch((err) => {
+        console.warn('Could not load Queenstown Marathon KML route', err)
+        if (isMounted) setKmlError('Could not load default KML route.')
+      })
 
     return () => {
       isMounted = false
     }
+  }, [loadKmlFromText])
+
+  const handleKmlUpload = useCallback(async (event) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    try {
+      const text = await file.text()
+      loadKmlFromText(text, file.name)
+    } catch (err) {
+      setKmlError(err.message || 'Could not parse uploaded KML.')
+    } finally {
+      event.target.value = ''
+    }
+  }, [loadKmlFromText])
+
+  const handleRemoveKml = useCallback(() => {
+    setKmlTrackPath([])
+    setKmlSourceName(null)
+    setKmlError(null)
+    setElevHoverIdx(null)
   }, [])
 
   // Keep relative received times honest while the page is open (1s cadence).
@@ -1521,6 +1550,28 @@ export default function LiveTrackerPage() {
             <div className="tracker-info-card-sub">
               Map rechecks whenever the page is opened, focused, or brought back from lock.
             </div>
+          </div>
+        </div>
+
+        <div className="kml-manager">
+          <div>
+            <p className="kml-manager-title">Course KML</p>
+            <p className="kml-manager-subtitle">
+              Only one KML is active at a time. Uploading replaces the current course.
+            </p>
+            <p className="kml-manager-current">
+              Active: {kmlSourceName || 'None loaded'}
+            </p>
+            {kmlError && <p className="kml-manager-error">{kmlError}</p>}
+          </div>
+          <div className="kml-manager-actions">
+            <label className="kml-upload-btn">
+              Upload KML
+              <input type="file" accept=".kml,application/vnd.google-earth.kml+xml,application/xml,text/xml" onChange={handleKmlUpload} />
+            </label>
+            <button type="button" className="kml-remove-btn" onClick={handleRemoveKml} disabled={!kmlTrackPath.length}>
+              Remove KML
+            </button>
           </div>
         </div>
 
