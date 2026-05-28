@@ -1171,16 +1171,6 @@ export default function LiveTrackerPage() {
     }
   }, [])
 
-  // ---- Draw elevation on hover change ----
-  useEffect(() => { drawElevation(elevHoverIdx ?? elevProgressIdx) }, [elevHoverIdx, elevProgressIdx, drawElevation])
-
-  // ---- Resize redraw ----
-  useEffect(() => {
-    const onResize = () => drawElevation(elevHoverIdx)
-    window.addEventListener('resize', onResize)
-    return () => window.removeEventListener('resize', onResize)
-  }, [drawElevation, elevHoverIdx])
-
   const elevHoverPoint = elevProfile && elevHoverIdx != null ? elevProfile.pts[elevHoverIdx] : null
   const elevProgressIdx = useMemo(() => {
     if (!elevProfile?.pts?.length) return null
@@ -1193,6 +1183,16 @@ export default function LiveTrackerPage() {
     }
     return closest
   }, [elevProfile, progressKm])
+
+  // ---- Draw elevation on hover change ----
+  useEffect(() => { drawElevation(elevHoverIdx ?? elevProgressIdx) }, [elevHoverIdx, elevProgressIdx, drawElevation])
+
+  // ---- Resize redraw ----
+  useEffect(() => {
+    const onResize = () => drawElevation(elevHoverIdx)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [drawElevation, elevHoverIdx])
 
   // ---- Derived display values ----
   const isWaiting = apiStatus === 'waiting' && !lastReceivedAt
