@@ -18,12 +18,31 @@ const SITE_COLORS = {
   white: '#F5F3EC',
 }
 
+<<<<<<< HEAD
+const BASEMAPS = {
+  dark: {
+    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
+    label: 'Dark',
+    className: 'basemap-dark',
+    maxZoom: 19,
+  },
+  satellite: {
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attribution: '&copy; Esri, Maxar, Earthstar Geographics',
+    label: 'Satellite',
+    className: 'basemap-satellite',
+    maxZoom: 19,
+  },
+} 
+=======
 const BASEMAP = {
   url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
   attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
   className: 'basemap-dark',
   maxZoom: 19,
 }
+>>>>>>> cac2820f5a8ea5c0ee106b37ec15d50541130fb9
 
 const MARATHON_DISTANCE_KM = 42.2
 const SPLIT_MARKERS_KM = [1, 5, 10, 15, 20, 21.1, 25, 30, 35, 40, 42.2]
