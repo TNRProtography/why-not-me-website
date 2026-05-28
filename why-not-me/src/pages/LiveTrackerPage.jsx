@@ -1143,7 +1143,7 @@ export default function LiveTrackerPage() {
   }, [])
 
   // ---- Draw elevation on hover change ----
-  useEffect(() => { drawElevation(elevHoverIdx) }, [elevHoverIdx, drawElevation])
+  useEffect(() => { drawElevation(elevHoverIdx ?? elevProgressIdx) }, [elevHoverIdx, elevProgressIdx, drawElevation])
 
   // ---- Resize redraw ----
   useEffect(() => {
@@ -1153,6 +1153,17 @@ export default function LiveTrackerPage() {
   }, [drawElevation, elevHoverIdx])
 
   const elevHoverPoint = elevProfile && elevHoverIdx != null ? elevProfile.pts[elevHoverIdx] : null
+  const elevProgressIdx = useMemo(() => {
+    if (!elevProfile?.pts?.length) return null
+    const targetKm = Math.max(0, Math.min(progressKm, elevProfile.totalKm || progressKm))
+    let closest = 0
+    let closestDiff = Infinity
+    for (let i = 0; i < elevProfile.pts.length; i++) {
+      const diff = Math.abs(elevProfile.pts[i].distanceKm - targetKm)
+      if (diff < closestDiff) { closestDiff = diff; closest = i }
+    }
+    return closest
+  }, [elevProfile, progressKm])
 
   // ---- Derived display values ----
   const isWaiting = apiStatus === 'waiting' && !lastReceivedAt
@@ -1435,68 +1446,14 @@ export default function LiveTrackerPage() {
                   <span>{Math.round(elevProfile.maxE)} m</span>
                 </div>
                 <div style={{ marginTop: 10 }}>
-                  <div style={{ color: 'var(--white-70)', fontSize: 11, marginBottom: 6, letterSpacing: 0.6 }}>
+                  <div style={{ color: 'var(--white-70)', fontSize: 11, marginBottom: 0, letterSpacing: 0.6 }}>
                     Progress: {progressPct.toFixed(1)}% · {progressKm.toFixed(2)} km covered · {(MARATHON_DISTANCE_KM - progressKm).toFixed(2)} km remaining
                     {!raceProgress.started ? ' · Waiting for start line pass' : ''}
                   </div>
-                  {/* SVG progress bar shaped by the elevation profile */}
-                  {(() => {
-                    const W = 1000, H = 30
-                    const elevPts = elevProfile.pts.filter(p => p.elevation != null)
-                    if (elevPts.length < 2) return (
-                      <div style={{ position: 'relative', height: 8, background: 'rgba(255,255,255,0.08)', borderRadius: 999 }}>
-                        <div style={{ width: `${progressPct}%`, height: '100%', borderRadius: 999, background: progressSpeedColor }} />
-                        {SPLIT_MARKERS_KM.map((km) => (
-                          <span key={km} style={{ position: 'absolute', left: `${(km / MARATHON_DISTANCE_KM) * 100}%`, top: -5, width: 2, height: 18, background: 'rgba(245,243,236,0.35)' }} />
-                        ))}
-                      </div>
-                    )
-                    const totalKm = elevProfile.totalKm || MARATHON_DISTANCE_KM
-                    const toX = (km) => (km / totalKm) * W
-                    const padT = 3, padB = 3
-                    const plotH = H - padT - padB
-                    const toY = (elev) => padT + (1 - (elev - elevProfile.minE) / elevProfile.elevRange) * plotH
-                    const linePts = elevPts.map(p => `${toX(p.distanceKm).toFixed(1)},${toY(p.elevation).toFixed(1)}`).join(' ')
-                    const areaPts = `0,${H} ${linePts} ${toX(elevPts[elevPts.length - 1].distanceKm).toFixed(1)},${H}`
-                    const progressX = (progressKm / totalKm) * W
-                    return (
-                      <svg
-                        viewBox={`0 0 ${W} ${H}`}
-                        preserveAspectRatio="none"
-                        style={{ width: '100%', height: H, display: 'block', overflow: 'visible', borderRadius: 3 }}
-                      >
-                        <defs>
-                          <linearGradient id="pg-speed-grad" x1="0" y1="0" x2="1" y2="0">
-                            <stop offset="0%" stopColor={progressSpeedColor} stopOpacity="0.9" />
-                            <stop offset="100%" stopColor={SITE_COLORS.warm} stopOpacity="0.75" />
-                          </linearGradient>
-                          <clipPath id="pg-filled">
-                            <rect x="0" y="0" width={progressX} height={H + 2} />
-                          </clipPath>
-                          <clipPath id="pg-unfilled">
-                            <rect x={progressX} y="0" width={W - progressX + 2} height={H + 2} />
-                          </clipPath>
-                        </defs>
-                        {/* Unfilled terrain shape */}
-                        <polygon points={areaPts} fill="rgba(255,255,255,0.07)" clipPath="url(#pg-unfilled)" />
-                        {/* Filled terrain — speed gradient */}
-                        <polygon points={areaPts} fill="url(#pg-speed-grad)" clipPath="url(#pg-filled)" />
-                        {/* Elevation outline */}
-                        <polyline points={linePts} fill="none" stroke="rgba(245,243,236,0.4)" strokeWidth="1.2" />
-                        {/* Split markers */}
-                        {SPLIT_MARKERS_KM.map(km => (
-                          <line key={km} x1={toX(km)} y1={0} x2={toX(km)} y2={H} stroke="rgba(245,243,236,0.22)" strokeWidth="0.8" />
-                        ))}
-                        {/* Progress cursor */}
-                        {progressPct > 0 && progressPct < 100 && (
-                          <line x1={progressX} y1={0} x2={progressX} y2={H} stroke={progressSpeedColor} strokeWidth="2.5" strokeLinecap="round" />
-                        )}
-                      </svg>
-                    )
-                  })()}
                 </div>
               </div>
             </>
+
           )}
 
           {/* Waiting overlay on map */}
