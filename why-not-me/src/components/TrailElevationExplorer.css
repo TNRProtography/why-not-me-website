@@ -366,42 +366,6 @@
   color: var(--white-50);
 }
 
-/* ---- Scrub bar (inline in replay bar) ---- */
-.explorer-replay-overlay .explorer-scrub-bar {
-  position: relative;
-  height: 6px;
-  border-radius: 3px;
-  background: rgba(245,243,236,0.06);
-  cursor: pointer;
-  overflow: visible;
-  flex: 1;
-  min-width: 80px;
-}
-
-.explorer-scrub-fill {
-  position: absolute;
-  left: 0;
-  top: 0;
-  height: 100%;
-  border-radius: 3px;
-  background: linear-gradient(90deg, rgba(168,142,93,0.6), var(--gold));
-  transition: width 0.1s linear;
-}
-
-.explorer-scrub-handle {
-  position: absolute;
-  top: 50%;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--white);
-  border: 2px solid var(--gold);
-  transform: translate(-50%, -50%);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-  pointer-events: none;
-  transition: left 0.1s linear;
-}
-
 .explorer-scrub-time {
   font-size: 9px;
   font-weight: 700;

@@ -793,25 +793,6 @@ export default function TrailElevationExplorer({ history = [] }) {
     }
   }, [routePoints, updateHoverMarker])
 
-  // ── Replay scrub bar click ──
-  const handleScrubClick = useCallback(
-    (e) => {
-      if (!hasReplayData || replayState === 'idle') return
-      const rect = e.currentTarget.getBoundingClientRect()
-      const x = e.clientX - rect.left
-      const progress = clamp(x / rect.width, 0, 1)
-
-      setReplayProgress(progress)
-      const pos = getReplayPosition(progress)
-      updateReplayVisuals(pos, progress)
-
-      // Adjust timing reference so animation continues from here
-      replayPausedAtRef.current = (progress * replayDuration) / replaySpeed
-      replayStartRef.current = performance.now() - replayPausedAtRef.current
-    },
-    [hasReplayData, replayState, replayDuration, replaySpeed, getReplayPosition, updateReplayVisuals]
-  )
-
   // ── Active point data ──
   const activePoint = profile && hoverIdx != null ? profile.pts[hoverIdx] : null
 
@@ -937,10 +918,6 @@ export default function TrailElevationExplorer({ history = [] }) {
                     {opt.label}
                   </button>
                 ))}
-              </div>
-              <div className="explorer-scrub-bar" onClick={handleScrubClick}>
-                <div className="explorer-scrub-fill" style={{ width: `${replayProgress * 100}%` }} />
-                <div className="explorer-scrub-handle" style={{ left: `${replayProgress * 100}%` }} />
               </div>
               <span className="explorer-scrub-time">{formatDuration(replayElapsed)} / {formatDuration(replayDuration)}</span>
             </div>
