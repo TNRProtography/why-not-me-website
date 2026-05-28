@@ -10,8 +10,9 @@ import DocumentaryPage from './pages/DocumentaryPage'
 import DonatePage from './pages/DonatePage'
 import MarathonPage from './pages/MarathonPage'
 import LiveTrackerPage from './pages/LiveTrackerPage'
+import { isTrackerWindowOpen } from './config/trackerAvailability'
 
-function AnimatedRoutes() {
+function AnimatedRoutes({ trackerEnabled }) {
   const location = useLocation()
 
   return (
@@ -21,7 +22,7 @@ function AnimatedRoutes() {
         <Route path="/documentary" element={<DocumentaryPage />} />
         <Route path="/queenstown-marathon" element={<MarathonPage />} />
         <Route path="/donate" element={<DonatePage />} />
-        <Route path="/live" element={<LiveTrackerPage />} />
+        {trackerEnabled && <Route path="/live" element={<LiveTrackerPage />} />}
       </Routes>
     </AnimatePresence>
   )
@@ -39,6 +40,13 @@ function getMobileView() {
 
 export default function App() {
   const [isMobileView, setIsMobileView] = useState(getMobileView)
+  const [nowMs, setNowMs] = useState(Date.now())
+  const trackerEnabled = isTrackerWindowOpen(nowMs)
+
+  useEffect(() => {
+    const interval = setInterval(() => setNowMs(Date.now()), 30000)
+    return () => clearInterval(interval)
+  }, [])
 
   useEffect(() => {
     const updateMobileView = () => setIsMobileView(getMobileView())
@@ -79,8 +87,8 @@ export default function App() {
       <div className={`site-shell ${isMobileView ? 'mobile-view' : 'desktop-view'}`} data-mobile-view={isMobileView}>
         <ScrollToTop />
         <ScrollAtmosphere />
-        <Nav />
-        <AnimatedRoutes />
+        <Nav trackerEnabled={trackerEnabled} />
+        <AnimatedRoutes trackerEnabled={trackerEnabled} />
         <Footer />
       </div>
     </BrowserRouter>

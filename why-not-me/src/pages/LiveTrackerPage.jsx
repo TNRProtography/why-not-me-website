@@ -366,6 +366,8 @@ export default function LiveTrackerPage() {
   const [data, setData] = useState(null)
   const [history, setHistory] = useState([])
   const [kmlTrackPath, setKmlTrackPath] = useState([])
+  const [kmlSourceName, setKmlSourceName] = useState('queenstown-marathon.kml')
+  const [kmlError, setKmlError] = useState(null)
   const [mapReady, setMapReady] = useState(false)
   const [error, setError] = useState(null)
   const [apiStatus, setApiStatus] = useState('loading') // 'loading' | 'live' | 'waiting' | 'error'
@@ -424,26 +426,29 @@ export default function LiveTrackerPage() {
 
   // ---- Elevation profile from KML ----
   const elevProfile = useMemo(() => {
-    if (kmlTrackPath.length < 2) return null
-    let dist = 0, minE = Infinity, maxE = -Infinity, gain = 0, loss = 0, prev = null
-    const pts = kmlTrackPath.map((pt, i) => {
-      if (i > 0) dist += haversineKm(kmlTrackPath[i - 1], pt)
-      if (pt.elevation != null) {
-        if (prev != null) {
-          const d = pt.elevation - prev
-          if (d > 0) gain += d; else loss -= d
-        }
-        minE = Math.min(minE, pt.elevation)
-        maxE = Math.max(maxE, pt.elevation)
-        prev = pt.elevation
-      }
-      return { ...pt, distanceKm: dist }
-    })
-    const elevRange = (maxE - minE) || 1
-    return { pts, totalKm: dist, minE, maxE, gain, loss, elevRange }
+    const profile = buildElevationProfile(kmlTrackPath)
+    if (!profile) return null
+    return {
+      pts: kmlTrackPath.map((pt, idx) => ({ ...pt, distanceKm: profile.points[idx]?.distanceKm ?? 0 })),
+      totalKm: profile.totalDistanceKm,
+      minE: profile.minElevation,
+      maxE: profile.maxElevation,
+      gain: profile.elevationGain,
+      loss: profile.elevationLoss,
+      elevRange: Math.max(1, profile.maxElevation - profile.minElevation),
+    }
   }, [kmlTrackPath])
 
   // ---- KML course path ----
+  const loadKmlFromText = useCallback((kmlText, sourceName) => {
+    const parsed = parseKmlRoute(kmlText)
+    if (parsed.length < 2) throw new Error('KML must contain a LineString with at least 2 coordinates.')
+    setKmlTrackPath(parsed)
+    setKmlSourceName(sourceName)
+    setKmlError(null)
+    setElevHoverIdx(null)
+  }, [])
+
   useEffect(() => {
     let isMounted = true
 
@@ -453,13 +458,37 @@ export default function LiveTrackerPage() {
         return res.text()
       })
       .then((kmlText) => {
-        if (isMounted) setKmlTrackPath(parseKmlRoute(kmlText))
+        if (!isMounted) return
+        loadKmlFromText(kmlText, 'queenstown-marathon.kml')
       })
-      .catch((err) => console.warn('Could not load Queenstown Marathon KML route', err))
+      .catch((err) => {
+        console.warn('Could not load Queenstown Marathon KML route', err)
+        if (isMounted) setKmlError('Could not load default KML route.')
+      })
 
     return () => {
       isMounted = false
     }
+  }, [loadKmlFromText])
+
+  const handleKmlUpload = useCallback(async (event) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    try {
+      const text = await file.text()
+      loadKmlFromText(text, file.name)
+    } catch (err) {
+      setKmlError(err.message || 'Could not parse uploaded KML.')
+    } finally {
+      event.target.value = ''
+    }
+  }, [loadKmlFromText])
+
+  const handleRemoveKml = useCallback(() => {
+    setKmlTrackPath([])
+    setKmlSourceName(null)
+    setKmlError(null)
+    setElevHoverIdx(null)
   }, [])
 
   // Keep relative received times honest while the page is open (1s cadence).
@@ -477,8 +506,8 @@ export default function LiveTrackerPage() {
       setTrackingStatus('waiting')
       return
     }
-    if (lastReceivedAgeSeconds > 300) {
-      setTrackingStatus('dead') // 5+ minutes
+    if (lastReceivedAgeSeconds > 600) {
+      setTrackingStatus('dead') // 10+ minutes
     } else if (lastReceivedAgeSeconds > 60) {
       setTrackingStatus('stale') // 1+ minute
     } else {
@@ -1142,8 +1171,21 @@ export default function LiveTrackerPage() {
     }
   }, [])
 
+  const elevHoverPoint = elevProfile && elevHoverIdx != null ? elevProfile.pts[elevHoverIdx] : null
+  const elevProgressIdx = useMemo(() => {
+    if (!elevProfile?.pts?.length) return null
+    const targetKm = Math.max(0, Math.min(progressKm, elevProfile.totalKm || progressKm))
+    let closest = 0
+    let closestDiff = Infinity
+    for (let i = 0; i < elevProfile.pts.length; i++) {
+      const diff = Math.abs(elevProfile.pts[i].distanceKm - targetKm)
+      if (diff < closestDiff) { closestDiff = diff; closest = i }
+    }
+    return closest
+  }, [elevProfile, progressKm])
+
   // ---- Draw elevation on hover change ----
-  useEffect(() => { drawElevation(elevHoverIdx) }, [elevHoverIdx, drawElevation])
+  useEffect(() => { drawElevation(elevHoverIdx ?? elevProgressIdx) }, [elevHoverIdx, elevProgressIdx, drawElevation])
 
   // ---- Resize redraw ----
   useEffect(() => {
@@ -1151,8 +1193,6 @@ export default function LiveTrackerPage() {
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
   }, [drawElevation, elevHoverIdx])
-
-  const elevHoverPoint = elevProfile && elevHoverIdx != null ? elevProfile.pts[elevHoverIdx] : null
 
   // ---- Derived display values ----
   const isWaiting = apiStatus === 'waiting' && !lastReceivedAt
@@ -1368,7 +1408,7 @@ export default function LiveTrackerPage() {
               <span className="tracking-alert-icon">{trackingStatus === 'dead' ? '⚠' : '⏳'}</span>
               <span className="tracking-alert-text">
                 {trackingStatus === 'dead'
-                  ? 'Tracking has stopped — no location received for over 5 minutes'
+                  ? 'Tracking data may have failed or the race has finished — no location received for over 10 minutes'
                   : 'No new GPS data for over 1 minute — signal may be weak'
                 }
               </span>
@@ -1435,68 +1475,14 @@ export default function LiveTrackerPage() {
                   <span>{Math.round(elevProfile.maxE)} m</span>
                 </div>
                 <div style={{ marginTop: 10 }}>
-                  <div style={{ color: 'var(--white-70)', fontSize: 11, marginBottom: 6, letterSpacing: 0.6 }}>
+                  <div style={{ color: 'var(--white-70)', fontSize: 11, marginBottom: 0, letterSpacing: 0.6 }}>
                     Progress: {progressPct.toFixed(1)}% · {progressKm.toFixed(2)} km covered · {(MARATHON_DISTANCE_KM - progressKm).toFixed(2)} km remaining
                     {!raceProgress.started ? ' · Waiting for start line pass' : ''}
                   </div>
-                  {/* SVG progress bar shaped by the elevation profile */}
-                  {(() => {
-                    const W = 1000, H = 30
-                    const elevPts = elevProfile.pts.filter(p => p.elevation != null)
-                    if (elevPts.length < 2) return (
-                      <div style={{ position: 'relative', height: 8, background: 'rgba(255,255,255,0.08)', borderRadius: 999 }}>
-                        <div style={{ width: `${progressPct}%`, height: '100%', borderRadius: 999, background: progressSpeedColor }} />
-                        {SPLIT_MARKERS_KM.map((km) => (
-                          <span key={km} style={{ position: 'absolute', left: `${(km / MARATHON_DISTANCE_KM) * 100}%`, top: -5, width: 2, height: 18, background: 'rgba(245,243,236,0.35)' }} />
-                        ))}
-                      </div>
-                    )
-                    const totalKm = elevProfile.totalKm || MARATHON_DISTANCE_KM
-                    const toX = (km) => (km / totalKm) * W
-                    const padT = 3, padB = 3
-                    const plotH = H - padT - padB
-                    const toY = (elev) => padT + (1 - (elev - elevProfile.minE) / elevProfile.elevRange) * plotH
-                    const linePts = elevPts.map(p => `${toX(p.distanceKm).toFixed(1)},${toY(p.elevation).toFixed(1)}`).join(' ')
-                    const areaPts = `0,${H} ${linePts} ${toX(elevPts[elevPts.length - 1].distanceKm).toFixed(1)},${H}`
-                    const progressX = (progressKm / totalKm) * W
-                    return (
-                      <svg
-                        viewBox={`0 0 ${W} ${H}`}
-                        preserveAspectRatio="none"
-                        style={{ width: '100%', height: H, display: 'block', overflow: 'visible', borderRadius: 3 }}
-                      >
-                        <defs>
-                          <linearGradient id="pg-speed-grad" x1="0" y1="0" x2="1" y2="0">
-                            <stop offset="0%" stopColor={progressSpeedColor} stopOpacity="0.9" />
-                            <stop offset="100%" stopColor={SITE_COLORS.warm} stopOpacity="0.75" />
-                          </linearGradient>
-                          <clipPath id="pg-filled">
-                            <rect x="0" y="0" width={progressX} height={H + 2} />
-                          </clipPath>
-                          <clipPath id="pg-unfilled">
-                            <rect x={progressX} y="0" width={W - progressX + 2} height={H + 2} />
-                          </clipPath>
-                        </defs>
-                        {/* Unfilled terrain shape */}
-                        <polygon points={areaPts} fill="rgba(255,255,255,0.07)" clipPath="url(#pg-unfilled)" />
-                        {/* Filled terrain — speed gradient */}
-                        <polygon points={areaPts} fill="url(#pg-speed-grad)" clipPath="url(#pg-filled)" />
-                        {/* Elevation outline */}
-                        <polyline points={linePts} fill="none" stroke="rgba(245,243,236,0.4)" strokeWidth="1.2" />
-                        {/* Split markers */}
-                        {SPLIT_MARKERS_KM.map(km => (
-                          <line key={km} x1={toX(km)} y1={0} x2={toX(km)} y2={H} stroke="rgba(245,243,236,0.22)" strokeWidth="0.8" />
-                        ))}
-                        {/* Progress cursor */}
-                        {progressPct > 0 && progressPct < 100 && (
-                          <line x1={progressX} y1={0} x2={progressX} y2={H} stroke={progressSpeedColor} strokeWidth="2.5" strokeLinecap="round" />
-                        )}
-                      </svg>
-                    )
-                  })()}
                 </div>
               </div>
             </>
+
           )}
 
           {/* Waiting overlay on map */}
@@ -1564,6 +1550,28 @@ export default function LiveTrackerPage() {
             <div className="tracker-info-card-sub">
               Map rechecks whenever the page is opened, focused, or brought back from lock.
             </div>
+          </div>
+        </div>
+
+        <div className="kml-manager">
+          <div>
+            <p className="kml-manager-title">Course KML</p>
+            <p className="kml-manager-subtitle">
+              Only one KML is active at a time. Uploading replaces the current course.
+            </p>
+            <p className="kml-manager-current">
+              Active: {kmlSourceName || 'None loaded'}
+            </p>
+            {kmlError && <p className="kml-manager-error">{kmlError}</p>}
+          </div>
+          <div className="kml-manager-actions">
+            <label className="kml-upload-btn">
+              Upload KML
+              <input type="file" accept=".kml,application/vnd.google-earth.kml+xml,application/xml,text/xml" onChange={handleKmlUpload} />
+            </label>
+            <button type="button" className="kml-remove-btn" onClick={handleRemoveKml} disabled={!kmlTrackPath.length}>
+              Remove KML
+            </button>
           </div>
         </div>
 

@@ -7,10 +7,9 @@ const navItems = [
   { to: '/', label: 'Home', end: true },
   { to: '/documentary', label: 'Documentary' },
   { to: '/queenstown-marathon', label: 'Marathon' },
-  { to: '/live', label: 'Live Tracker' },
 ]
 
-export default function Nav() {
+export default function Nav({ trackerEnabled = false }) {
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
 
@@ -29,6 +28,9 @@ export default function Nav() {
   }, [mobileOpen])
 
   const closeMobile = () => setMobileOpen(false)
+  const visibleNavItems = trackerEnabled
+    ? [...navItems, { to: '/live', label: 'Live Tracker' }]
+    : navItems
 
   return (
     <>
@@ -49,7 +51,7 @@ export default function Nav() {
         </Link>
 
         <div className="nav-links">
-          {navItems.map((item) => (
+          {visibleNavItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
@@ -99,7 +101,7 @@ export default function Nav() {
                 visible: { transition: { staggerChildren: 0.08, delayChildren: 0.08 } },
               }}
             >
-              {[...navItems, { to: '/donate', label: 'Donate' }].map((item) => (
+              {[...visibleNavItems, { to: '/donate', label: 'Donate' }].map((item) => (
                 <motion.div
                   key={item.to}
                   variants={{
