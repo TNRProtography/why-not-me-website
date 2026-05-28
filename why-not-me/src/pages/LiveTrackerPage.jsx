@@ -18,7 +18,6 @@ const SITE_COLORS = {
   white: '#F5F3EC',
 }
 
-<<<<<<< HEAD
 const BASEMAPS = {
   dark: {
     url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
@@ -34,15 +33,8 @@ const BASEMAPS = {
     className: 'basemap-satellite',
     maxZoom: 19,
   },
-} 
-=======
-const BASEMAP = {
-  url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
-  className: 'basemap-dark',
-  maxZoom: 19,
 }
->>>>>>> cac2820f5a8ea5c0ee106b37ec15d50541130fb9
+const BASEMAP = BASEMAPS.dark
 
 const MARATHON_DISTANCE_KM = 42.2
 const SPLIT_MARKERS_KM = [1, 5, 10, 15, 20, 21.1, 25, 30, 35, 40, 42.2]
@@ -113,18 +105,20 @@ function normalizeTimestamp(value) {
 function getPointReceivedTimeMs(point) {
   if (!point) return null
 
+  // Prefer server-side timestamps (reflect when data actually arrived at the API)
+  // over GPS device timestamps, which may lag by minutes if the device batches updates.
   const candidates = [
-    point.gpsTimestamp,
-    point.time,
-    point.location?.timestamp,
-    point.timestamp,
-    point.ownTracks?.tst,
     point.receivedAt,
     point.lastReceivedAt,
     point.ingestedAt,
     point.location?.receivedAt,
     point.location?.lastReceivedAt,
     point.ownTracks?.receivedAt,
+    point.gpsTimestamp,
+    point.time,
+    point.location?.timestamp,
+    point.timestamp,
+    point.ownTracks?.tst,
   ]
 
   for (const candidate of candidates) {
@@ -193,12 +187,14 @@ function speedLabel(kmh) {
 }
 
 function speedColor(kmh) {
-  // Brand-aligned progression: cooler/dimmer when slow, warmer/brighter when faster.
-  if (kmh == null || kmh < 2) return '#7A6A4A' // <2 km/h: near-stationary
-  if (kmh < 5) return '#8E7A56' // 2-5 km/h: walking
-  if (kmh < 8) return '#A88E5D' // 5-8 km/h: jogging
-  if (kmh < 10) return '#C3A873' // 8-10 km/h: steady run
-  return '#E0C58E' // 10+ km/h: strong pace
+  // Cool-to-hot progression: slate → teal → brand gold → amber → orange → red.
+  // Extra range makes speed immediately visible on the dark map and progress bar.
+  if (kmh == null || kmh < 2) return '#4A5870'  // near-stationary: cool slate
+  if (kmh < 5) return '#5E8A78'                  // walking: teal-green
+  if (kmh < 8) return '#A88E5D'                  // jogging: brand gold
+  if (kmh < 11) return '#D4A020'                 // running: bright amber
+  if (kmh < 14) return '#D96030'                 // fast run: warm orange
+  return '#C83838'                                // sprint: deep red
 }
 
 function formatMinPerKm(kmh) {
@@ -234,6 +230,16 @@ function haversineKm(a, b) {
   const lat2 = (latB * Math.PI) / 180
   const x = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2
   return 2 * R * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x))
+}
+
+function nearestKmlElevation(lat, lng, kmlPoints) {
+  let bestDist = Infinity, bestElev = null
+  for (const kp of kmlPoints) {
+    if (kp.elevation == null) continue
+    const d = haversineKm({ lat, lng }, kp)
+    if (d < bestDist) { bestDist = d; bestElev = kp.elevation }
+  }
+  return bestElev
 }
 
 function parseKmlRoute(kmlText) {
@@ -490,12 +496,15 @@ export default function LiveTrackerPage() {
     const all = [...sortedHistory]
     if (data?.location?.lat != null && data?.location?.lng != null) all.push(data)
     const pts = all
-      .map((p) => ({
-        lat: p?.location?.lat,
-        lng: p?.location?.lng,
-        altitudeM: p?.location?.altitudeM,
-        timeMs: getPointReceivedTimeMs(p),
-      }))
+      .map((p) => {
+        const lat = p?.location?.lat
+        const lng = p?.location?.lng
+        // Use device altitude; fall back to nearest KML elevation if unavailable
+        const altitudeM = p?.location?.altitudeM != null
+          ? p.location.altitudeM
+          : (Number.isFinite(lat) && Number.isFinite(lng) ? nearestKmlElevation(lat, lng, kmlTrackPath) : null)
+        return { lat, lng, altitudeM, timeMs: getPointReceivedTimeMs(p) }
+      })
       .filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng) && p.timeMs != null)
       .sort((a, b) => a.timeMs - b.timeMs)
 
@@ -534,7 +543,7 @@ export default function LiveTrackerPage() {
       descentM,
       netElevationM,
     }
-  }, [sortedHistory, data, summaryNow])
+  }, [sortedHistory, data, summaryNow, kmlTrackPath])
 
   // ---- Data fetching (pull every 10s, detect new vs stale vs dead) ----
   const fetchData = useCallback(async ({ force = false } = {}) => {
@@ -894,6 +903,16 @@ export default function LiveTrackerPage() {
         // Fall back to worker-reported speed
         const kmh = segKmh ?? getSpeedKmh(curr)
 
+        // Thicker + more opaque for faster speeds — makes speed immediately readable on the map
+        const segWeight = kmh == null || kmh < 2 ? 2.5
+          : kmh < 5 ? 3
+          : kmh < 8 ? 4
+          : kmh < 11 ? 5
+          : 6
+        const segOpacity = kmh == null || kmh < 2 ? 0.55
+          : kmh < 5 ? 0.65
+          : 0.9
+
         const segment = L.polyline(
           [
             [prev.location.lat, prev.location.lng],
@@ -901,8 +920,8 @@ export default function LiveTrackerPage() {
           ],
           {
             color: speedColor(kmh),
-            weight: 3.5,
-            opacity: 0.9,
+            weight: segWeight,
+            opacity: segOpacity,
             lineCap: 'round',
             lineJoin: 'round',
           }
@@ -1161,7 +1180,7 @@ export default function LiveTrackerPage() {
   // ── Client-side speed computation from history GPS points ──
   const clientSpeed = useMemo(() => {
     const pts = sortedHistory.filter(p => p.location?.lat && p.location?.lng)
-    if (pts.length < 2) return { current: null, rolling: null, average: null, totalKm: 0, segments: [] }
+    if (pts.length < 2) return { current: null, rolling: null, average: null, fastest: null, totalKm: 0, segments: [] }
 
     // Build segments with distance and time between consecutive points
     const segments = []
@@ -1189,7 +1208,7 @@ export default function LiveTrackerPage() {
       segments.push({ kmh, km, seconds, time: currTime })
     }
 
-    if (segments.length === 0) return { current: null, rolling: null, average: null, totalKm: 0, segments: [] }
+    if (segments.length === 0) return { current: null, rolling: null, average: null, fastest: null, totalKm: 0, segments: [] }
 
     // Current speed: latest segment
     const current = segments[segments.length - 1].kmh
@@ -1210,7 +1229,10 @@ export default function LiveTrackerPage() {
     const movingKm = movingSegs.reduce((sum, s) => sum + s.km, 0)
     const average = movingTimeSec > 0 ? (movingKm / movingTimeSec) * 3600 : null
 
-    return { current, rolling, average, totalKm, segments }
+    // Fastest single-segment speed recorded
+    const fastest = segments.reduce((max, s) => s.kmh > max ? s.kmh : max, 0) || null
+
+    return { current, rolling, average, fastest, totalKm, segments }
   }, [sortedHistory])
 
   // Use client-computed speed (rolling for smoothness), fall back to worker
@@ -1300,6 +1322,16 @@ export default function LiveTrackerPage() {
               {avgKmh != null ? `${formatSpeedKmh(avgKmh)} km/h` : '--'}
             </span>
             <span className="tracker-stat-label">Avg Speed</span>
+          </div>
+
+          <div className="tracker-stat">
+            <span
+              className="tracker-stat-value"
+              style={clientSpeed.fastest != null ? { color: speedColor(clientSpeed.fastest) } : undefined}
+            >
+              {clientSpeed.fastest != null ? `${formatSpeedKmh(clientSpeed.fastest)} km/h` : '--'}
+            </span>
+            <span className="tracker-stat-label">Fastest Speed</span>
           </div>
 
           <div className="tracker-stat">
@@ -1407,12 +1439,61 @@ export default function LiveTrackerPage() {
                     Progress: {progressPct.toFixed(1)}% · {progressKm.toFixed(2)} km covered · {(MARATHON_DISTANCE_KM - progressKm).toFixed(2)} km remaining
                     {!raceProgress.started ? ' · Waiting for start line pass' : ''}
                   </div>
-                  <div style={{ position: 'relative', height: 8, background: 'rgba(255,255,255,0.08)', borderRadius: 999 }}>
-                    <div style={{ width: `${progressPct}%`, height: '100%', borderRadius: 999, background: `linear-gradient(90deg, ${progressSpeedColor}, ${SITE_COLORS.warm})` }} />
-                    {SPLIT_MARKERS_KM.map((km) => (
-                      <span key={km} style={{ position: 'absolute', left: `${(km / MARATHON_DISTANCE_KM) * 100}%`, top: -5, width: 2, height: 18, background: 'rgba(245,243,236,0.35)' }} />
-                    ))}
-                  </div>
+                  {/* SVG progress bar shaped by the elevation profile */}
+                  {(() => {
+                    const W = 1000, H = 30
+                    const elevPts = elevProfile.pts.filter(p => p.elevation != null)
+                    if (elevPts.length < 2) return (
+                      <div style={{ position: 'relative', height: 8, background: 'rgba(255,255,255,0.08)', borderRadius: 999 }}>
+                        <div style={{ width: `${progressPct}%`, height: '100%', borderRadius: 999, background: progressSpeedColor }} />
+                        {SPLIT_MARKERS_KM.map((km) => (
+                          <span key={km} style={{ position: 'absolute', left: `${(km / MARATHON_DISTANCE_KM) * 100}%`, top: -5, width: 2, height: 18, background: 'rgba(245,243,236,0.35)' }} />
+                        ))}
+                      </div>
+                    )
+                    const totalKm = elevProfile.totalKm || MARATHON_DISTANCE_KM
+                    const toX = (km) => (km / totalKm) * W
+                    const padT = 3, padB = 3
+                    const plotH = H - padT - padB
+                    const toY = (elev) => padT + (1 - (elev - elevProfile.minE) / elevProfile.elevRange) * plotH
+                    const linePts = elevPts.map(p => `${toX(p.distanceKm).toFixed(1)},${toY(p.elevation).toFixed(1)}`).join(' ')
+                    const areaPts = `0,${H} ${linePts} ${toX(elevPts[elevPts.length - 1].distanceKm).toFixed(1)},${H}`
+                    const progressX = (progressKm / totalKm) * W
+                    return (
+                      <svg
+                        viewBox={`0 0 ${W} ${H}`}
+                        preserveAspectRatio="none"
+                        style={{ width: '100%', height: H, display: 'block', overflow: 'visible', borderRadius: 3 }}
+                      >
+                        <defs>
+                          <linearGradient id="pg-speed-grad" x1="0" y1="0" x2="1" y2="0">
+                            <stop offset="0%" stopColor={progressSpeedColor} stopOpacity="0.9" />
+                            <stop offset="100%" stopColor={SITE_COLORS.warm} stopOpacity="0.75" />
+                          </linearGradient>
+                          <clipPath id="pg-filled">
+                            <rect x="0" y="0" width={progressX} height={H + 2} />
+                          </clipPath>
+                          <clipPath id="pg-unfilled">
+                            <rect x={progressX} y="0" width={W - progressX + 2} height={H + 2} />
+                          </clipPath>
+                        </defs>
+                        {/* Unfilled terrain shape */}
+                        <polygon points={areaPts} fill="rgba(255,255,255,0.07)" clipPath="url(#pg-unfilled)" />
+                        {/* Filled terrain — speed gradient */}
+                        <polygon points={areaPts} fill="url(#pg-speed-grad)" clipPath="url(#pg-filled)" />
+                        {/* Elevation outline */}
+                        <polyline points={linePts} fill="none" stroke="rgba(245,243,236,0.4)" strokeWidth="1.2" />
+                        {/* Split markers */}
+                        {SPLIT_MARKERS_KM.map(km => (
+                          <line key={km} x1={toX(km)} y1={0} x2={toX(km)} y2={H} stroke="rgba(245,243,236,0.22)" strokeWidth="0.8" />
+                        ))}
+                        {/* Progress cursor */}
+                        {progressPct > 0 && progressPct < 100 && (
+                          <line x1={progressX} y1={0} x2={progressX} y2={H} stroke={progressSpeedColor} strokeWidth="2.5" strokeLinecap="round" />
+                        )}
+                      </svg>
+                    )
+                  })()}
                 </div>
               </div>
             </>

@@ -13,7 +13,7 @@ import './TrailElevationExplorer.css'
  * Loads KML course data from /data/queenstown-marathon.kml.
  * Accepts `history` prop — the sorted GPS history array from the tracker API.
  */
-
+ 
 // ── constants ────────────────────────────────────────────────────
 const GOLD = '#A88E5D'
 const WARM = '#CBB299'
