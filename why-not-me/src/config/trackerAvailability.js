@@ -2,8 +2,8 @@ export const TRACKER_AVAILABILITY = {
   // New Zealand local time in: dd/mm/yyyy hh:mm (24h)
   // Examples: "21/11/2026 08:00", "22/11/2026 16:30"
   // If either value is null/invalid, tracker is treated as disabled.
-  startNzt: "30/05/2026 13:25",
-  endNzt: "30/05/2026 16:30",
+  startNzt: "31/05/2026 10:25",
+  endNzt: "20/06/2026 16:30",
 }
 
 function parseDdMmYyyyHhMm(value) {
