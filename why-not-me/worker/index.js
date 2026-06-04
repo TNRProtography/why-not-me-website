@@ -4,7 +4,7 @@ const RAISELY_CAMPAIGN_UUID = 'e6ecc870-bfd9-11ee-925d-ab85a9665c6e'
 const RAISELY_DONATION_URL = 'https://nogoingback.nz/nicole-white'
 const CACHE_TTL_SECONDS = 45
 const DONATION_LIMIT = 100
-const MAX_DONATIONS = 500
+const MAX_DONATIONS = 5000
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -107,6 +107,7 @@ function normaliseProfile(profile) {
     currency: profile.currency || profile.parent?.currency || 'NZD',
     donorCount: Number(firstValue(profile.uniqueDonors, profile.uniqueDonorCount, profile.donorCount)) || 0,
     donationCount: Number(profile.donationCount) || 0,
+    allDonationCount: Number(profile.donationCount) || 0,
   }
 }
 

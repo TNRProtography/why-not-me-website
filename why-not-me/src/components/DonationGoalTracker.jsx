@@ -13,7 +13,16 @@ const currencyFormatter = new Intl.NumberFormat('en-NZ', {
 const dateFormatter = new Intl.DateTimeFormat('en-NZ', {
   day: 'numeric',
   month: 'short',
+  year: 'numeric',
 })
+
+const sortOptions = [
+  { value: 'newest', label: 'Newest first' },
+  { value: 'oldest', label: 'Oldest first' },
+  { value: 'largest', label: 'Largest gifts' },
+  { value: 'smallest', label: 'Smallest gifts' },
+  { value: 'name', label: 'Name A to Z' },
+]
 
 const initialState = {
   loading: true,
@@ -47,6 +56,41 @@ function formatDate(value) {
 function clampPercent(value) {
   if (!Number.isFinite(value)) return 0
   return Math.max(0, Math.min(100, value))
+}
+
+function getDonationTime(donation) {
+  const time = new Date(donation.createdAt || 0).getTime()
+  return Number.isNaN(time) ? 0 : time
+}
+
+function sortDonations(donations, sortBy) {
+  return [...donations].sort((a, b) => {
+    if (sortBy === 'oldest') return getDonationTime(a) - getDonationTime(b)
+    if (sortBy === 'largest') return (Number(b.amount) || 0) - (Number(a.amount) || 0)
+    if (sortBy === 'smallest') return (Number(a.amount) || 0) - (Number(b.amount) || 0)
+    if (sortBy === 'name') return (a.name || 'Anonymous supporter').localeCompare(b.name || 'Anonymous supporter')
+    return getDonationTime(b) - getDonationTime(a)
+  })
+}
+
+function createDonationBreakdown(donations, totalRaised) {
+  const donationTotal = donations.reduce((sum, donation) => sum + (Number(donation.amount) || 0), 0)
+  const denominator = donationTotal > 0 ? donationTotal : totalRaised
+  let cumulative = 0
+
+  return donations.map((donation, index) => {
+    const amount = Number(donation.amount) || 0
+    const percent = denominator > 0 ? (amount / denominator) * 100 : 0
+    const midpoint = denominator > 0 ? ((cumulative + amount / 2) / denominator) * 100 : 0
+    cumulative += amount
+
+    return {
+      ...donation,
+      index,
+      percent: clampPercent(percent),
+      midpoint: clampPercent(midpoint),
+    }
+  })
 }
 
 function useDonationProgress() {
@@ -114,8 +158,9 @@ function useDonationProgress() {
       currency: profile.currency || 'NZD',
       donorCount: Number(profile.donorCount) || 0,
       donationCount: Number(profile.donationCount) || 0,
+      allDonationCount: Number(profile.allDonationCount) || state.donations.length,
     }
-  }, [state.profile])
+  }, [state.profile, state.donations.length])
 
   return { ...state, progress }
 }
@@ -147,14 +192,57 @@ function CompactDonationTracker() {
   )
 }
 
+function DonationBreakdown({ donations, progress }) {
+  const markers = useMemo(() => createDonationBreakdown(donations, progress.raised), [donations, progress.raised])
+
+  return (
+    <aside className="donation-detail__breakdown" aria-label="Donation contribution breakdown">
+      <div className="donation-detail__breakdown-head">
+        <p className="section-label">Gift breakdown</p>
+        <h3>Each gift in the total.</h3>
+        <p>Markers show how much each public donation contributes to the donations listed here.</p>
+      </div>
+
+      {markers.length > 0 ? (
+        <div className="donation-breakdown-chart">
+          <div className="donation-breakdown-chart__rail" aria-hidden="true">
+            {markers.map((donation) => (
+              <span
+                className="donation-breakdown-chart__segment"
+                key={`${donation.id}-segment`}
+                style={{ flexGrow: Math.max(donation.percent, 0.4) }}
+              />
+            ))}
+          </div>
+          <ol className="donation-breakdown-chart__callouts">
+            {markers.map((donation) => (
+              <li key={`${donation.id}-marker`}>
+                <a href={`#donation-${donation.id}`}>
+                  <span className="donation-breakdown-chart__marker" aria-hidden="true" />
+                  <span>
+                    <strong>{donation.name || 'Anonymous supporter'}</strong>
+                    <small>{formatCurrency(donation.amount, donation.currency || progress.currency)}</small>
+                  </span>
+                </a>
+              </li>
+            ))}
+          </ol>
+        </div>
+      ) : (
+        <p className="donation-detail__empty">The gift breakdown will appear when public donations load.</p>
+      )}
+    </aside>
+  )
+}
+
 function DetailedDonationTracker() {
   const { loading, error, profile, donations, updatedAt, progress } = useDonationProgress()
-  const recentDonations = donations.slice(0, 12)
+  const [sortBy, setSortBy] = useState('newest')
+  const sortedDonations = useMemo(() => sortDonations(donations, sortBy), [donations, sortBy])
   const supporterCount = progress.donorCount || progress.donationCount
 
   return (
     <section className="donation-detail" aria-label="Donation progress details">
-      <div className="donation-detail__glow" aria-hidden="true" />
       <div className="donation-detail__inner">
         <div className="donation-detail__hero-card">
           <div className="donation-detail__copy">
@@ -165,7 +253,7 @@ function DetailedDonationTracker() {
             </p>
             <div className="donation-detail__actions">
               <a href="https://nogoingback.nz/nicole-white" className="btn-primary" target="_blank" rel="noopener noreferrer">Donate now</a>
-              <a href="#recent-donations" className="btn-outline">See donations</a>
+              <a href="#all-donations" className="btn-outline">See all donations</a>
             </div>
           </div>
 
@@ -191,6 +279,10 @@ function DetailedDonationTracker() {
             <strong>{supporterCount || 'Updating'}</strong>
           </div>
           <div>
+            <span>Public gifts</span>
+            <strong>{loading ? 'Loading' : sortedDonations.length}</strong>
+          </div>
+          <div>
             <span>Last update</span>
             <strong>{updatedAt ? formatDate(updatedAt) : 'Live'}</strong>
           </div>
@@ -207,30 +299,44 @@ function DetailedDonationTracker() {
           {error && <p className="donation-detail__error">{error}</p>}
         </div>
 
-        <div className="donation-detail__donations" id="recent-donations">
-          <div className="donation-detail__section-head">
-            <p className="section-label">Recent donations</p>
-            <h3>Names, notes, and generous moments.</h3>
+        <div className="donation-detail__donations-shell" id="all-donations">
+          <div className="donation-detail__donations">
+            <div className="donation-detail__section-head">
+              <div>
+                <p className="section-label">All public donations</p>
+                <h3>Names, notes, and generous moments.</h3>
+              </div>
+              <label className="donation-detail__sort">
+                <span>Sort by</span>
+                <select value={sortBy} onChange={(event) => setSortBy(event.target.value)}>
+                  {sortOptions.map((option) => (
+                    <option value={option.value} key={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            {sortedDonations.length > 0 ? (
+              <div className="donation-detail__grid">
+                {sortedDonations.map((donation) => (
+                  <article className="donation-detail__donation-card" key={donation.id} id={`donation-${donation.id}`}>
+                    <div className="donation-detail__donation-top">
+                      <strong>{donation.name || 'Anonymous supporter'}</strong>
+                      <span>{formatCurrency(donation.amount, donation.currency || progress.currency)}</span>
+                    </div>
+                    {donation.message && <p>{donation.message}</p>}
+                    <small>{formatDate(donation.createdAt)}</small>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className="donation-detail__empty">
+                {loading ? 'Loading every public gift from Raisely.' : 'Public donations will appear here when Raisely shares them.'}
+              </p>
+            )}
           </div>
 
-          {recentDonations.length > 0 ? (
-            <div className="donation-detail__grid">
-              {recentDonations.map((donation, index) => (
-                <article className="donation-detail__donation-card" key={donation.id} style={{ '--delay': `${index * 45}ms` }}>
-                  <div className="donation-detail__donation-top">
-                    <strong>{donation.name || 'Anonymous supporter'}</strong>
-                    <span>{formatCurrency(donation.amount, donation.currency || progress.currency)}</span>
-                  </div>
-                  {donation.message && <p>{donation.message}</p>}
-                  <small>{formatDate(donation.createdAt)}</small>
-                </article>
-              ))}
-            </div>
-          ) : (
-            <p className="donation-detail__empty">
-              {loading ? 'Loading the latest gifts from Raisely.' : 'Public donations will appear here when Raisely shares them.'}
-            </p>
-          )}
+          <DonationBreakdown donations={sortedDonations} progress={progress} />
         </div>
       </div>
     </section>
