@@ -984,3 +984,44 @@ body.is-mobile-view .hero.portal-hero .hero-tagline {
   margin-left: 0;
   margin-right: 0;
 }
+
+
+/* Static portal fallback after removing the scroll-zoom effect. */
+.site-header-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  background: rgba(13,13,13,0.96);
+}
+
+.portal-hero,
+body.is-mobile-view .portal-hero,
+.hero.portal-hero,
+body.is-mobile-view .hero.portal-hero {
+  min-height: 100svh !important;
+  height: auto !important;
+  overflow: hidden !important;
+}
+
+.portal-hero-stage,
+body.is-mobile-view .portal-hero-stage,
+.hero.portal-hero .portal-hero-stage,
+body.is-mobile-view .hero.portal-hero .portal-hero-stage {
+  position: relative !important;
+  top: auto !important;
+  min-height: 100svh !important;
+  height: auto !important;
+}
+
+.portal-hero + section,
+body.is-mobile-view .portal-hero + section {
+  margin-top: 0 !important;
+}
+
+.hero-portal-tunnel,
+.hero-portal-flood,
+.hero-portal-aperture,
+.portal-hero-stage::after,
+.portal-letter-target::before {
+  display: none !important;
+}

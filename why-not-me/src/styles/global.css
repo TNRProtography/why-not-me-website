@@ -1244,3 +1244,57 @@ body.is-mobile-view .portal-hero {
 body.is-mobile-view .hero-portal-aperture {
   width: clamp(24px, 8vw, 48px);
 }
+
+/* Performance-first rendering: disable expensive decorative motion and blur. */
+*, *::before, *::after {
+  animation: none !important;
+  transition-duration: 0s !important;
+  scroll-behavior: auto !important;
+}
+
+body *, body *::before, body *::after {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  filter: none !important;
+}
+
+
+/* Static portal fallback after removing the scroll-zoom effect. */
+.site-header-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  background: rgba(13,13,13,0.96);
+}
+
+.portal-hero,
+body.is-mobile-view .portal-hero,
+.hero.portal-hero,
+body.is-mobile-view .hero.portal-hero {
+  min-height: 100svh !important;
+  height: auto !important;
+  overflow: hidden !important;
+}
+
+.portal-hero-stage,
+body.is-mobile-view .portal-hero-stage,
+.hero.portal-hero .portal-hero-stage,
+body.is-mobile-view .hero.portal-hero .portal-hero-stage {
+  position: relative !important;
+  top: auto !important;
+  min-height: 100svh !important;
+  height: auto !important;
+}
+
+.portal-hero + section,
+body.is-mobile-view .portal-hero + section {
+  margin-top: 0 !important;
+}
+
+.hero-portal-tunnel,
+.hero-portal-flood,
+.hero-portal-aperture,
+.portal-hero-stage::after,
+.portal-letter-target::before {
+  display: none !important;
+}

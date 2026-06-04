@@ -1,30 +1,28 @@
 import { useEffect, useState } from 'react'
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
-import { AnimatePresence } from 'framer-motion'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Nav from './components/Nav'
 import Footer from './components/Footer'
 import ScrollToTop from './components/ScrollToTop'
 import ScrollAtmosphere from './components/ScrollAtmosphere'
+import DonationGoalTracker from './components/DonationGoalTracker'
 import HomePage from './pages/HomePage'
 import DocumentaryPage from './pages/DocumentaryPage'
 import DonatePage from './pages/DonatePage'
+import DonationProgressPage from './pages/DonationProgressPage'
 import MarathonPage from './pages/MarathonPage'
 import LiveTrackerPage from './pages/LiveTrackerPage'
 import { isTrackerWindowOpen } from './config/trackerAvailability'
 
 function AnimatedRoutes({ trackerEnabled }) {
-  const location = useLocation()
-
   return (
-    <AnimatePresence mode="wait" initial={false}>
-      <Routes location={location} key={location.pathname}>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/documentary" element={<DocumentaryPage />} />
-        <Route path="/queenstown-marathon" element={<MarathonPage />} />
-        <Route path="/donate" element={<DonatePage />} />
-        {trackerEnabled && <Route path="/live" element={<LiveTrackerPage />} />}
-      </Routes>
-    </AnimatePresence>
+    <Routes>
+      <Route path="/" element={<HomePage />} />
+      <Route path="/documentary" element={<DocumentaryPage />} />
+      <Route path="/queenstown-marathon" element={<MarathonPage />} />
+      <Route path="/donate" element={<DonatePage />} />
+      <Route path="/donation-progress" element={<DonationProgressPage />} />
+      {trackerEnabled && <Route path="/live" element={<LiveTrackerPage />} />}
+    </Routes>
   )
 }
 
@@ -87,7 +85,13 @@ export default function App() {
       <div className={`site-shell ${isMobileView ? 'mobile-view' : 'desktop-view'}`} data-mobile-view={isMobileView}>
         <ScrollToTop />
         <ScrollAtmosphere />
-        <Nav trackerEnabled={trackerEnabled} />
+        <header className="site-header-sticky">
+          <Nav
+            trackerEnabled={trackerEnabled}
+            mobileDonationTracker={isMobileView ? <DonationGoalTracker variant="nav" /> : null}
+          />
+          {!isMobileView && <DonationGoalTracker variant="compact" />}
+        </header>
         <AnimatedRoutes trackerEnabled={trackerEnabled} />
         <Footer />
       </div>

@@ -18,7 +18,7 @@ export default function Footer() {
         <span className="footer-dot">&middot;</span>
         <a href="https://tnrprotography.co.nz" target="_blank" rel="noopener noreferrer">Photography by TNR Protography</a>
         <span className="footer-dot">&middot;</span>
-        <a href="https://nogoingback.nz/nicole-white" target="_blank" rel="noopener noreferrer">Donate at nogoingback.nz</a>
+        <a href="https://nogoingback.nz/nicole-white" target="_blank" rel="noopener noreferrer">Donate through Raisely</a>
       </div>
 
       <p className="footer-copy">

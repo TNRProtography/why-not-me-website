@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { NavLink, Link } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
 import './Nav.css'
 
 const navItems = [
@@ -9,7 +8,7 @@ const navItems = [
   { to: '/queenstown-marathon', label: 'Marathon' },
 ]
 
-export default function Nav({ trackerEnabled = false }) {
+export default function Nav({ trackerEnabled = false, mobileDonationTracker = null }) {
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
 
@@ -34,21 +33,20 @@ export default function Nav({ trackerEnabled = false }) {
 
   return (
     <>
-      <motion.nav
-        className={`main-nav ${scrolled ? 'scrolled' : ''}`}
-        initial={{ y: -90, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.9, ease: [0.19, 1, 0.22, 1] }}
-      >
+      <nav className={`main-nav ${scrolled ? 'scrolled' : ''}`}>
         <Link to="/" className="nav-logo-link" aria-label="Why Not Me home">
-          <motion.img
+          <img
             src="/images/logos/logo-white-transparent.png"
             alt="Why Not Me?"
             className="nav-logo"
-            whileHover={{ scale: 1.06, rotate: -2 }}
-            transition={{ duration: 0.45, ease: [0.19, 1, 0.22, 1] }}
           />
         </Link>
+
+        {mobileDonationTracker && (
+          <div className="nav-mobile-donation">
+            {mobileDonationTracker}
+          </div>
+        )}
 
         <div className="nav-links">
           {visibleNavItems.map((item) => (
@@ -72,51 +70,20 @@ export default function Nav({ trackerEnabled = false }) {
         >
           <span /><span /><span />
         </button>
-      </motion.nav>
+      </nav>
 
-      <AnimatePresence>
-        {mobileOpen && (
-          <motion.div
-            className="mobile-menu"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.45, ease: [0.19, 1, 0.22, 1] }}
-          >
-            <motion.div
-              className="mobile-menu-bg"
-              aria-hidden="true"
-              initial={{ scale: 1.1, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 1.04, opacity: 0 }}
-              transition={{ duration: 0.8, ease: [0.19, 1, 0.22, 1] }}
-            />
-            <motion.div
-              className="mobile-menu-inner"
-              initial="hidden"
-              animate="visible"
-              exit="hidden"
-              variants={{
-                hidden: {},
-                visible: { transition: { staggerChildren: 0.08, delayChildren: 0.08 } },
-              }}
-            >
-              {[...visibleNavItems, { to: '/donate', label: 'Donate' }].map((item) => (
-                <motion.div
-                  key={item.to}
-                  variants={{
-                    hidden: { opacity: 0, y: 24, filter: 'blur(10px)' },
-                    visible: { opacity: 1, y: 0, filter: 'blur(0px)' },
-                  }}
-                  transition={{ duration: 0.65, ease: [0.19, 1, 0.22, 1] }}
-                >
-                  <NavLink to={item.to} end={item.end} onClick={closeMobile}>{item.label}</NavLink>
-                </motion.div>
-              ))}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {mobileOpen && (
+        <div className="mobile-menu">
+          <div className="mobile-menu-bg" aria-hidden="true" />
+          <div className="mobile-menu-inner">
+            {[...visibleNavItems, { to: '/donate', label: 'Donate' }].map((item) => (
+              <div key={item.to}>
+                <NavLink to={item.to} end={item.end} onClick={closeMobile}>{item.label}</NavLink>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </>
   )
 }
