@@ -174,7 +174,7 @@ function NavDonationTracker() {
         {loading ? 'Loading' : `${formatCurrency(progress.raised, progress.currency)} raised`}
       </span>
       <span className="donation-nav-mini__meta">
-        {progress.goal > 0 ? `${progress.displayPercent}% funded` : 'Live fundraising'}
+        {progress.goal > 0 ? `${progress.displayPercent}% of ${formatCurrency(progress.goal, progress.currency)}` : 'Live fundraising'}
       </span>
       <span className="donation-nav-mini__bar" aria-hidden="true">
         <span style={{ width: `${progress.percent}%` }} />

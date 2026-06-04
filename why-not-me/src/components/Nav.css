@@ -159,7 +159,7 @@
 
 /* ============ MOBILE-SPECIFIC NAV VIEW ============ */
 body.is-mobile-view .main-nav {
-  gap: 12px;
+  gap: 14px;
   padding: 12px 18px;
   background: rgba(13,13,13,0.96);
 }
@@ -170,7 +170,7 @@ body.is-mobile-view .main-nav.scrolled {
 }
 
 body.is-mobile-view .nav-logo {
-  height: 58px;
+  height: 56px;
 }
 
 body.is-mobile-view .nav-logo-link {
@@ -181,15 +181,14 @@ body.is-mobile-view .nav-mobile-donation {
   display: block;
   flex: 1 1 auto;
   min-width: 0;
-  max-width: 190px;
   margin-left: auto;
 }
 
 body.is-mobile-view .hamburger {
   display: flex;
   flex: 0 0 auto;
-  min-width: 48px;
-  min-height: 48px;
+  min-width: 52px;
+  min-height: 52px;
   justify-content: center;
   align-items: center;
   border: 1px solid rgba(245,243,236,0.1);
@@ -219,10 +218,6 @@ body.is-mobile-view .mobile-menu a {
 
   body.is-mobile-view .nav-logo {
     height: 50px;
-  }
-
-  body.is-mobile-view .nav-mobile-donation {
-    max-width: 160px;
   }
 
   body.is-mobile-view .mobile-menu a {
