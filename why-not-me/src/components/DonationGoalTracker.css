@@ -1,7 +1,6 @@
 .donation-strip {
-  position: sticky;
-  top: 84px;
-  z-index: 999;
+  position: relative;
+  z-index: 1;
   width: 100%;
   padding: 10px 18px 12px;
   background: rgba(13,13,13,0.96);
@@ -325,7 +324,6 @@
 
 @media (min-width: 700px) {
   .donation-strip {
-    top: 98px;
     padding: 12px 28px 14px;
   }
 

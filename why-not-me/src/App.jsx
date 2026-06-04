@@ -85,8 +85,10 @@ export default function App() {
       <div className={`site-shell ${isMobileView ? 'mobile-view' : 'desktop-view'}`} data-mobile-view={isMobileView}>
         <ScrollToTop />
         <ScrollAtmosphere />
-        <Nav trackerEnabled={trackerEnabled} />
-        <DonationGoalTracker variant="compact" />
+        <header className="site-header-sticky">
+          <Nav trackerEnabled={trackerEnabled} />
+          <DonationGoalTracker variant="compact" />
+        </header>
         <AnimatedRoutes trackerEnabled={trackerEnabled} />
         <Footer />
       </div>
