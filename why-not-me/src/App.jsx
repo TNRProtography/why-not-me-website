@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
-import { AnimatePresence } from 'framer-motion'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Nav from './components/Nav'
 import Footer from './components/Footer'
 import ScrollToTop from './components/ScrollToTop'
@@ -15,19 +14,15 @@ import LiveTrackerPage from './pages/LiveTrackerPage'
 import { isTrackerWindowOpen } from './config/trackerAvailability'
 
 function AnimatedRoutes({ trackerEnabled }) {
-  const location = useLocation()
-
   return (
-    <AnimatePresence mode="wait" initial={false}>
-      <Routes location={location} key={location.pathname}>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/documentary" element={<DocumentaryPage />} />
-        <Route path="/queenstown-marathon" element={<MarathonPage />} />
-        <Route path="/donate" element={<DonatePage />} />
-        <Route path="/donation-progress" element={<DonationProgressPage />} />
-        {trackerEnabled && <Route path="/live" element={<LiveTrackerPage />} />}
-      </Routes>
-    </AnimatePresence>
+    <Routes>
+      <Route path="/" element={<HomePage />} />
+      <Route path="/documentary" element={<DocumentaryPage />} />
+      <Route path="/queenstown-marathon" element={<MarathonPage />} />
+      <Route path="/donate" element={<DonatePage />} />
+      <Route path="/donation-progress" element={<DonationProgressPage />} />
+      {trackerEnabled && <Route path="/live" element={<LiveTrackerPage />} />}
+    </Routes>
   )
 }
 
@@ -91,8 +86,8 @@ export default function App() {
         <ScrollToTop />
         <ScrollAtmosphere />
         <Nav trackerEnabled={trackerEnabled} />
-        <AnimatedRoutes trackerEnabled={trackerEnabled} />
         <DonationGoalTracker variant="compact" />
+        <AnimatedRoutes trackerEnabled={trackerEnabled} />
         <Footer />
       </div>
     </BrowserRouter>

@@ -1244,3 +1244,16 @@ body.is-mobile-view .portal-hero {
 body.is-mobile-view .hero-portal-aperture {
   width: clamp(24px, 8vw, 48px);
 }
+
+/* Performance-first rendering: disable expensive decorative motion and blur. */
+*, *::before, *::after {
+  animation: none !important;
+  transition-duration: 0s !important;
+  scroll-behavior: auto !important;
+}
+
+body *, body *::before, body *::after {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  filter: none !important;
+}
