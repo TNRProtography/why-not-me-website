@@ -8,7 +8,7 @@ const navItems = [
   { to: '/queenstown-marathon', label: 'Marathon' },
 ]
 
-export default function Nav({ trackerEnabled = false }) {
+export default function Nav({ trackerEnabled = false, mobileDonationTracker = null }) {
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
 
@@ -41,6 +41,12 @@ export default function Nav({ trackerEnabled = false }) {
             className="nav-logo"
           />
         </Link>
+
+        {mobileDonationTracker && (
+          <div className="nav-mobile-donation">
+            {mobileDonationTracker}
+          </div>
+        )}
 
         <div className="nav-links">
           {visibleNavItems.map((item) => (

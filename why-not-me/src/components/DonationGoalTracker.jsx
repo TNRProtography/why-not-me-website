@@ -165,6 +165,24 @@ function useDonationProgress() {
   return { ...state, progress }
 }
 
+function NavDonationTracker() {
+  const { loading, progress } = useDonationProgress()
+
+  return (
+    <Link className="donation-nav-mini" to="/donation-progress" aria-label="View live donation progress">
+      <span className="donation-nav-mini__text">
+        {loading ? 'Loading' : `${formatCurrency(progress.raised, progress.currency)} raised`}
+      </span>
+      <span className="donation-nav-mini__meta">
+        {progress.goal > 0 ? `${progress.displayPercent}% funded` : 'Live fundraising'}
+      </span>
+      <span className="donation-nav-mini__bar" aria-hidden="true">
+        <span style={{ width: `${progress.percent}%` }} />
+      </span>
+    </Link>
+  )
+}
+
 function CompactDonationTracker() {
   const { loading, error, progress } = useDonationProgress()
   const supporterCount = progress.donorCount || progress.donationCount
@@ -345,5 +363,6 @@ function DetailedDonationTracker() {
 
 export default function DonationGoalTracker({ variant = 'compact' }) {
   if (variant === 'detail') return <DetailedDonationTracker />
+  if (variant === 'nav') return <NavDonationTracker />
   return <CompactDonationTracker />
 }

@@ -86,8 +86,11 @@ export default function App() {
         <ScrollToTop />
         <ScrollAtmosphere />
         <header className="site-header-sticky">
-          <Nav trackerEnabled={trackerEnabled} />
-          <DonationGoalTracker variant="compact" />
+          <Nav
+            trackerEnabled={trackerEnabled}
+            mobileDonationTracker={isMobileView ? <DonationGoalTracker variant="nav" /> : null}
+          />
+          {!isMobileView && <DonationGoalTracker variant="compact" />}
         </header>
         <AnimatedRoutes trackerEnabled={trackerEnabled} />
         <Footer />

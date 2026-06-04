@@ -5,6 +5,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 24px;
   background: rgba(13,13,13,0.94);
 }
 
@@ -24,6 +25,10 @@
   height: 62px;
   width: auto;
   object-fit: contain;
+}
+
+.nav-mobile-donation {
+  display: none;
 }
 
 .nav-links {
@@ -154,7 +159,8 @@
 
 /* ============ MOBILE-SPECIFIC NAV VIEW ============ */
 body.is-mobile-view .main-nav {
-  padding: 14px 18px;
+  gap: 12px;
+  padding: 12px 18px;
   background: rgba(13,13,13,0.96);
 }
 
@@ -164,11 +170,24 @@ body.is-mobile-view .main-nav.scrolled {
 }
 
 body.is-mobile-view .nav-logo {
-  height: 62px;
+  height: 58px;
+}
+
+body.is-mobile-view .nav-logo-link {
+  flex: 0 0 auto;
+}
+
+body.is-mobile-view .nav-mobile-donation {
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 190px;
+  margin-left: auto;
 }
 
 body.is-mobile-view .hamburger {
   display: flex;
+  flex: 0 0 auto;
   min-width: 48px;
   min-height: 48px;
   justify-content: center;
@@ -192,8 +211,18 @@ body.is-mobile-view .mobile-menu a {
 }
 
 @media (max-width: 420px) {
+  body.is-mobile-view .main-nav {
+    gap: 9px;
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
   body.is-mobile-view .nav-logo {
-    height: 56px;
+    height: 50px;
+  }
+
+  body.is-mobile-view .nav-mobile-donation {
+    max-width: 160px;
   }
 
   body.is-mobile-view .mobile-menu a {

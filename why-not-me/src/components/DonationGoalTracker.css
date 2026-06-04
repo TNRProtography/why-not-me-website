@@ -1,3 +1,53 @@
+.donation-nav-mini {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  gap: 2px;
+  padding: 7px 9px 8px;
+  color: var(--white);
+  border: 1px solid rgba(168,142,93,0.22);
+  background: rgba(245,243,236,0.03);
+}
+
+.donation-nav-mini__text,
+.donation-nav-mini__meta {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.15;
+}
+
+.donation-nav-mini__text {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+
+.donation-nav-mini__meta {
+  color: var(--gold);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+
+.donation-nav-mini__bar {
+  display: block;
+  height: 3px;
+  margin-top: 3px;
+  overflow: hidden;
+  background: rgba(245,243,236,0.12);
+}
+
+.donation-nav-mini__bar span {
+  display: block;
+  height: 100%;
+  min-width: 2px;
+  background: linear-gradient(90deg, var(--gold), var(--warm));
+}
+
 .donation-strip {
   position: relative;
   z-index: 1;
@@ -420,6 +470,21 @@
 .donation-breakdown-chart__callouts small {
   margin-top: 3px;
   letter-spacing: 1.4px;
+}
+
+@media (max-width: 420px) {
+  .donation-nav-mini {
+    padding: 6px 7px 7px;
+  }
+
+  .donation-nav-mini__text {
+    font-size: 10px;
+  }
+
+  .donation-nav-mini__meta {
+    font-size: 7px;
+    letter-spacing: 1px;
+  }
 }
 
 @media (min-width: 700px) {
