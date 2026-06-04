@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import './DonationGoalTracker.css'
 
 const REFRESH_INTERVAL_MS = 60000
@@ -48,9 +49,8 @@ function clampPercent(value) {
   return Math.max(0, Math.min(100, value))
 }
 
-export default function DonationGoalTracker() {
+function useDonationProgress() {
   const [state, setState] = useState(initialState)
-  const [expanded, setExpanded] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -117,76 +117,127 @@ export default function DonationGoalTracker() {
     }
   }, [state.profile])
 
-  const visibleDonations = expanded ? state.donations : state.donations.slice(0, 3)
-  const hasDonations = state.donations.length > 0
+  return { ...state, progress }
+}
+
+function CompactDonationTracker() {
+  const { loading, error, progress } = useDonationProgress()
+  const supporterCount = progress.donorCount || progress.donationCount
 
   return (
-    <section className="donation-goal" aria-label="Donation goal tracker">
-      <div className="donation-goal__glow" aria-hidden="true" />
-      <div className="donation-goal__inner">
-        <div className="donation-goal__summary">
-          <p className="section-label donation-goal__label">Live Fundraising Progress</p>
-          <div className="donation-goal__headline">
-            <h2>Help Nicole reach the finish line.</h2>
-            <a href="https://nogoingback.nz/nicole-white" className="btn-primary donation-goal__button" target="_blank" rel="noopener noreferrer">
-              Donate now
-            </a>
-          </div>
-
-          <div className="donation-goal__amounts" aria-live="polite">
-            <span className="donation-goal__raised">
-              {state.loading ? 'Loading' : formatCurrency(progress.raised, progress.currency)}
-            </span>
-            <span className="donation-goal__target">
-              {progress.goal > 0 ? `of ${formatCurrency(progress.goal, progress.currency)} goal` : 'raised so far'}
-            </span>
-          </div>
-
-          <div className="donation-goal__bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow={progress.displayPercent}>
-            <span style={{ width: `${progress.percent}%` }} />
-          </div>
-
-          <div className="donation-goal__meta">
-            <span>{progress.displayPercent}% funded</span>
-            <span>{progress.donorCount || progress.donationCount} supporters</span>
-            <span>{state.updatedAt ? `Updated ${formatDate(state.updatedAt)}` : 'Live from Raisely'}</span>
-          </div>
-
-          {state.error && <p className="donation-goal__error">{state.error}</p>}
+    <section className="donation-strip" aria-label="Live donation progress">
+      <div className="donation-strip__content">
+        <div className="donation-strip__copy">
+          <span className="donation-strip__eyebrow">Live fundraising</span>
+          <strong>{loading ? 'Loading progress' : `${formatCurrency(progress.raised, progress.currency)} raised`}</strong>
+          <span>{progress.goal > 0 ? `${progress.displayPercent}% of ${formatCurrency(progress.goal, progress.currency)}` : 'Progress updating from Raisely'}</span>
         </div>
 
-        <div className="donation-goal__stream">
-          <div className="donation-goal__stream-head">
-            <p>Recent donations</p>
-            {hasDonations && state.donations.length > 3 && (
-              <button type="button" onClick={() => setExpanded((value) => !value)}>
-                {expanded ? 'Show less' : 'Show all'}
-              </button>
-            )}
+        <div className="donation-strip__bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow={progress.displayPercent}>
+          <span style={{ width: `${progress.percent}%` }} />
+        </div>
+
+        <div className="donation-strip__actions">
+          <span>{supporterCount ? `${supporterCount} supporters` : 'Live from Raisely'}</span>
+          <Link to="/donation-progress">Learn more</Link>
+        </div>
+      </div>
+      {error && <p className="donation-strip__error">{error}</p>}
+    </section>
+  )
+}
+
+function DetailedDonationTracker() {
+  const { loading, error, profile, donations, updatedAt, progress } = useDonationProgress()
+  const recentDonations = donations.slice(0, 12)
+  const supporterCount = progress.donorCount || progress.donationCount
+
+  return (
+    <section className="donation-detail" aria-label="Donation progress details">
+      <div className="donation-detail__glow" aria-hidden="true" />
+      <div className="donation-detail__inner">
+        <div className="donation-detail__hero-card">
+          <div className="donation-detail__copy">
+            <p className="section-label">Live Fundraising Progress</p>
+            <h2>Every gift carries Nicole closer.</h2>
+            <p>
+              The totals below update from Raisely and show the public support behind Nicole's marathon for Brain Tumour Support NZ.
+            </p>
+            <div className="donation-detail__actions">
+              <a href="https://nogoingback.nz/nicole-white" className="btn-primary" target="_blank" rel="noopener noreferrer">Donate now</a>
+              <a href="#recent-donations" className="btn-outline">See donations</a>
+            </div>
           </div>
 
-          {hasDonations ? (
-            <ul className="donation-goal__list">
-              {visibleDonations.map((donation) => (
-                <li key={donation.id} className="donation-goal__donation">
-                  <div>
+          <div className="donation-detail__orb" style={{ '--progress': `${progress.percent * 3.6}deg` }} aria-hidden="true">
+            <div>
+              <strong>{loading ? '...' : `${progress.displayPercent}%`}</strong>
+              <span>Funded</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="donation-detail__stats" aria-live="polite">
+          <div>
+            <span>Raised</span>
+            <strong>{loading ? 'Loading' : formatCurrency(progress.raised, progress.currency)}</strong>
+          </div>
+          <div>
+            <span>Goal</span>
+            <strong>{progress.goal > 0 ? formatCurrency(progress.goal, progress.currency) : 'Updating'}</strong>
+          </div>
+          <div>
+            <span>Supporters</span>
+            <strong>{supporterCount || 'Updating'}</strong>
+          </div>
+          <div>
+            <span>Last update</span>
+            <strong>{updatedAt ? formatDate(updatedAt) : 'Live'}</strong>
+          </div>
+        </div>
+
+        <div className="donation-detail__progress-card">
+          <div className="donation-detail__progress-head">
+            <span>{profile?.name || 'Nicole White'}</span>
+            <span>{progress.displayPercent}%</span>
+          </div>
+          <div className="donation-detail__bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow={progress.displayPercent}>
+            <span style={{ width: `${progress.percent}%` }} />
+          </div>
+          {error && <p className="donation-detail__error">{error}</p>}
+        </div>
+
+        <div className="donation-detail__donations" id="recent-donations">
+          <div className="donation-detail__section-head">
+            <p className="section-label">Recent donations</p>
+            <h3>Names, notes, and generous moments.</h3>
+          </div>
+
+          {recentDonations.length > 0 ? (
+            <div className="donation-detail__grid">
+              {recentDonations.map((donation, index) => (
+                <article className="donation-detail__donation-card" key={donation.id} style={{ '--delay': `${index * 45}ms` }}>
+                  <div className="donation-detail__donation-top">
                     <strong>{donation.name || 'Anonymous supporter'}</strong>
-                    {donation.message && <p>{donation.message}</p>}
+                    <span>{formatCurrency(donation.amount, donation.currency || progress.currency)}</span>
                   </div>
-                  <span>
-                    {formatCurrency(donation.amount, donation.currency || progress.currency)}
-                    <small>{formatDate(donation.createdAt)}</small>
-                  </span>
-                </li>
+                  {donation.message && <p>{donation.message}</p>}
+                  <small>{formatDate(donation.createdAt)}</small>
+                </article>
               ))}
-            </ul>
+            </div>
           ) : (
-            <p className="donation-goal__empty">
-              {state.loading ? 'Loading the latest gifts from Raisely.' : 'Donations will appear here when Raisely shares them publicly.'}
+            <p className="donation-detail__empty">
+              {loading ? 'Loading the latest gifts from Raisely.' : 'Public donations will appear here when Raisely shares them.'}
             </p>
           )}
         </div>
       </div>
     </section>
   )
+}
+
+export default function DonationGoalTracker({ variant = 'compact' }) {
+  if (variant === 'detail') return <DetailedDonationTracker />
+  return <CompactDonationTracker />
 }

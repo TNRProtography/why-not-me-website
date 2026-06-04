@@ -9,6 +9,7 @@ import DonationGoalTracker from './components/DonationGoalTracker'
 import HomePage from './pages/HomePage'
 import DocumentaryPage from './pages/DocumentaryPage'
 import DonatePage from './pages/DonatePage'
+import DonationProgressPage from './pages/DonationProgressPage'
 import MarathonPage from './pages/MarathonPage'
 import LiveTrackerPage from './pages/LiveTrackerPage'
 import { isTrackerWindowOpen } from './config/trackerAvailability'
@@ -23,6 +24,7 @@ function AnimatedRoutes({ trackerEnabled }) {
         <Route path="/documentary" element={<DocumentaryPage />} />
         <Route path="/queenstown-marathon" element={<MarathonPage />} />
         <Route path="/donate" element={<DonatePage />} />
+        <Route path="/donation-progress" element={<DonationProgressPage />} />
         {trackerEnabled && <Route path="/live" element={<LiveTrackerPage />} />}
       </Routes>
     </AnimatePresence>
@@ -90,7 +92,7 @@ export default function App() {
         <ScrollAtmosphere />
         <Nav trackerEnabled={trackerEnabled} />
         <AnimatedRoutes trackerEnabled={trackerEnabled} />
-        <DonationGoalTracker />
+        <DonationGoalTracker variant="compact" />
         <Footer />
       </div>
     </BrowserRouter>
