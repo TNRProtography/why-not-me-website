@@ -66,7 +66,7 @@ export default function DonatePage() {
                 Nicole is raising funds through No Going Back. Every dollar goes toward Brain Tumour Support NZ, helping Kiwi families navigate the hardest diagnosis of their lives.
               </p>
               <a href="https://nogoingback.nz/nicole-white" target="_blank" rel="noopener noreferrer" className="btn-primary" style={{ marginTop: 30 }}>
-                Donate at nogoingback.nz
+                Donate through Raisely
               </a>
             </div>
           </RevealOnScroll>

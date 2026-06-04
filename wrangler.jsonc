@@ -1,8 +1,11 @@
 {
   "name": "why-not-me-website",
   "compatibility_date": "2026-05-27",
+  "main": "./why-not-me/worker/index.js",
   "assets": {
     "directory": "./why-not-me/dist",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"],
     "not_found_handling": "single-page-application"
   }
 }

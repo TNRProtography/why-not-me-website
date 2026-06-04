@@ -280,7 +280,7 @@ export default function MediaPage() {
             </div>
             <div>
               <p className="section-label" style={{ marginBottom: 6 }}>Donate</p>
-              <a href="https://nogoingback.nz/nicole-white" target="_blank" rel="noopener noreferrer" style={{ fontSize: 14, color: 'var(--gold)' }}>nogoingback.nz/nicole-white</a>
+              <a href="https://nogoingback.nz/nicole-white" target="_blank" rel="noopener noreferrer" style={{ fontSize: 14, color: 'var(--gold)' }}>Open Nicole's Raisely page</a>
             </div>
             <div>
               <p className="section-label" style={{ marginBottom: 6 }}>Socials</p>

@@ -5,6 +5,7 @@ import Nav from './components/Nav'
 import Footer from './components/Footer'
 import ScrollToTop from './components/ScrollToTop'
 import ScrollAtmosphere from './components/ScrollAtmosphere'
+import DonationGoalTracker from './components/DonationGoalTracker'
 import HomePage from './pages/HomePage'
 import DocumentaryPage from './pages/DocumentaryPage'
 import DonatePage from './pages/DonatePage'
@@ -89,6 +90,7 @@ export default function App() {
         <ScrollAtmosphere />
         <Nav trackerEnabled={trackerEnabled} />
         <AnimatedRoutes trackerEnabled={trackerEnabled} />
+        <DonationGoalTracker />
         <Footer />
       </div>
     </BrowserRouter>
