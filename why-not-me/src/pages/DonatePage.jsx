@@ -16,6 +16,7 @@ import PageTransition from '../components/PageTransition'
 import RevealOnScroll from '../components/RevealOnScroll'
 import ScrollZoomFocus from '../components/ScrollZoomFocus'
 import HeroPortalTitle from '../components/HeroPortalTitle'
+import BrainTumourSupportSection from '../components/BrainTumourSupportSection'
 
 export default function DonatePage() {
   const heroRef = useRef(null)
@@ -40,7 +41,7 @@ export default function DonatePage() {
               </h1>
             </HeroPortalTitle>
             <p style={{ marginTop: 15, color: 'var(--warm)', fontSize: 15, maxWidth: 550, marginLeft: 'auto', marginRight: 'auto' }}>
-              All proceeds support Brain Tumour Support NZ, the charity Nicole has championed since 2022.
+              All money raised goes directly to Brain Tumour Support NZ, the charity Nicole has championed since 2022.
             </p>
           </div>
         </div>
@@ -63,7 +64,7 @@ export default function DonatePage() {
                 Donate directly.
               </div>
               <p className="section-body" style={{ maxWidth: '100%', textAlign: 'center' }}>
-                Nicole is raising funds through No Going Back. Every dollar goes toward Brain Tumour Support NZ, helping Kiwi families navigate the hardest diagnosis of their lives.
+                Nicole is raising funds through No Going Back. Every dollar raised goes directly to Brain Tumour Support NZ, helping Kiwi families navigate the hardest diagnosis of their lives.
               </p>
               <a href="https://nogoingback.nz/nicole-white" target="_blank" rel="noopener noreferrer" className="btn-primary" style={{ marginTop: 30 }}>
                 Donate through Raisely
@@ -91,6 +92,8 @@ export default function DonatePage() {
           </RevealOnScroll>
         </div>
       </section>
+
+      <BrainTumourSupportSection variant="donate" />
 
       {/* Social links */}
       <section className="donate-follow-section" style={{ textAlign: 'center', padding: '40px 40px 100px' }}>

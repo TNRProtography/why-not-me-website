@@ -5,6 +5,7 @@ import PageTransition from '../components/PageTransition'
 import RevealOnScroll from '../components/RevealOnScroll'
 import ScrollZoomFocus from '../components/ScrollZoomFocus'
 import HeroPortalTitle from '../components/HeroPortalTitle'
+import BrainTumourSupportSection from '../components/BrainTumourSupportSection'
 import './MarathonPage.css'
 
 const historyItems = [
@@ -242,6 +243,8 @@ export default function MarathonPage() {
           </RevealOnScroll>
         </div>
       </section>
+
+      <BrainTumourSupportSection variant="marathon" />
 
       <section className="marathon-cta-section">
         <RevealOnScroll>
