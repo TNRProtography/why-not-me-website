@@ -25,9 +25,13 @@ export default function BrainTumourSupportSection({
   title = 'Brain Tumour Support NZ.',
   paragraphs = [],
   imageSide = 'left',
+  compact = false,
 }) {
   return (
-    <section className={`btsnz-block btsnz-block--image-${imageSide}`} aria-label="About Brain Tumour Support NZ">
+    <section
+      className={`btsnz-block btsnz-block--image-${imageSide}${compact ? ' btsnz-block--compact' : ''}`}
+      aria-label="About Brain Tumour Support NZ"
+    >
       <div className="btsnz-block__inner">
         <RevealOnScroll className="btsnz-block__media">
           <a

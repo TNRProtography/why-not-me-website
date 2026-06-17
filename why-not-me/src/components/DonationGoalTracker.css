@@ -543,14 +543,7 @@
   }
 
   .donation-detail__donations-shell {
-    grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+    grid-template-columns: 1fr;
     gap: 24px;
-  }
-
-  .donation-detail__breakdown {
-    position: sticky;
-    top: 158px;
-    max-height: calc(100vh - 180px);
-    overflow: auto;
   }
 }

@@ -73,26 +73,6 @@ function sortDonations(donations, sortBy) {
   })
 }
 
-function createDonationBreakdown(donations, totalRaised) {
-  const donationTotal = donations.reduce((sum, donation) => sum + (Number(donation.amount) || 0), 0)
-  const denominator = donationTotal > 0 ? donationTotal : totalRaised
-  let cumulative = 0
-
-  return donations.map((donation, index) => {
-    const amount = Number(donation.amount) || 0
-    const percent = denominator > 0 ? (amount / denominator) * 100 : 0
-    const midpoint = denominator > 0 ? ((cumulative + amount / 2) / denominator) * 100 : 0
-    cumulative += amount
-
-    return {
-      ...donation,
-      index,
-      percent: clampPercent(percent),
-      midpoint: clampPercent(midpoint),
-    }
-  })
-}
-
 function useDonationProgress() {
   const [state, setState] = useState(initialState)
 
@@ -210,50 +190,7 @@ function CompactDonationTracker() {
   )
 }
 
-function DonationBreakdown({ donations, progress }) {
-  const markers = useMemo(() => createDonationBreakdown(donations, progress.raised), [donations, progress.raised])
-
-  return (
-    <aside className="donation-detail__breakdown" aria-label="Donation contribution breakdown">
-      <div className="donation-detail__breakdown-head">
-        <p className="section-label">Gift breakdown</p>
-        <h3>Each gift in the total.</h3>
-        <p>Markers show how much each public donation contributes to the donations listed here.</p>
-      </div>
-
-      {markers.length > 0 ? (
-        <div className="donation-breakdown-chart">
-          <div className="donation-breakdown-chart__rail" aria-hidden="true">
-            {markers.map((donation) => (
-              <span
-                className="donation-breakdown-chart__segment"
-                key={`${donation.id}-segment`}
-                style={{ flexGrow: Math.max(donation.percent, 0.4) }}
-              />
-            ))}
-          </div>
-          <ol className="donation-breakdown-chart__callouts">
-            {markers.map((donation) => (
-              <li key={`${donation.id}-marker`}>
-                <a href={`#donation-${donation.id}`}>
-                  <span className="donation-breakdown-chart__marker" aria-hidden="true" />
-                  <span>
-                    <strong>{donation.name || 'Anonymous supporter'}</strong>
-                    <small>{formatCurrency(donation.amount, donation.currency || progress.currency)}</small>
-                  </span>
-                </a>
-              </li>
-            ))}
-          </ol>
-        </div>
-      ) : (
-        <p className="donation-detail__empty">The gift breakdown will appear when public donations load.</p>
-      )}
-    </aside>
-  )
-}
-
-function DetailedDonationTracker() {
+function DetailedDonationTracker({ middleSlot = null }) {
   const { loading, error, profile, donations, updatedAt, progress } = useDonationProgress()
   const [sortBy, setSortBy] = useState('newest')
   const sortedDonations = useMemo(() => sortDonations(donations, sortBy), [donations, sortBy])
@@ -317,6 +254,12 @@ function DetailedDonationTracker() {
           {error && <p className="donation-detail__error">{error}</p>}
         </div>
 
+        {middleSlot && (
+          <div className="donation-detail__interlude">
+            {middleSlot}
+          </div>
+        )}
+
         <div className="donation-detail__donations-shell" id="all-donations">
           <div className="donation-detail__donations">
             <div className="donation-detail__section-head">
@@ -353,16 +296,14 @@ function DetailedDonationTracker() {
               </p>
             )}
           </div>
-
-          <DonationBreakdown donations={sortedDonations} progress={progress} />
         </div>
       </div>
     </section>
   )
 }
 
-export default function DonationGoalTracker({ variant = 'compact' }) {
-  if (variant === 'detail') return <DetailedDonationTracker />
+export default function DonationGoalTracker({ variant = 'compact', middleSlot = null }) {
+  if (variant === 'detail') return <DetailedDonationTracker middleSlot={middleSlot} />
   if (variant === 'nav') return <NavDonationTracker />
   return <CompactDonationTracker />
 }
