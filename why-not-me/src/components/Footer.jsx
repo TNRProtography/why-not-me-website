@@ -11,6 +11,10 @@ export default function Footer() {
         </Link>
       </ScrollZoomFocus>
 
+      <a className="footer-btsnz-logo-link" href="https://braintumoursupport.org.nz" target="_blank" rel="noopener noreferrer" aria-label="Visit Brain Tumour Support NZ">
+        <img src="/images/logos/btsnz.png" alt="Brain Tumour Support NZ - He waka eke noa, in it together" className="footer-btsnz-logo" />
+      </a>
+
       <div className="footer-links">
         <a href="https://braintumoursupport.org.nz" target="_blank" rel="noopener noreferrer">Brain Tumour Support NZ</a>
         <span className="footer-dot">&middot;</span>
@@ -22,7 +26,7 @@ export default function Footer() {
       </div>
 
       <p className="footer-copy">
-        All proceeds support Brain Tumour Support NZ &middot; #WhyNotMe
+        All money raised goes directly to Brain Tumour Support NZ &middot; #WhyNotMe
       </p>
       <p className="footer-copy">
         &copy; 2026 Why Not Me? All photography by TNR Protography. All rights reserved.
