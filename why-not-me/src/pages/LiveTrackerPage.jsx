@@ -471,26 +471,6 @@ export default function LiveTrackerPage() {
     }
   }, [loadKmlFromText])
 
-  const handleKmlUpload = useCallback(async (event) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-    try {
-      const text = await file.text()
-      loadKmlFromText(text, file.name)
-    } catch (err) {
-      setKmlError(err.message || 'Could not parse uploaded KML.')
-    } finally {
-      event.target.value = ''
-    }
-  }, [loadKmlFromText])
-
-  const handleRemoveKml = useCallback(() => {
-    setKmlTrackPath([])
-    setKmlSourceName(null)
-    setKmlError(null)
-    setElevHoverIdx(null)
-  }, [])
-
   // Keep relative received times honest while the page is open (1s cadence).
   useEffect(() => {
     const tick = () => {
@@ -520,7 +500,7 @@ export default function LiveTrackerPage() {
     return () => clearInterval(interval)
   }, [])
 
-  const recent500mSummary = useMemo(() => {
+  const recent1kmSummary = useMemo(() => {
     summaryNow
     const all = [...sortedHistory]
     if (data?.location?.lat != null && data?.location?.lng != null) all.push(data)
@@ -544,7 +524,7 @@ export default function LiveTrackerPage() {
       const seg = haversineKm(pts[i], pts[i + 1])
       coveredKm += seg
       kept.unshift(pts[i])
-      if (coveredKm >= 0.5) break
+      if (coveredKm >= 1.0) break
     }
     if (kept.length < 2) return null
     const first = kept[0]
@@ -570,6 +550,7 @@ export default function LiveTrackerPage() {
       avgSpeedKmh: (coveredKm / durationSec) * 3600,
       climbM,
       descentM,
+      totalChangeM: climbM + descentM,
       netElevationM,
     }
   }, [sortedHistory, data, summaryNow, kmlTrackPath])
@@ -1365,16 +1346,6 @@ export default function LiveTrackerPage() {
           </div>
 
           <div className="tracker-stat">
-            <span
-              className="tracker-stat-value"
-              style={clientSpeed.fastest != null ? { color: speedColor(clientSpeed.fastest) } : undefined}
-            >
-              {clientSpeed.fastest != null ? `${formatSpeedKmh(clientSpeed.fastest)} km/h` : '--'}
-            </span>
-            <span className="tracker-stat-label">Fastest Speed</span>
-          </div>
-
-          <div className="tracker-stat">
             <span className="tracker-stat-value">
               {totalDistanceKm != null ? `${totalDistanceKm.toFixed(2)} km` : '--'}
             </span>
@@ -1529,15 +1500,15 @@ export default function LiveTrackerPage() {
           </div>
 
           <div className="tracker-info-card">
-            <div className="tracker-info-card-label">Last 500m Summary</div>
+            <div className="tracker-info-card-label">Last 1km Summary</div>
             <div className="tracker-info-card-value">
-              {recent500mSummary
-                ? `${Math.round(recent500mSummary.distanceM)}m · ${recent500mSummary.avgSpeedKmh.toFixed(1)} km/h`
+              {recent1kmSummary
+                ? `${Math.round(recent1kmSummary.distanceM)}m · ${formatMinPerKm(recent1kmSummary.avgSpeedKmh) ?? '--'} /km`
                 : "--"}
             </div>
             <div className="tracker-info-card-sub">
-              {recent500mSummary
-                ? `Net ${recent500mSummary.netElevationM == null ? "--" : `${recent500mSummary.netElevationM >= 0 ? "+" : ""}${Math.round(recent500mSummary.netElevationM)}m`} · Climb ${Math.round(recent500mSummary.climbM)}m · Descent ${Math.round(recent500mSummary.descentM)}m`
+              {recent1kmSummary
+                ? `Rise +${Math.round(recent1kmSummary.climbM)}m · Fall -${Math.round(recent1kmSummary.descentM)}m · Total ${Math.round(recent1kmSummary.totalChangeM)}m`
                 : "Awaiting enough recent points"}
             </div>
           </div>
@@ -1550,28 +1521,6 @@ export default function LiveTrackerPage() {
             <div className="tracker-info-card-sub">
               Map rechecks whenever the page is opened, focused, or brought back from lock.
             </div>
-          </div>
-        </div>
-
-        <div className="kml-manager">
-          <div>
-            <p className="kml-manager-title">Course KML</p>
-            <p className="kml-manager-subtitle">
-              Only one KML is active at a time. Uploading replaces the current course.
-            </p>
-            <p className="kml-manager-current">
-              Active: {kmlSourceName || 'None loaded'}
-            </p>
-            {kmlError && <p className="kml-manager-error">{kmlError}</p>}
-          </div>
-          <div className="kml-manager-actions">
-            <label className="kml-upload-btn">
-              Upload KML
-              <input type="file" accept=".kml,application/vnd.google-earth.kml+xml,application/xml,text/xml" onChange={handleKmlUpload} />
-            </label>
-            <button type="button" className="kml-remove-btn" onClick={handleRemoveKml} disabled={!kmlTrackPath.length}>
-              Remove KML
-            </button>
           </div>
         </div>
 

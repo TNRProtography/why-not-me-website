@@ -999,34 +999,3 @@ body.is-mobile-view .elevation-chart {
   to { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
-.kml-manager {
-  margin: 24px auto 0;
-  width: min(1120px, calc(100% - 40px));
-  border: 1px solid rgba(168,142,93,0.2);
-  background: rgba(13,13,13,0.7);
-  border-radius: 10px;
-  padding: 16px;
-  display: flex;
-  gap: 16px;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-}
-
-.kml-manager-title { font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: var(--gold); margin: 0 0 6px; }
-.kml-manager-subtitle, .kml-manager-current { margin: 0; color: var(--white-70); font-size: 12px; }
-.kml-manager-error { color: var(--warm); font-size: 12px; margin: 8px 0 0; }
-.kml-manager-actions { display: flex; gap: 10px; align-items: center; }
-.kml-upload-btn, .kml-remove-btn {
-  border: 1px solid rgba(168,142,93,0.25);
-  background: rgba(168,142,93,0.15);
-  color: var(--white);
-  padding: 8px 12px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  cursor: pointer;
-}
-.kml-upload-btn input { display: none; }
-.kml-remove-btn:disabled { opacity: 0.45; cursor: not-allowed; }
