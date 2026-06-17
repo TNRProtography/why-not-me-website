@@ -33,6 +33,45 @@
   transform: scale(1.04) rotate(-1deg);
 }
 
+.footer-partner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  margin: 0 auto 34px;
+}
+
+.footer-partner-label {
+  font-size: 10px;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--white-30);
+}
+
+.footer-partner-link {
+  display: inline-flex;
+  transition: opacity 0.5s var(--ease-cinematic), transform 0.5s var(--ease-cinematic);
+  opacity: 0.92;
+}
+
+.footer-partner-link:hover {
+  opacity: 1;
+  transform: scale(1.04);
+}
+
+.footer-partner-logo {
+  height: 76px;
+  width: auto;
+  filter: drop-shadow(0 10px 26px rgba(0, 0, 0, 0.45));
+}
+
+@media (max-width: 820px) {
+  .footer-partner-logo {
+    height: 64px;
+  }
+}
+
 .footer-links {
   position: relative;
   display: flex;

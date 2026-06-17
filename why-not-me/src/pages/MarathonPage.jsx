@@ -5,6 +5,7 @@ import PageTransition from '../components/PageTransition'
 import RevealOnScroll from '../components/RevealOnScroll'
 import ScrollZoomFocus from '../components/ScrollZoomFocus'
 import HeroPortalTitle from '../components/HeroPortalTitle'
+import BrainTumourSupportSection from '../components/BrainTumourSupportSection'
 import './MarathonPage.css'
 
 const historyItems = [
@@ -242,6 +243,18 @@ export default function MarathonPage() {
           </RevealOnScroll>
         </div>
       </section>
+
+      {/* ========== BRAIN TUMOUR SUPPORT NZ ========== */}
+      <BrainTumourSupportSection
+        eyebrow="Why Brain Tumour Support NZ"
+        title="She is running for the ones who come next."
+        imageSide="right"
+        paragraphs={[
+          'Nicole knows first hand how much Brain Tumour Support NZ matters, because she has leaned on them herself. When you feel like no one in the world understands what you are going through, they put you in touch with people who do. They give you somewhere to let the thoughts and the emotions out without having to explain yourself.',
+          'They also do the harder, quieter work of advocating for patients, pushing to get treatments funded and available in New Zealand so the next person diagnosed has more options than the last.',
+          'She has done this before. In 2022 she ran the Dunedin Half Marathon for Brain Tumour Support NZ and raised $4,500. Queenstown is the next step, and every dollar goes back to the organisation that helped carry her through.',
+        ]}
+      />
 
       <section className="marathon-cta-section">
         <RevealOnScroll>

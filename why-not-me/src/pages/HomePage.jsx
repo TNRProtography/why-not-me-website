@@ -33,6 +33,7 @@ import RevealOnScroll from '../components/RevealOnScroll'
 import ScrollZoomFocus from '../components/ScrollZoomFocus'
 import HeroPortalTitle from '../components/HeroPortalTitle'
 import Lightbox from '../components/Lightbox'
+import BrainTumourSupportSection from '../components/BrainTumourSupportSection'
 import './HomePage.css'
 
 export default function HomePage() {
@@ -381,6 +382,18 @@ export default function HomePage() {
           </p>
         </RevealOnScroll>
       </section>
+
+      {/* ========== 9b. BRAIN TUMOUR SUPPORT NZ ========== */}
+      <BrainTumourSupportSection
+        eyebrow="The Charity"
+        title="Who Brain Tumour Support NZ are."
+        imageSide="left"
+        paragraphs={[
+          'Brain Tumour Support NZ is the charity at the heart of this whole campaign, and Nicole knows first hand just how much they help. When you are handed a brain tumour diagnosis, it can feel like nobody else on earth understands what is happening inside your head. They change that.',
+          'They connect patients with other people living through the same thing, so there is always someone to talk to who truly gets it. They give families a safe space to let the thoughts and the emotions out. And they fight in the background too, advocating to get treatments funded and made available here in New Zealand.',
+          'He waka eke noa. In it together. That is not just their tagline, it is exactly how it feels when they are in your corner.',
+        ]}
+      />
 
       {/* ========== 10. MARATHON TRAINING ========== */}
       <section className="marathon-section">
