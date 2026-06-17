@@ -275,6 +275,14 @@
 }
 .tumour-images img:hover { filter: brightness(1); }
 
+/* Single-image variant: a tidy portrait that balances the long PLNTY copy
+   instead of two stacked images leaving black space. */
+.tumour-images--single img {
+  aspect-ratio: 3 / 4;
+  max-height: 680px;
+  object-position: center 28%;
+}
+
 /* ============ TREATMENT ============ */
 .treatment-grid {
   display: grid;

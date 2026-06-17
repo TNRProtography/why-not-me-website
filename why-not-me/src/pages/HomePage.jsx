@@ -200,9 +200,8 @@ export default function HomePage() {
               <p>In 2026, Nicole was officially declared in remission.</p>
             </div>
           </RevealOnScroll>
-          <RevealOnScroll direction="right" className="tumour-images">
+          <RevealOnScroll direction="right" className="tumour-images tumour-images--single">
             <img src="/images/surgery/bed.jpg" alt="Nicole in hospital" onClick={() => setLightbox('/images/surgery/bed.jpg')} />
-            <img src="/images/surgery/bandage.jpg" alt="Post surgery bandage" onClick={() => setLightbox('/images/surgery/bandage.jpg')} />
           </RevealOnScroll>
         </div>
       </section>
@@ -346,18 +345,23 @@ export default function HomePage() {
           </RevealOnScroll>
 
           <RevealOnScroll className="quote-block">
-            <blockquote className="quote-text">"I always wonder, I still wonder, what it is like for her to go to bed at night and know that this thing is lurking. You get told all is good and then all is not so good. And you think: where does it all end?"</blockquote>
-            <cite className="quote-attr">Vernon (Nicole's father)</cite>
+            <blockquote className="quote-text">"Anything that we felt must have been magnified a hundred times for Nicole."</blockquote>
+            <cite className="quote-attr">Deborah &middot; On living with the tumour</cite>
           </RevealOnScroll>
 
           <RevealOnScroll className="quote-block">
-            <blockquote className="quote-text">"There was just heartbreak, really. As soon as everyone left, we got into a big group hug. Nicole's niece was sitting on the floor playing and that was the only noise for probably three minutes. Apart from some sniffling."</blockquote>
-            <cite className="quote-attr">Dean (Nicole's partner) &middot; About the tumour turning malignant in 2024</cite>
+            <blockquote className="quote-text">"That was independence. That was the ability to go and do her own thing."</blockquote>
+            <cite className="quote-attr">Vernon (Nicole's father) &middot; On her studying in Dunedin</cite>
           </RevealOnScroll>
 
           <RevealOnScroll className="quote-block">
-            <blockquote className="quote-text">"I always thought there is no point in a relationship because I have got this big thing hanging over my head. Then when I told him, he did not even flinch. He was in there and he made it so clear that he was there for everything."</blockquote>
-            <cite className="quote-attr">Nicole White &middot; About meeting Dean</cite>
+            <blockquote className="quote-text">"There's no reason to stop living life because of that."</blockquote>
+            <cite className="quote-attr">Dean (Nicole's partner) &middot; On a terminal diagnosis</cite>
+          </RevealOnScroll>
+
+          <RevealOnScroll className="quote-block">
+            <blockquote className="quote-text">"Why not me? Because if it's not me, then it's someone else."</blockquote>
+            <cite className="quote-attr">Nicole White &middot; The meaning behind the campaign</cite>
           </RevealOnScroll>
         </div>
       </section>

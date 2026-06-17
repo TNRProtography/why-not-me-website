@@ -767,7 +767,17 @@ body.is-mobile-view .scroll-zoom-focus[data-origin='right'] {
 .documentary-hero.portal-hero,
 .donate-hero.portal-hero {
   height: auto !important;
+}
+
+.donate-hero.portal-hero {
   min-height: 205svh !important;
+}
+
+/* Documentary hero: was reserving ~205svh of scroll (two-plus screens of the
+   same dark image) before the intro paragraph, which read as a huge gap.
+   Trimmed to a little over one screen so the copy follows the hero promptly. */
+.documentary-hero.portal-hero {
+  min-height: 118svh !important;
 }
 
 .documentary-hero.portal-hero .portal-hero-stage,
@@ -808,9 +818,16 @@ body.is-mobile-view .hero-portal-title .hero-title {
 
 body.is-mobile-view .documentary-hero.portal-hero,
 body.is-mobile-view .donate-hero.portal-hero {
-  min-height: 180svh !important;
   height: auto !important;
   padding: 0 !important;
+}
+
+body.is-mobile-view .donate-hero.portal-hero {
+  min-height: 180svh !important;
+}
+
+body.is-mobile-view .documentary-hero.portal-hero {
+  min-height: 132svh !important;
 }
 
 body.is-mobile-view .documentary-hero.portal-hero .portal-hero-stage,
