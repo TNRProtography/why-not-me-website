@@ -1,10 +1,36 @@
+/*
+ * ============================================================
+ * CLOUDFLARE WORKER - Raisely live donation progress
+ * ============================================================
+ * Serves /api/raisely-progress, which the donation tracker
+ * component fetches to show live fundraising numbers.
+ *
+ * Data source: Raisely public API (https://api.raisely.com/v3).
+ * Nicole's profile data is publicly readable by UUID, so no
+ * API key is required for read-only progress.
+ *
+ *   Profile (headline numbers):
+ *     GET /v3/profiles/{uuid}
+ *   Public donations (names, messages, amounts):
+ *     GET /v3/profiles/{uuid}/donations
+ *
+ * IMPORTANT DESIGN NOTE:
+ * The headline numbers (raised, goal, %, supporters) come from
+ * the PROFILE call alone. The donations list is fetched
+ * separately and is allowed to fail without breaking the page,
+ * so a hiccup on the donations feed never blanks out the
+ * progress bar again.
+ * ============================================================
+ */
+
 const RAISELY_API_BASE = 'https://api.raisely.com/v3'
 const RAISELY_PROFILE_UUID = '5726f720-4406-11f1-b02c-c194de4f7b8f'
+const RAISELY_PROFILE_PATH = 'nicole-white'
 const RAISELY_CAMPAIGN_UUID = 'e6ecc870-bfd9-11ee-925d-ab85a9665c6e'
 const RAISELY_DONATION_URL = 'https://nogoingback.nz/nicole-white'
 const CACHE_TTL_SECONDS = 45
 const DONATION_LIMIT = 100
-const MAX_DONATIONS = 5000
+const MAX_DONATIONS = 2000
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -32,6 +58,7 @@ function centsToCurrency(value) {
 function goalToCurrency(value) {
   const number = Number(value)
   if (!Number.isFinite(number)) return 0
+  // Raisely stores money in cents. Large values are treated as cents.
   return number > 100000 ? number / 100 : number
 }
 
@@ -53,12 +80,12 @@ async function raiselyFetch(path, params = {}) {
     }
   })
 
-  const response = await fetch(url, {
+  const response = await fetch(url.toString(), {
     headers: { Accept: 'application/json' },
   })
 
   if (!response.ok) {
-    throw new Error(`Raisely request failed: ${response.status}`)
+    throw new Error(`Raisely request failed (${response.status}) for ${path}`)
   }
 
   return response.json()
@@ -99,7 +126,7 @@ function normaliseProfile(profile) {
 
   return {
     id: profile.uuid || profile.path,
-    name: profile.name || profile.path || 'Why Not Me?',
+    name: (profile.name || profile.path || 'Why Not Me?').replace(/\s+/g, ' ').trim(),
     path: profile.path,
     raised,
     goal,
@@ -116,6 +143,7 @@ function normaliseDonation(donation) {
   const name = firstValue(
     donation.displayName,
     donation.name,
+    donation.preferredName,
     donation.user?.preferredName,
     donation.user?.displayName,
     [donation.firstName, donation.lastName].filter(Boolean).join(' '),
@@ -131,7 +159,7 @@ function normaliseDonation(donation) {
 
   return {
     id: donation.uuid || `${donation.createdAt}-${donation.total}`,
-    name: donation.anonymous ? 'Anonymous supporter' : truncate(name, 80),
+    name: donation.anonymous ? 'Anonymous supporter' : (truncate(name, 80) || 'Anonymous supporter'),
     message: truncate(message),
     amount: centsToCurrency(firstValue(donation.total, donation.amount, donation.displayTotal)),
     currency: donation.currency || 'NZD',
@@ -139,43 +167,67 @@ function normaliseDonation(donation) {
   }
 }
 
-async function getDonationPage(path, params) {
-  const response = await raiselyFetch(path, params)
-  return response.data || []
+/*
+ * Fetch the public profile. This MUST succeed for the endpoint
+ * to be considered healthy. Tries UUID first, then the path.
+ */
+async function getProfile() {
+  try {
+    const byUuid = await raiselyFetch(`/profiles/${encodeURIComponent(RAISELY_PROFILE_UUID)}`)
+    return byUuid.data || byUuid
+  } catch (uuidError) {
+    const byPath = await raiselyFetch(`/profiles/${encodeURIComponent(RAISELY_PROFILE_PATH)}`)
+    return byPath.data || byPath
+  }
 }
 
+/*
+ * Fetch public donations. This is best-effort: any failure
+ * returns an empty list rather than throwing, so the headline
+ * progress numbers are never blocked by the donations feed.
+ */
 async function getAllPublicDonations() {
   const donations = []
   let offset = 0
 
+  // Endpoint candidates, in order of preference. The first that
+  // returns data is used for the remaining pages.
+  const endpoints = [
+    (params) => raiselyFetch(`/profiles/${encodeURIComponent(RAISELY_PROFILE_UUID)}/donations`, params),
+    (params) => raiselyFetch('/donations', { ...params, profile: RAISELY_PROFILE_UUID }),
+    (params) => raiselyFetch(`/campaigns/${encodeURIComponent(RAISELY_CAMPAIGN_UUID)}/donations`, { ...params, profile: RAISELY_PROFILE_UUID }),
+  ]
+
+  let chosen = null
+
   while (donations.length < MAX_DONATIONS) {
-    const baseParams = {
-      profile: RAISELY_PROFILE_UUID,
-      limit: DONATION_LIMIT,
-      offset,
-      sort: 'createdAt',
-      order: 'desc',
-      status: 'OK',
-    }
+    const params = { limit: DONATION_LIMIT, offset }
+    let page = null
 
-    let page
-    try {
-      page = await getDonationPage(`/campaigns/${encodeURIComponent(RAISELY_CAMPAIGN_UUID)}/donations`, baseParams)
-    } catch (error) {
+    if (chosen) {
       try {
-        page = await getDonationPage('/donations', baseParams)
-      } catch (fallbackError) {
-        page = await getDonationPage(`/profiles/${encodeURIComponent(RAISELY_PROFILE_UUID)}/donations`, {
-          limit: DONATION_LIMIT,
-          offset,
-          sort: 'createdAt',
-          order: 'desc',
-        })
+        const response = await chosen(params)
+        page = response.data || []
+      } catch {
+        break
       }
+    } else {
+      // Probe endpoints once to find one that works.
+      for (const endpoint of endpoints) {
+        try {
+          const response = await endpoint(params)
+          page = response.data || []
+          chosen = endpoint
+          break
+        } catch {
+          // try next candidate
+        }
+      }
+      if (!chosen) break // none of the donation endpoints are public; degrade gracefully
     }
 
+    if (!page || page.length === 0) break
     donations.push(...page)
-
     if (page.length < DONATION_LIMIT) break
     offset += DONATION_LIMIT
   }
@@ -184,13 +236,19 @@ async function getAllPublicDonations() {
 }
 
 async function handleProgress() {
-  const [profileResponse, donations] = await Promise.all([
-    raiselyFetch(`/profiles/${encodeURIComponent(RAISELY_PROFILE_UUID)}`),
-    getAllPublicDonations(),
-  ])
+  // Profile is required. If this throws, the endpoint reports an error.
+  const profile = await getProfile()
+
+  // Donations are optional and must never break the response.
+  let donations = []
+  try {
+    donations = await getAllPublicDonations()
+  } catch {
+    donations = []
+  }
 
   return jsonResponse({
-    profile: normaliseProfile(profileResponse.data || profileResponse),
+    profile: normaliseProfile(profile),
     donations: donations.map(normaliseDonation),
     updatedAt: new Date().toISOString(),
   })
