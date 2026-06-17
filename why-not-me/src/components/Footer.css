@@ -60,3 +60,25 @@
   margin-top: 6px;
 }
 
+
+.footer-btsnz-link {
+  position: relative;
+  display: inline-flex;
+  justify-content: center;
+  margin: 0 auto 26px;
+  padding: 18px 22px;
+  background: rgba(245,243,236,0.92);
+  border: 1px solid rgba(245,243,236,0.18);
+  box-shadow: 0 20px 54px rgba(0,0,0,0.28);
+  transition: transform 0.5s var(--ease-cinematic), background 0.5s var(--ease-cinematic);
+}
+
+.footer-btsnz-link:hover {
+  transform: translateY(-3px) rotate(-0.6deg);
+  background: rgba(245,243,236,1);
+}
+
+.footer-btsnz-logo {
+  width: min(260px, 72vw);
+  height: auto;
+}

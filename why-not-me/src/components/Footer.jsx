@@ -11,6 +11,10 @@ export default function Footer() {
         </Link>
       </ScrollZoomFocus>
 
+      <a href="https://braintumoursupport.org.nz" target="_blank" rel="noopener noreferrer" className="footer-btsnz-link" aria-label="Visit Brain Tumour Support NZ">
+        <img src="/images/logos/btsnz.png" alt="Brain Tumour Support NZ - He waka eke noa, in it together" className="footer-btsnz-logo" />
+      </a>
+
       <div className="footer-links">
         <a href="https://braintumoursupport.org.nz" target="_blank" rel="noopener noreferrer">Brain Tumour Support NZ</a>
         <span className="footer-dot">&middot;</span>
