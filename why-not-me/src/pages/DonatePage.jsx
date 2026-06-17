@@ -16,6 +16,7 @@ import PageTransition from '../components/PageTransition'
 import RevealOnScroll from '../components/RevealOnScroll'
 import ScrollZoomFocus from '../components/ScrollZoomFocus'
 import HeroPortalTitle from '../components/HeroPortalTitle'
+import BrainTumourSupportSection from '../components/BrainTumourSupportSection'
 
 export default function DonatePage() {
   const heroRef = useRef(null)
@@ -91,6 +92,8 @@ export default function DonatePage() {
           </RevealOnScroll>
         </div>
       </section>
+
+      <BrainTumourSupportSection variant="donation" />
 
       {/* Social links */}
       <section className="donate-follow-section" style={{ textAlign: 'center', padding: '40px 40px 100px' }}>

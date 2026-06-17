@@ -1,0 +1,95 @@
+.btsnz-section {
+  position: relative;
+  overflow: hidden;
+  padding: 128px 40px;
+  background:
+    radial-gradient(circle at 20% 18%, rgba(0, 178, 172, 0.16), transparent 30%),
+    radial-gradient(circle at 80% 70%, rgba(245, 67, 93, 0.12), transparent 32%),
+    linear-gradient(180deg, rgba(13,13,13,0.96), rgba(36,49,59,0.62) 52%, rgba(13,13,13,0.96));
+}
+
+.btsnz-section::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: var(--grain-texture);
+  opacity: 0.06;
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+
+.btsnz-section-inner {
+  position: relative;
+  z-index: 2;
+  max-width: 1180px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(280px, 0.8fr) minmax(0, 1.2fr);
+  gap: 72px;
+  align-items: center;
+}
+
+.btsnz-logo-panel {
+  padding: 36px;
+  background: rgba(245,243,236,0.94);
+  border: 1px solid rgba(245,243,236,0.22);
+  box-shadow: var(--shadow-soft);
+  transform: rotate(-1.4deg);
+}
+
+.btsnz-logo-panel a {
+  display: block;
+}
+
+.btsnz-section-logo {
+  width: min(100%, 430px);
+  margin: 0 auto;
+  filter: drop-shadow(0 18px 28px rgba(13,13,13,0.16));
+}
+
+.btsnz-section-body {
+  display: grid;
+  gap: 18px;
+}
+
+.btsnz-direct-donation {
+  margin-top: 4px;
+  padding: 18px 20px;
+  color: var(--white);
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  background: rgba(0, 178, 172, 0.12);
+  border-left: 3px solid #00b2ac;
+}
+
+.btsnz-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 34px;
+}
+
+.btsnz-section-donation {
+  padding-top: 108px;
+}
+
+@media (max-width: 900px) {
+  .btsnz-section {
+    padding: 92px 22px;
+  }
+
+  .btsnz-section-inner {
+    grid-template-columns: 1fr;
+    gap: 42px;
+  }
+
+  .btsnz-logo-panel {
+    padding: 24px;
+    transform: rotate(-0.8deg);
+  }
+
+  .btsnz-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}
