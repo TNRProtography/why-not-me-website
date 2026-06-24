@@ -272,9 +272,12 @@ export default function DedicateKmPage() {
   const [shareCanvas, setShareCanvas] = useState(null)
   const svgWrapRef = useRef(null)
 
-  const claimed = Object.keys(dedications).length
-  const remaining = TOTAL_KM - claimed
+  const approvedCount = Object.values(dedications).filter(d => (d.status || 'approved') === 'approved').length
+  const pendingCount = Object.values(dedications).filter(d => d.status === 'pending').length
+  const remaining = TOTAL_KM - approvedCount - pendingCount
   const isMobile = typeof window !== 'undefined' && window.matchMedia('(hover: none) and (pointer: coarse)').matches
+  const isPending = (km) => dedications[String(km)]?.status === 'pending'
+  const isApproved = (km) => { const d = dedications[String(km)]; return d && (d.status || 'approved') === 'approved' }
 
   const fetchDedications = useCallback(async () => {
     try {
@@ -291,7 +294,9 @@ export default function DedicateKmPage() {
   useEffect(() => { fetchDedications() }, [fetchDedications])
 
   const handleOpen = (km) => {
-    if (dedications[String(km)]) {
+    if (isPending(km)) {
+      setViewingKm(km)
+    } else if (isApproved(km)) {
       setViewingKm(km)
     } else {
       setSelectedKm(km)
@@ -328,16 +333,9 @@ export default function DedicateKmPage() {
       setSelectedKm(null)
       setSubmitting(false)
 
-      // Celebration
+      // Celebration - still celebrate, but no share card (pending approval)
       spawnConfetti()
-      const dedication = (data.dedications || {})[String(claimedKm)]
-      if (dedication) {
-        setSuccessKm(claimedKm)
-        try {
-          const card = await generateShareCard(claimedKm, dedication)
-          setShareCanvas(card)
-        } catch { /* card gen failed, still show success */ }
-      }
+      setSuccessKm(claimedKm)
     } catch {
       setError('Could not connect. Please try again.')
       setSubmitting(false)
@@ -373,6 +371,12 @@ export default function DedicateKmPage() {
     if (isMobile) return
     const dedication = dedications[String(km)]
     if (!dedication) { setHoveredKm(km); setTooltip(null); return }
+    if (dedication.status === 'pending') {
+      const rect = e.currentTarget.getBoundingClientRect()
+      setHoveredKm(km)
+      setTooltip({ km, x: rect.left + rect.width / 2, y: rect.top - 8, dedication: { dedicatedTo: 'Pending approval', name: '', message: '' }, isPending: true })
+      return
+    }
     const rect = e.currentTarget.getBoundingClientRect()
     setHoveredKm(km)
     setTooltip({
@@ -416,10 +420,19 @@ export default function DedicateKmPage() {
       <div className="dedicate-counter-bar">
         <div className="dedicate-counter-inner">
           <div className="dedicate-counter-stat">
-            <span className="dedicate-counter-number">{claimed}</span>
+            <span className="dedicate-counter-number">{approvedCount}</span>
             <span className="dedicate-counter-label">Claimed</span>
           </div>
           <div className="dedicate-counter-divider" />
+          {pendingCount > 0 && (
+            <>
+              <div className="dedicate-counter-stat">
+                <span className="dedicate-counter-number dedicate-counter-pending">{pendingCount}</span>
+                <span className="dedicate-counter-label">Pending</span>
+              </div>
+              <div className="dedicate-counter-divider" />
+            </>
+          )}
           <div className="dedicate-counter-stat">
             <span className="dedicate-counter-number">{remaining}</span>
             <span className="dedicate-counter-label">Remaining</span>
@@ -444,16 +457,18 @@ export default function DedicateKmPage() {
           {POINTS.map((pt) => {
             const dedication = dedications[String(pt.km)]
             const isClaimed = !!dedication
+            const pending = dedication?.status === 'pending'
+            const approved = isClaimed && !pending
             return (
               <button
                 key={pt.km}
                 type="button"
-                className={`dedicate-mobile-km ${isClaimed ? 'is-claimed' : 'is-open'}`}
+                className={`dedicate-mobile-km ${approved ? 'is-claimed' : pending ? 'is-pending' : 'is-open'}`}
                 onClick={() => handleOpen(pt.km)}
-                aria-label={isClaimed ? `Km ${pt.km}, dedicated by ${dedication.name} for ${dedication.dedicatedTo}` : `Km ${pt.km}, available`}
+                aria-label={approved ? `Km ${pt.km}, dedicated by ${dedication.name} for ${dedication.dedicatedTo}` : pending ? `Km ${pt.km}, pending approval` : `Km ${pt.km}, available`}
               >
                 <span className="dedicate-mobile-km-number">{pt.km}</span>
-                <span className="dedicate-mobile-km-status">{isClaimed ? 'View' : 'Claim'}</span>
+                <span className="dedicate-mobile-km-status">{approved ? 'View' : pending ? 'Pending' : 'Claim'}</span>
               </button>
             )
           })}
@@ -474,6 +489,10 @@ export default function DedicateKmPage() {
                 <stop offset="0%" stopColor="rgba(168,142,93,0.18)" />
                 <stop offset="100%" stopColor="rgba(168,142,93,0)" />
               </linearGradient>
+              <linearGradient id="elevFillPending" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="rgba(168,142,93,0.08)" />
+                <stop offset="100%" stopColor="rgba(168,142,93,0)" />
+              </linearGradient>
               <filter id="goldGlow">
                 <feGaussianBlur stdDeviation="4" result="blur" />
                 <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
@@ -488,12 +507,15 @@ export default function DedicateKmPage() {
 
             {/* Claimed segments glow */}
             {POINTS.map((pt, i) => {
-              if (!dedications[String(pt.km)]) return null
+              const ded = dedications[String(pt.km)]
+              if (!ded) return null
+              const pending = ded.status === 'pending'
               const prev = POINTS[i - 1] || pt
               const next = POINTS[i + 1] || pt
               return (
                 <line key={`seg-${pt.km}`} x1={prev.x} y1={prev.y} x2={next.x} y2={next.y}
-                  stroke="#A88E5D" strokeWidth="2.5" opacity="0.5" />
+                  stroke="#A88E5D" strokeWidth="2.5" opacity={pending ? 0.2 : 0.5}
+                  strokeDasharray={pending ? '6 4' : 'none'} />
               )
             })}
 
@@ -501,6 +523,8 @@ export default function DedicateKmPage() {
             {POINTS.map((pt) => {
               const dedication = dedications[String(pt.km)]
               const isClaimed = !!dedication
+              const pending = dedication?.status === 'pending'
+              const approved = isClaimed && !pending
               const isHovered = hoveredKm === pt.km
               const r = isClaimed ? 14 : (isHovered ? 12 : 10)
 
@@ -512,29 +536,33 @@ export default function DedicateKmPage() {
                   style={{ cursor: 'pointer' }}
                   role="button" tabIndex={0}
                   onKeyDown={(e) => { if (e.key === 'Enter') handleOpen(pt.km) }}
-                  aria-label={isClaimed
+                  aria-label={approved
                     ? `Km ${pt.km}, dedicated by ${dedication.name} for ${dedication.dedicatedTo}`
+                    : pending
+                    ? `Km ${pt.km}, pending approval`
                     : `Km ${pt.km}, available`
                   }
                 >
                   {/* Hit area */}
                   <circle cx={pt.x} cy={pt.y} r={20} fill="transparent" />
 
-                  {/* Glow for claimed */}
-                  {isClaimed && <circle cx={pt.x} cy={pt.y} r={r + 4} fill="rgba(168,142,93,0.15)" />}
+                  {/* Glow for claimed/pending */}
+                  {approved && <circle cx={pt.x} cy={pt.y} r={r + 4} fill="rgba(168,142,93,0.15)" />}
+                  {pending && <circle cx={pt.x} cy={pt.y} r={r + 4} fill="rgba(168,142,93,0.07)" />}
 
                   {/* Marker circle */}
                   <circle cx={pt.x} cy={pt.y} r={r}
-                    fill={isClaimed ? '#A88E5D' : (isHovered ? 'rgba(168,142,93,0.3)' : 'rgba(245,243,236,0.08)')}
-                    stroke={isClaimed ? '#A88E5D' : (isHovered ? '#A88E5D' : 'rgba(245,243,236,0.2)')}
-                    strokeWidth={isClaimed ? 0 : 1}
+                    fill={approved ? '#A88E5D' : pending ? 'rgba(168,142,93,0.35)' : (isHovered ? 'rgba(168,142,93,0.3)' : 'rgba(245,243,236,0.08)')}
+                    stroke={approved ? '#A88E5D' : pending ? 'rgba(168,142,93,0.5)' : (isHovered ? '#A88E5D' : 'rgba(245,243,236,0.2)')}
+                    strokeWidth={approved ? 0 : pending ? 1.5 : 1}
+                    strokeDasharray={pending ? '3 2' : 'none'}
                   />
 
                   {/* Km number */}
                   <text x={pt.x} y={pt.y + 4.5}
                     textAnchor="middle" fontSize={isClaimed ? "10" : "11"}
                     fontWeight="700" fontFamily="Montserrat, sans-serif"
-                    fill={isClaimed ? '#0D0D0D' : (isHovered ? '#A88E5D' : 'rgba(245,243,236,0.35)')}
+                    fill={approved ? '#0D0D0D' : pending ? 'rgba(168,142,93,0.8)' : (isHovered ? '#A88E5D' : 'rgba(245,243,236,0.35)')}
                     style={{ pointerEvents: 'none' }}
                   >
                     {pt.km}
@@ -599,13 +627,19 @@ export default function DedicateKmPage() {
 
       {/* Hover tooltip (desktop only) */}
       {tooltip && (
-        <div className="dedicate-tooltip" style={{ left: tooltip.x, top: tooltip.y }}>
+        <div className={`dedicate-tooltip ${tooltip.isPending ? 'is-pending-tooltip' : ''}`} style={{ left: tooltip.x, top: tooltip.y }}>
           <div className="dedicate-tooltip-km">{tooltip.km === 'finish' ? 'The Final .2 km' : `Km ${tooltip.km}`}</div>
-          <div className="dedicate-tooltip-for">For {tooltip.dedication.dedicatedTo}</div>
-          {tooltip.dedication.message && (
-            <div className="dedicate-tooltip-msg">"{tooltip.dedication.message}"</div>
+          {tooltip.isPending ? (
+            <div className="dedicate-tooltip-for" style={{ fontStyle: 'italic' }}>Awaiting approval</div>
+          ) : (
+            <>
+              <div className="dedicate-tooltip-for">For {tooltip.dedication.dedicatedTo}</div>
+              {tooltip.dedication.message && (
+                <div className="dedicate-tooltip-msg">"{tooltip.dedication.message}"</div>
+              )}
+              <div className="dedicate-tooltip-by">- {tooltip.dedication.name}</div>
+            </>
           )}
-          <div className="dedicate-tooltip-by">- {tooltip.dedication.name}</div>
         </div>
       )}
 
@@ -679,27 +713,55 @@ export default function DedicateKmPage() {
       )}
 
       {/* ---- View modal (tap claimed km) ---- */}
-      {viewingKm && (viewingKm === 'finish' ? FINISH_DEDICATION : dedications[String(viewingKm)]) && (
-        <div className="dedicate-modal-overlay" onClick={handleClose}>
-          <div className="dedicate-modal dedicate-view-modal" onClick={(e) => e.stopPropagation()}>
-            <button className="dedicate-modal-close" onClick={handleClose} aria-label="Close">&times;</button>
-            <div className="dedicate-modal-km">{viewingKm === 'finish' ? 'The Final .2 km' : `Km ${viewingKm}`}</div>
-            <div className="dedicate-view-for">Dedicated to</div>
-            <div className="dedicate-view-name">
-              {(viewingKm === 'finish' ? FINISH_DEDICATION : dedications[String(viewingKm)]).dedicatedTo}
+      {viewingKm && (() => {
+        if (viewingKm === 'finish') {
+          const ded = FINISH_DEDICATION
+          return (
+            <div className="dedicate-modal-overlay" onClick={handleClose}>
+              <div className="dedicate-modal dedicate-view-modal" onClick={(e) => e.stopPropagation()}>
+                <button className="dedicate-modal-close" onClick={handleClose} aria-label="Close">&times;</button>
+                <div className="dedicate-modal-km">The Final .2 km</div>
+                <div className="dedicate-view-for">Dedicated to</div>
+                <div className="dedicate-view-name">{ded.dedicatedTo}</div>
+                {ded.message && <p className="dedicate-view-message">"{ded.message}"</p>}
+                <div className="dedicate-view-line" />
+                <div className="dedicate-view-by">By {ded.name}</div>
+              </div>
             </div>
-            {(viewingKm === 'finish' ? FINISH_DEDICATION : dedications[String(viewingKm)]).message && (
-              <p className="dedicate-view-message">
-                "{(viewingKm === 'finish' ? FINISH_DEDICATION : dedications[String(viewingKm)]).message}"
-              </p>
-            )}
-            <div className="dedicate-view-line" />
-            <div className="dedicate-view-by">
-              By {(viewingKm === 'finish' ? FINISH_DEDICATION : dedications[String(viewingKm)]).name}
+          )
+        }
+        const ded = dedications[String(viewingKm)]
+        if (!ded) return null
+        if (ded.status === 'pending') {
+          return (
+            <div className="dedicate-modal-overlay" onClick={handleClose}>
+              <div className="dedicate-modal dedicate-view-modal" onClick={(e) => e.stopPropagation()}>
+                <button className="dedicate-modal-close" onClick={handleClose} aria-label="Close">&times;</button>
+                <div className="dedicate-modal-km">Km {viewingKm}</div>
+                <div className="dedicate-pending-icon">⏳</div>
+                <div className="dedicate-view-name" style={{ color: 'var(--gold)' }}>Awaiting Approval</div>
+                <p className="dedicate-view-message" style={{ fontStyle: 'normal' }}>
+                  This kilometre has been claimed and is waiting to be confirmed. Check back soon.
+                </p>
+                <button className="btn-outline" onClick={handleClose}>Close</button>
+              </div>
+            </div>
+          )
+        }
+        return (
+          <div className="dedicate-modal-overlay" onClick={handleClose}>
+            <div className="dedicate-modal dedicate-view-modal" onClick={(e) => e.stopPropagation()}>
+              <button className="dedicate-modal-close" onClick={handleClose} aria-label="Close">&times;</button>
+              <div className="dedicate-modal-km">Km {viewingKm}</div>
+              <div className="dedicate-view-for">Dedicated to</div>
+              <div className="dedicate-view-name">{ded.dedicatedTo}</div>
+              {ded.message && <p className="dedicate-view-message">"{ded.message}"</p>}
+              <div className="dedicate-view-line" />
+              <div className="dedicate-view-by">By {ded.name}</div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {openMessageForm && (
         <div className="dedicate-modal-overlay" onClick={handleClose}>
@@ -740,34 +802,18 @@ export default function DedicateKmPage() {
         </div>
       )}
 
-      {/* ---- Success / share card modal ---- */}
-      {successKm && dedications[String(successKm)] && (
+      {/* ---- Success / pending confirmation modal ---- */}
+      {successKm && (
         <div className="dedicate-modal-overlay" onClick={handleClose}>
           <div className="dedicate-modal dedicate-success-modal" onClick={(e) => e.stopPropagation()}>
             <button className="dedicate-modal-close" onClick={handleClose} aria-label="Close">&times;</button>
             <div className="dedicate-success-icon">✓</div>
-            <div className="dedicate-success-title">Kilometre {successKm} is yours.</div>
+            <div className="dedicate-success-title">Kilometre {successKm} received.</div>
             <p className="dedicate-success-subtitle">
-              Nicole will carry this dedication with her. Share it so others can dedicate theirs.
+              Your dedication is being reviewed and will appear on the map once approved. This is to make sure Nicole only carries genuine messages with her.
             </p>
-            {shareCanvas && (
-              <div className="dedicate-share-preview">
-                <img src={shareCanvas.toDataURL('image/png')} alt={`Share card for Km ${successKm}`} />
-              </div>
-            )}
             <div className="dedicate-success-actions">
-              {shareCanvas && (
-                <>
-                  <button className="btn-primary"
-                    onClick={() => shareCard(shareCanvas, successKm)}>
-                    Share Card
-                  </button>
-                  <button className="btn-outline"
-                    onClick={() => downloadCanvas(shareCanvas, `why-not-me-km-${successKm}.png`)}>
-                    Download Card
-                  </button>
-                </>
-              )}
+              <a href="https://nogoingback.nz/nicole-white" target="_blank" rel="noopener noreferrer" className="btn-primary">Donate to Support Nicole</a>
               <button className="btn-outline" onClick={handleClose}>Done</button>
             </div>
           </div>

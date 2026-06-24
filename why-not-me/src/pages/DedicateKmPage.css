@@ -84,6 +84,10 @@
   color: var(--white-50);
 }
 
+.dedicate-counter-pending {
+  color: rgba(168, 142, 93, 0.6);
+}
+
 .dedicate-counter-divider {
   width: 1px;
   height: 28px;
@@ -408,6 +412,23 @@
   flex-wrap: wrap;
 }
 
+/* ---- Pending state ---- */
+.dedicate-pending-icon {
+  font-size: 36px;
+  margin-bottom: 12px;
+  position: relative;
+  z-index: 1;
+}
+
+.is-pending-tooltip {
+  border-style: dashed;
+}
+
+.is-pending-tooltip::after {
+  border-right-style: dashed;
+  border-bottom-style: dashed;
+}
+
 /* ---- Loading ---- */
 .dedicate-loading {
   text-align: center;
@@ -595,6 +616,13 @@
   .dedicate-mobile-km.is-finish {
     background: linear-gradient(180deg, rgba(168, 142, 93, 0.95), rgba(139, 119, 72, 0.9));
     color: var(--black);
+  }
+
+  .dedicate-mobile-km.is-pending {
+    background: linear-gradient(180deg, rgba(168, 142, 93, 0.25), rgba(139, 119, 72, 0.18));
+    border-color: rgba(168, 142, 93, 0.35);
+    border-style: dashed;
+    color: rgba(168, 142, 93, 0.7);
   }
 
   .dedicate-mobile-km-number {
