@@ -267,7 +267,8 @@ async function handleAsset(request, env) {
   return assetResponse
 }
 
-const DEDICATIONS_KEY = 'dedications_v1'
+const LEGACY_DEDICATIONS_KEY = 'dedications_v1'
+const DEDICATION_KEY_PREFIX = 'dedication_km_'
 const TOTAL_KILOMETRES = 42
 
 function dedicationResponse(body, status = 200) {
@@ -281,9 +282,29 @@ function dedicationResponse(body, status = 200) {
   })
 }
 
+function dedicationKey(km) {
+  return `${DEDICATION_KEY_PREFIX}${km}`
+}
+
 async function getDedications(env) {
-  const raw = await env.DEDICATIONS.get(DEDICATIONS_KEY)
-  return raw ? JSON.parse(raw) : {}
+  const dedications = {}
+
+  await Promise.all(Array.from({ length: TOTAL_KILOMETRES }, async (_, index) => {
+    const km = String(index + 1)
+    const raw = await env.DEDICATIONS.get(dedicationKey(km))
+    if (raw) dedications[km] = JSON.parse(raw)
+  }))
+
+  // Backwards compatibility for data written before each kilometre had its own KV entry.
+  const legacyRaw = await env.DEDICATIONS.get(LEGACY_DEDICATIONS_KEY)
+  if (legacyRaw) {
+    const legacyDedications = JSON.parse(legacyRaw)
+    for (const [km, dedication] of Object.entries(legacyDedications)) {
+      if (!dedications[km]) dedications[km] = dedication
+    }
+  }
+
+  return dedications
 }
 
 async function handleGetDedications(env) {
@@ -334,7 +355,7 @@ async function handlePostDedication(request, env) {
     createdAt: new Date().toISOString(),
   }
 
-  await env.DEDICATIONS.put(DEDICATIONS_KEY, JSON.stringify(dedications))
+  await env.DEDICATIONS.put(dedicationKey(km), JSON.stringify(dedications[String(km)]))
 
   return dedicationResponse({
     success: true,
