@@ -11,21 +11,18 @@
  *
  * Dedication flow:
  *   1. User submits → saved as PENDING in KV
- *   2. Approval email sent via Cloudflare Email with last 5 donations
+ *   2. Approval email sent via Cloudflare Email Service with last 5 donations
  *   3. Admin clicks Approve/Deny link in email
  *   4. Approved → visible on site. Denied → km released.
  *
  * Environment bindings required:
  *   ASSETS       - Cloudflare static assets
  *   DEDICATIONS  - KV namespace for dedications
- *   SEND_EMAIL   - Cloudflare send_email binding (Email Routing)
+ *   EMAIL        - Cloudflare Email Service send binding
  *   APPROVAL_EMAIL - Destination email (vars in wrangler config)
  *   SENDER_EMAIL   - From address on your domain (vars in wrangler config)
  * ============================================================
  */
-
-import { EmailMessage } from 'cloudflare:email'
-import { createMimeMessage } from 'mimetext'
 
 const RAISELY_API_BASE = 'https://api.raisely.com/v3'
 const RAISELY_PROFILE_UUID = '5726f720-4406-11f1-b02c-c194de4f7b8f'
@@ -529,11 +526,11 @@ async function handleReview(request, env) {
   }
 }
 
-// ── Email sending via Cloudflare Email Routing ──────────────
+// ── Email sending via Cloudflare Email Service ──────────────
 
 async function sendApprovalEmail(dedication, km, recentDonations, siteUrl, env) {
-  if (!env.SEND_EMAIL) {
-    console.log('SEND_EMAIL binding not configured. Skipping approval email.')
+  if (!env.EMAIL) {
+    console.log('EMAIL binding not configured. Skipping approval email.')
     return
   }
 
@@ -613,16 +610,13 @@ async function sendApprovalEmail(dedication, km, recentDonations, siteUrl, env) 
 </body>
 </html>`
 
-  const subject = `Km ${km} dedication from ${dedication.name} for ${dedication.dedicatedTo}`
-
-  const msg = createMimeMessage()
-  msg.setSender({ name: 'Why Not Me', addr: fromEmail })
-  msg.setRecipient(toEmail)
-  msg.setSubject(subject)
-  msg.addMessage({ contentType: 'text/html', data: emailHtml })
-
-  const emailMessage = new EmailMessage(fromEmail, toEmail, msg.asRaw())
-  await env.SEND_EMAIL.send(emailMessage)
+  await env.EMAIL.send({
+    to: toEmail,
+    from: fromEmail,
+    subject: `Km ${km} dedication from ${dedication.name} for ${dedication.dedicatedTo}`,
+    html: emailHtml,
+    text: `New dedication for Km ${km}. From: ${dedication.name}. For: ${dedication.dedicatedTo}. Message: ${dedication.message || 'None'}. Approve: ${approveUrl} Deny: ${denyUrl}`,
+  })
 }
 
 function escapeHtml(str) {
