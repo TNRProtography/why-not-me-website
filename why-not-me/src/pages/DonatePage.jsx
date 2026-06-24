@@ -104,9 +104,10 @@ export default function DonatePage() {
             Keep up with Nicole's marathon training, her recovery, and the Why Not Me? campaign across social media.
           </p>
           <div className="donate-social-actions" style={{ display: 'flex', gap: 16, justifyContent: 'center', marginTop: 30, flexWrap: 'wrap' }}>
-            <a href="https://www.facebook.com/nicole.white.why.not.me" target="_blank" rel="noopener noreferrer" className="btn-outline">Facebook</a>
-            <a href="https://www.tiktok.com/@nicole.white.why.not.me" target="_blank" rel="noopener noreferrer" className="btn-outline">TikTok</a>
-            <a href="mailto:why.not.me.nicole.white@gmail.com" className="btn-outline">Email Nicole</a>
+            <a href="https://www.facebook.com/nicole.white.why.not.me/" target="_blank" rel="noopener noreferrer" className="btn-outline">Facebook</a>
+            <a href="https://www.tiktok.com/@nicole_white_why_not_me" target="_blank" rel="noopener noreferrer" className="btn-outline">TikTok</a>
+            <a href="https://www.youtube.com/@WhyNotMeNicoleWhite" target="_blank" rel="noopener noreferrer" className="btn-outline">YouTube</a>
+            <a href="mailto:nicole@whynotme.co.nz" className="btn-outline">Email Nicole</a>
           </div>
         </RevealOnScroll>
       </section>

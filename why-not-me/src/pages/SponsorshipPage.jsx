@@ -309,8 +309,8 @@ export default function SponsorshipPage() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 30, marginTop: 50, textAlign: 'left', maxWidth: 900, margin: '50px auto 0' }} className="contact-grid">
               <div>
                 <p className="section-label" style={{ marginBottom: 6 }}>Email</p>
-                <a href="mailto:why.not.me.nicole.white@gmail.com" style={{ fontSize: 14, color: 'var(--white-70)' }}>
-                  why.not.me.nicole.white@gmail.com
+                <a href="mailto:nicole@whynotme.co.nz" style={{ fontSize: 14, color: 'var(--white-70)' }}>
+                  nicole@whynotme.co.nz
                 </a>
               </div>
               <div>
@@ -322,8 +322,9 @@ export default function SponsorshipPage() {
               <div>
                 <p className="section-label" style={{ marginBottom: 6 }}>Socials</p>
                 <p style={{ fontSize: 14, color: 'var(--white-70)' }}>
-                  Facebook: /nicole.white.why.not.me<br />
-                  TikTok: @nicole.white.why.not.me<br />
+                  <a href="https://www.facebook.com/nicole.white.why.not.me/" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--white-70)' }}>Facebook</a><br />
+                  <a href="https://www.tiktok.com/@nicole_white_why_not_me" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--white-70)' }}>TikTok</a><br />
+                  <a href="https://www.youtube.com/@WhyNotMeNicoleWhite" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--white-70)' }}>YouTube</a><br />
                   #WhyNotMe
                 </p>
               </div>

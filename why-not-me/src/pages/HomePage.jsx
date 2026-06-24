@@ -450,9 +450,10 @@ export default function HomePage() {
             Nicole is available for print and digital interviews, TV and radio appearances, podcast features, brain tumour awareness campaigns, marathon and fundraising coverage, and health and wellness storytelling.
           </p>
           <div className="social-links">
-            <a href="https://www.facebook.com/nicole.white.why.not.me" target="_blank" rel="noopener noreferrer" className="btn-outline">Facebook</a>
-            <a href="https://www.tiktok.com/@nicole.white.why.not.me" target="_blank" rel="noopener noreferrer" className="btn-outline">TikTok</a>
-            <a href="mailto:why.not.me.nicole.white@gmail.com" className="btn-outline">Email</a>
+            <a href="https://www.facebook.com/nicole.white.why.not.me/" target="_blank" rel="noopener noreferrer" className="btn-outline">Facebook</a>
+            <a href="https://www.tiktok.com/@nicole_white_why_not_me" target="_blank" rel="noopener noreferrer" className="btn-outline">TikTok</a>
+            <a href="https://www.youtube.com/@WhyNotMeNicoleWhite" target="_blank" rel="noopener noreferrer" className="btn-outline">YouTube</a>
+            <a href="mailto:nicole@whynotme.co.nz" className="btn-outline">Email</a>
           </div>
           <div style={{ marginTop: 30 }}>
             <a href="https://nogoingback.nz/nicole-white" target="_blank" rel="noopener noreferrer" className="btn-primary">Donate Now</a>
