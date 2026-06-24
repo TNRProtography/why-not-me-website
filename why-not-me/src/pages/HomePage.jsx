@@ -423,6 +423,7 @@ export default function HomePage() {
           </p>
           <div style={{ marginTop: 34 }}>
             <Link to="/queenstown-marathon" className="btn-primary">Why Queenstown?</Link>
+            <Link to="/dedicate" className="btn-outline" style={{ marginLeft: 14 }}>Dedicate a Km</Link>
           </div>
         </RevealOnScroll>
       </section>

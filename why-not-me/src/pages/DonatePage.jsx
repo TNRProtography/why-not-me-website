@@ -12,6 +12,7 @@
  * ============================================================
  */
 import { useRef } from 'react'
+import { Link } from 'react-router-dom'
 import PageTransition from '../components/PageTransition'
 import RevealOnScroll from '../components/RevealOnScroll'
 import ScrollZoomFocus from '../components/ScrollZoomFocus'
@@ -90,6 +91,23 @@ export default function DonatePage() {
             </div>
           </RevealOnScroll>
         </div>
+      </section>
+
+
+      {/* Dedicate CTA */}
+      <section className="donate-dedicate-section" style={{ padding: '0 40px 70px', textAlign: 'center' }}>
+        <RevealOnScroll>
+          <div style={{ maxWidth: 760, margin: '0 auto', padding: '42px 34px', border: '1px solid var(--gold-20)', background: 'rgba(168, 142, 93, 0.06)' }}>
+            <p className="section-label">Make it personal</p>
+            <h2 style={{ fontFamily: 'var(--font-hero)', fontSize: 'clamp(34px, 6vw, 56px)', lineHeight: 1, marginBottom: 14 }}>
+              Dedicate a kilometre for someone you love.
+            </h2>
+            <p className="section-body" style={{ maxWidth: 560, margin: '0 auto 28px', textAlign: 'center' }}>
+              Choose a kilometre of Nicole's Queenstown Marathon and add a name or message she can carry with her on race day.
+            </p>
+            <Link to="/dedicate" className="btn-outline">Dedicate a Km</Link>
+          </div>
+        </RevealOnScroll>
       </section>
 
       {/* Social links */}

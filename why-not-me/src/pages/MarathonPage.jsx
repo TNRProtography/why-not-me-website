@@ -265,6 +265,7 @@ export default function MarathonPage() {
           </p>
           <div className="marathon-cta-buttons">
             <a href="https://nogoingback.nz/nicole-white" target="_blank" rel="noopener noreferrer" className="btn-primary">Donate Now</a>
+            <Link to="/dedicate" className="btn-outline">Dedicate a Km</Link>
             <Link to="/documentary" className="btn-outline">Watch the Documentary</Link>
           </div>
         </RevealOnScroll>
