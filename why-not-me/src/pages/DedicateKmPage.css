@@ -19,7 +19,7 @@
   background-image: url(/images/lores/coastal-run-2.jpg);
   background-size: cover;
   background-position: center 60%;
-  filter: brightness(0.12);
+  filter: brightness(0.05);
   transform: scale(1.05);
 }
 
