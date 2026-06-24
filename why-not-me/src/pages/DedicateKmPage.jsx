@@ -111,7 +111,7 @@ function spawnConfetti() {
 
 // ── Share card generator ──────────────────────────────────────
 async function generateShareCard(km, dedication) {
-  const W = 1200, H = 630
+  const W = 1080, H = 1080
   const canvas = document.createElement('canvas')
   canvas.width = W; canvas.height = H
   const ctx = canvas.getContext('2d')
@@ -121,7 +121,7 @@ async function generateShareCard(km, dedication) {
   ctx.fillRect(0, 0, W, H)
 
   // Subtle gradient glow
-  const glow = ctx.createRadialGradient(600, 260, 0, 600, 260, 420)
+  const glow = ctx.createRadialGradient(540, 440, 0, 540, 440, 480)
   glow.addColorStop(0, 'rgba(168,142,93,0.08)')
   glow.addColorStop(1, 'transparent')
   ctx.fillStyle = glow
@@ -130,69 +130,79 @@ async function generateShareCard(km, dedication) {
   // Gold border
   ctx.strokeStyle = 'rgba(168,142,93,0.5)'
   ctx.lineWidth = 2
-  ctx.strokeRect(28, 28, W - 56, H - 56)
+  ctx.strokeRect(32, 32, W - 64, H - 64)
 
   // Inner border
   ctx.strokeStyle = 'rgba(168,142,93,0.15)'
   ctx.lineWidth = 1
-  ctx.strokeRect(38, 38, W - 76, H - 76)
+  ctx.strokeRect(44, 44, W - 88, H - 88)
 
   // Load logo
   try {
     const logo = new Image()
     logo.src = '/images/logos/logo-white-transparent.png'
     await new Promise((res, rej) => { logo.onload = res; logo.onerror = rej })
-    const lh = 52, lw = logo.width * (lh / logo.height)
-    ctx.globalAlpha = 0.85
-    ctx.drawImage(logo, (W - lw) / 2, 56, lw, lh)
+    const lh = 90, lw = logo.width * (lh / logo.height)
+    ctx.globalAlpha = 0.9
+    ctx.drawImage(logo, (W - lw) / 2, 80, lw, lh)
     ctx.globalAlpha = 1
   } catch { /* logo failed, continue without */ }
 
+  ctx.textAlign = 'center'
+
   // "Km XX"
   ctx.fillStyle = '#A88E5D'
-  ctx.textAlign = 'center'
-  ctx.font = 'italic 72px Damion, cursive'
-  ctx.fillText(`Km ${km}`, 600, 190)
+  ctx.font = 'italic 96px Damion, cursive'
+  ctx.fillText(`Km ${km}`, 540, 270)
 
   // Gold line
   ctx.strokeStyle = '#A88E5D'
   ctx.lineWidth = 1
-  ctx.beginPath(); ctx.moveTo(540, 210); ctx.lineTo(660, 210); ctx.stroke()
+  ctx.beginPath(); ctx.moveTo(440, 296); ctx.lineTo(640, 296); ctx.stroke()
 
   // "Dedicated to"
   ctx.fillStyle = 'rgba(245,243,236,0.45)'
-  ctx.font = '700 12px Montserrat, sans-serif'
-  ctx.fillText('DEDICATED TO', 600, 248)
+  ctx.font = '700 16px Montserrat, sans-serif'
+  ctx.fillText('DEDICATED TO', 540, 348)
 
   // Dedicatee name
   ctx.fillStyle = '#F5F3EC'
-  ctx.font = 'italic 46px Damion, cursive'
-  ctx.fillText(dedication.dedicatedTo, 600, 300)
+  ctx.font = 'italic 64px Damion, cursive'
+  ctx.fillText(dedication.dedicatedTo, 540, 420)
 
   // Message (word-wrapped)
   if (dedication.message) {
     ctx.fillStyle = 'rgba(203,178,153,0.75)'
-    ctx.font = 'italic 17px Montserrat, sans-serif'
+    ctx.font = 'italic 22px Montserrat, sans-serif'
     const words = `"${dedication.message}"`.split(' ')
-    let line = '', y = 350
+    let line = '', y = 490
     for (const word of words) {
       const test = line + word + ' '
       if (ctx.measureText(test).width > 700 && line) {
-        ctx.fillText(line.trim(), 600, y); y += 26; line = word + ' '
+        ctx.fillText(line.trim(), 540, y); y += 34; line = word + ' '
       } else { line = test }
     }
-    if (line.trim()) ctx.fillText(line.trim(), 600, y)
+    if (line.trim()) ctx.fillText(line.trim(), 540, y)
   }
 
   // "By Name"
   ctx.fillStyle = '#A88E5D'
-  ctx.font = '700 12px Montserrat, sans-serif'
-  ctx.fillText(`BY ${dedication.name.toUpperCase()}`, 600, 490)
+  ctx.font = '700 16px Montserrat, sans-serif'
+  ctx.fillText(`BY ${dedication.name.toUpperCase()}`, 540, 760)
+
+  // Gold line divider
+  ctx.strokeStyle = 'rgba(168,142,93,0.3)'
+  ctx.beginPath(); ctx.moveTo(480, 800); ctx.lineTo(600, 800); ctx.stroke()
+
+  // #WhyNotMe
+  ctx.fillStyle = 'rgba(168,142,93,0.6)'
+  ctx.font = '700 20px Montserrat, sans-serif'
+  ctx.fillText('#WhyNotMe', 540, 850)
 
   // URL
   ctx.fillStyle = 'rgba(245,243,236,0.25)'
-  ctx.font = '11px Montserrat, sans-serif'
-  ctx.fillText('Dedicate yours at whynotme.co.nz/dedicate', 600, 568)
+  ctx.font = '14px Montserrat, sans-serif'
+  ctx.fillText('Dedicate yours at whynotme.co.nz/dedicate', 540, 1000)
 
   return canvas
 }
