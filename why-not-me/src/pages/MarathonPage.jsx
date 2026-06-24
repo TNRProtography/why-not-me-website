@@ -117,7 +117,7 @@ export default function MarathonPage() {
             <p className="section-body" style={{ maxWidth: 640, margin: '0 auto 22px', textAlign: 'center' }}>
               Pick a kilometre of Nicole's Queenstown Marathon and dedicate it to a person, whānau, team, or cause. It is free, personal, and gives Nicole another name to carry toward the finish line.
             </p>
-            <Link to="/dedicate" className="btn-outline">Dedicate a Km — Free</Link>
+            <Link to="/dedicate" className="btn-outline">Dedicate a Km - Free</Link>
           </div>
         </RevealOnScroll>
       </section>
@@ -277,7 +277,7 @@ export default function MarathonPage() {
           </p>
           <div className="marathon-cta-buttons">
             <a href="https://nogoingback.nz/nicole-white" target="_blank" rel="noopener noreferrer" className="btn-primary">Donate Now</a>
-            <Link to="/dedicate" className="btn-outline">Dedicate a Km — Free</Link>
+            <Link to="/dedicate" className="btn-outline">Dedicate a Km - Free</Link>
             <Link to="/documentary" className="btn-outline">Watch the Documentary</Link>
           </div>
         </RevealOnScroll>

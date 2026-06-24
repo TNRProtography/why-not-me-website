@@ -237,7 +237,7 @@ async function shareCard(canvas, km) {
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       await navigator.share({
         files: [file],
-        title: `I dedicated Km ${km} — Why Not Me?`,
+        title: `I dedicated Km ${km} - Why Not Me?`,
         text: `I just dedicated Kilometre ${km} of the Queenstown Marathon. Dedicate yours:`,
         url: 'https://whynotme.co.nz/dedicate',
       })
@@ -605,14 +605,14 @@ export default function DedicateKmPage() {
           {tooltip.dedication.message && (
             <div className="dedicate-tooltip-msg">"{tooltip.dedication.message}"</div>
           )}
-          <div className="dedicate-tooltip-by">— {tooltip.dedication.name}</div>
+          <div className="dedicate-tooltip-by">- {tooltip.dedication.name}</div>
         </div>
       )}
 
       {remaining === 0 && (
         <section className="dedicate-full-section">
           <p className="section-label">All Kilometres Claimed</p>
-          <h2>The road is full — but the love is not.</h2>
+          <h2>The road is full - but the love is not.</h2>
           <p>Leave Nicole a message below and we’ll add it to the wall of support she carries with her.</p>
           <button className="btn-primary" onClick={() => { setOpenMessageForm(true); setFormData({ name: '', dedicatedTo: 'Nicole', message: '' }); setError('') }}>Leave a Message</button>
           {genericMessages.length > 0 && (
@@ -621,7 +621,7 @@ export default function DedicateKmPage() {
                 <article className="dedicate-message-card" key={item.id || `${item.name}-${item.createdAt}`}>
                   <div>For {item.dedicatedTo || 'Nicole'}</div>
                   <p>“{item.message}”</p>
-                  <span>— {item.name}</span>
+                  <span>- {item.name}</span>
                 </article>
               ))}
             </div>
@@ -734,7 +734,7 @@ export default function DedicateKmPage() {
             <button className="dedicate-modal-close" onClick={handleClose} aria-label="Close">&times;</button>
             <div className="dedicate-success-icon">✓</div>
             <div className="dedicate-success-title">Message received.</div>
-            <p className="dedicate-success-subtitle">Thank you — Nicole will see every word of support.</p>
+            <p className="dedicate-success-subtitle">Thank you - Nicole will see every word of support.</p>
             <button className="btn-primary" onClick={handleClose}>Done</button>
           </div>
         </div>

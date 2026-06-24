@@ -11,7 +11,7 @@ import './TrailElevationExplorer.css'
  *
  * Loads Leaflet from CDN (same approach as LiveTrackerPage).
  * Loads KML course data from /data/queenstown-marathon.kml.
- * Accepts `history` prop — the sorted GPS history array from the tracker API.
+ * Accepts `history` prop - the sorted GPS history array from the tracker API.
  */
  
 // ── constants ────────────────────────────────────────────────────
@@ -680,7 +680,7 @@ export default function TrailElevationExplorer({ history = [] }) {
         replayMarkerRef.current.setLatLng([pos.lat, pos.lng])
       }
 
-      // Trail line — draw traversed GPS points
+      // Trail line - draw traversed GPS points
       if (replayTrailRef.current) {
         replayTrailRef.current.clearLayers()
         const trailLatLngs = []
@@ -854,7 +854,7 @@ export default function TrailElevationExplorer({ history = [] }) {
           ))}
         </div>
 
-        {/* Elevation tooltip — floats top-left of map */}
+        {/* Elevation tooltip - floats top-left of map */}
         <div className="explorer-map-tooltip" style={{ opacity: activePoint ? 1 : 0 }}>
           <span className="explorer-tooltip-elev">
             {activePoint?.elevation != null ? `${Math.round(activePoint.elevation)} m` : ''}
@@ -864,7 +864,7 @@ export default function TrailElevationExplorer({ history = [] }) {
           </span>
         </div>
 
-        {/* Elevation chart overlay — bottom of map */}
+        {/* Elevation chart overlay - bottom of map */}
         <div className="explorer-elev-overlay">
           <div
             ref={elevWrapRef}
@@ -884,7 +884,7 @@ export default function TrailElevationExplorer({ history = [] }) {
           </div>
         </div>
 
-        {/* Replay controls — above elevation overlay */}
+        {/* Replay controls - above elevation overlay */}
         {hasReplayData && replayState !== 'idle' && (
           <div className="explorer-replay-overlay">
             <div className="explorer-replay-controls">
@@ -924,7 +924,7 @@ export default function TrailElevationExplorer({ history = [] }) {
           </div>
         )}
 
-        {/* Replay start button — center of map when idle */}
+        {/* Replay start button - center of map when idle */}
         {hasReplayData && replayState === 'idle' && (
           <button className="explorer-replay-start" onClick={startReplay}>
             <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6,3 20,12 6,21" /></svg>

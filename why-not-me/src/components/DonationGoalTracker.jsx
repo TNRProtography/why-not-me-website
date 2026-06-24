@@ -183,7 +183,7 @@ function CompactDonationTracker() {
         <div className="donation-strip__actions">
           <span>{supporterCount ? `${supporterCount} supporters` : 'Live from Raisely'}</span>
           <a href="https://nogoingback.nz/nicole-white" target="_blank" rel="noopener noreferrer">Donate now</a>
-          <Link to="/dedicate">Dedicate a Km — Free</Link>
+          <Link to="/dedicate">Dedicate a Km - Free</Link>
         </div>
       </div>
       {error && <p className="donation-strip__error">{error}</p>}
@@ -209,7 +209,7 @@ function DetailedDonationTracker({ middleSlot = null }) {
             </p>
             <div className="donation-detail__actions">
               <a href="https://nogoingback.nz/nicole-white" className="btn-primary" target="_blank" rel="noopener noreferrer">Donate now</a>
-              <Link to="/dedicate" className="btn-outline">Dedicate a Km — Free</Link>
+              <Link to="/dedicate" className="btn-outline">Dedicate a Km - Free</Link>
               <a href="#all-donations" className="btn-outline">See all donations</a>
             </div>
           </div>
