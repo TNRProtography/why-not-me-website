@@ -53,7 +53,7 @@ export default function DocumentaryPage() {
       </section>
 
       {/* Documentary content */}
-      <section className="documentary-content-section" style={{ maxWidth: 900, margin: '0 auto', padding: '80px 40px' }}>
+      <section className="documentary-content-section" style={{ maxWidth: 900, margin: '0 auto', padding: '30px 40px 80px' }}>
         <RevealOnScroll>
           <p className="section-body" style={{ maxWidth: '100%', textAlign: 'center', marginBottom: 20 }}>
             This is Nicole's story in full. Told by the people who were there, through the surgeries, through the waiting rooms, through the quiet moments when nobody knew what to say. From a 16 year old having her first seizure behind the wheel, to a 26 year old training for a marathon in remission. This documentary does not hold back, and neither did she.

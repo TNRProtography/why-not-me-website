@@ -269,6 +269,21 @@ export default function MarathonPage() {
           </div>
         </RevealOnScroll>
       </section>
+
+      {/* Disclaimer */}
+      <div style={{
+        maxWidth: 700,
+        margin: '0 auto',
+        padding: '20px 40px 40px',
+        textAlign: 'center',
+        opacity: 0.45,
+        fontSize: 12,
+        letterSpacing: '0.03em',
+        lineHeight: 1.6,
+        color: 'var(--warm)',
+      }}>
+        This campaign is an independent personal fundraiser by Nicole White for Brain Tumour Support NZ. It is not affiliated with, endorsed by, or connected to the Queenstown Marathon or its organisers.
+      </div>
     </PageTransition>
   )
 }
