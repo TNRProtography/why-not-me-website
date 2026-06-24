@@ -269,6 +269,7 @@ async function handleAsset(request, env) {
 
 const LEGACY_DEDICATIONS_KEY = 'dedications_v1'
 const DEDICATION_KEY_PREFIX = 'dedication_km_'
+const DEDICATION_MESSAGES_KEY = 'dedication_messages_v1'
 const TOTAL_KILOMETRES = 42
 
 function dedicationResponse(body, status = 200) {
@@ -307,10 +308,19 @@ async function getDedications(env) {
   return dedications
 }
 
+async function getDedicationMessages(env) {
+  const raw = await env.DEDICATIONS.get(DEDICATION_MESSAGES_KEY)
+  if (!raw) return []
+  const messages = JSON.parse(raw)
+  return Array.isArray(messages) ? messages : []
+}
+
 async function handleGetDedications(env) {
   const dedications = await getDedications(env)
+  const messages = await getDedicationMessages(env)
   return dedicationResponse({
     dedications,
+    messages,
     totalKilometres: TOTAL_KILOMETRES,
     claimed: Object.keys(dedications).length,
     remaining: TOTAL_KILOMETRES - Object.keys(dedications).length,
@@ -367,6 +377,48 @@ async function handlePostDedication(request, env) {
   })
 }
 
+
+async function handlePostDedicationMessage(request, env) {
+  let body
+  try {
+    body = await request.json()
+  } catch {
+    return dedicationResponse({ error: 'Invalid JSON.' }, 400)
+  }
+
+  const name = (body.name || '').trim().slice(0, 80)
+  const dedicatedTo = (body.dedicatedTo || '').trim().slice(0, 80)
+  const message = (body.message || '').trim().slice(0, 150)
+
+  if (!name) {
+    return dedicationResponse({ error: 'Name is required.' }, 400)
+  }
+  if (!dedicatedTo) {
+    return dedicationResponse({ error: 'Please say who this message is for.' }, 400)
+  }
+  if (!message) {
+    return dedicationResponse({ error: 'Please add a message.' }, 400)
+  }
+
+  const messages = await getDedicationMessages(env)
+  const nextMessage = {
+    id: crypto.randomUUID(),
+    name,
+    dedicatedTo,
+    message,
+    createdAt: new Date().toISOString(),
+  }
+  const nextMessages = [nextMessage, ...messages].slice(0, 200)
+
+  await env.DEDICATIONS.put(DEDICATION_MESSAGES_KEY, JSON.stringify(nextMessages))
+
+  return dedicationResponse({
+    success: true,
+    message: nextMessage,
+    messages: nextMessages,
+  })
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url)
@@ -385,6 +437,14 @@ export default {
 
     if (url.pathname === '/api/donate') {
       return Response.redirect(RAISELY_DONATION_URL, 302)
+    }
+
+    if (url.pathname === '/api/dedications/message' && request.method === 'POST') {
+      try {
+        return await handlePostDedicationMessage(request, env)
+      } catch (error) {
+        return dedicationResponse({ error: 'Unable to save message.' }, 500)
+      }
     }
 
     if (url.pathname === '/api/dedications') {

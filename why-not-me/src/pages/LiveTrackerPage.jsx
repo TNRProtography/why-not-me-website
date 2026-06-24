@@ -8,7 +8,7 @@ const API_ENDPOINT = `${API_BASE}/live.json`
 const POLL_INTERVAL = 10000
 const KML_ROUTE_URL = '/data/queenstown-marathon.kml'
 
-// Queenstown Marathon start area — default when no tracker data
+// Queenstown Marathon start area - default when no tracker data
 const DEFAULT_CENTER = [-45.0312, 168.6626]
 const DEFAULT_ZOOM = 13
 
@@ -913,7 +913,7 @@ export default function LiveTrackerPage() {
         // Fall back to worker-reported speed
         const kmh = segKmh ?? getSpeedKmh(curr)
 
-        // Thicker + more opaque for faster speeds — makes speed immediately readable on the map
+        // Thicker + more opaque for faster speeds - makes speed immediately readable on the map
         const segWeight = kmh == null || kmh < 2 ? 2.5
           : kmh < 5 ? 3
           : kmh < 8 ? 4
@@ -1353,7 +1353,7 @@ export default function LiveTrackerPage() {
           </div>
         </motion.div>
 
-        {/* Map — always renders */}
+        {/* Map - always renders */}
         <motion.div
           className="tracker-map-wrap"
           initial={{ opacity: 0 }}
@@ -1379,8 +1379,8 @@ export default function LiveTrackerPage() {
               <span className="tracking-alert-icon">{trackingStatus === 'dead' ? '⚠' : '⏳'}</span>
               <span className="tracking-alert-text">
                 {trackingStatus === 'dead'
-                  ? 'Tracking data may have failed or the race has finished — no location received for over 10 minutes'
-                  : 'No new GPS data for over 1 minute — signal may be weak'
+                  ? 'Tracking data may have failed or the race has finished - no location received for over 10 minutes'
+                  : 'No new GPS data for over 1 minute - signal may be weak'
                 }
               </span>
             </div>
@@ -1419,7 +1419,7 @@ export default function LiveTrackerPage() {
             </button>
           </div>
 
-          {/* Elevation overlay — bottom of map */}
+          {/* Elevation overlay - bottom of map */}
           {elevProfile && (
             <>
               <div className="elev-tooltip-overlay" style={{ opacity: elevHoverPoint ? 1 : 0 }}>
@@ -1490,7 +1490,7 @@ export default function LiveTrackerPage() {
           <div className="tracker-info-card">
             <div className="tracker-info-card-label">Speed Detail</div>
             <div className="tracker-info-card-value">
-              {displayKmh != null ? `${formatSpeedKmh(displayKmh)} km/h — ${speedLabel(displayKmh)}` : 'No speed data'}
+              {displayKmh != null ? `${formatSpeedKmh(displayKmh)} km/h - ${speedLabel(displayKmh)}` : 'No speed data'}
             </div>
             <div className="tracker-info-card-sub">
               {displayPace ? `Current: ${displayPace} /km` : 'Awaiting GPS points'}
@@ -1532,7 +1532,7 @@ export default function LiveTrackerPage() {
           </p>
           {error && (
             <p style={{ color: 'var(--warm)', fontSize: 12, marginTop: 8 }}>
-              Connection issue: {error} — map remains open and will retry automatically.
+              Connection issue: {error} - map remains open and will retry automatically.
             </p>
           )}
         </div>

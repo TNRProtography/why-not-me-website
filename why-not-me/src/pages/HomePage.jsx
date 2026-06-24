@@ -134,6 +134,13 @@ export default function HomePage() {
             </div>
             <p className="home-video-caption">Autoplays muted. Tap the player for sound.</p>
           </RevealOnScroll>
+          <RevealOnScroll className="home-video-dedicate-cta">
+            <p className="section-label">Free Race-Day Dedication</p>
+            <p>
+              Dedicate one of Nicole's Queenstown Marathon kilometres to someone you love. It is completely free - add a name, write a short message, and Nicole will carry it with her.
+            </p>
+            <Link to="/dedicate" className="btn-outline">Dedicate a Km - Free</Link>
+          </RevealOnScroll>
         </div>
       </section>
 
@@ -423,6 +430,7 @@ export default function HomePage() {
           </p>
           <div style={{ marginTop: 34 }}>
             <Link to="/queenstown-marathon" className="btn-primary">Why Queenstown?</Link>
+            <Link to="/dedicate" className="btn-outline" style={{ marginLeft: 14 }}>Dedicate a Km - Free</Link>
           </div>
         </RevealOnScroll>
       </section>
