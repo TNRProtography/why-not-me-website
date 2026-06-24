@@ -15,6 +15,12 @@ import './DedicateKmPage.css'
 
 const TOTAL_KM = 42
 
+const FINISH_DEDICATION = {
+  name: 'Dean',
+  dedicatedTo: 'Nicole',
+  message: 'You are the strongest person I know and I\'m so incredibly proud of you. I love you always forever.',
+}
+
 // Approximate Queenstown Marathon elevation (metres above sea level)
 const ELEVATIONS = [
   310, 318, 325, 335, 342, 348, 340, 328, 315, 308,
@@ -134,7 +140,6 @@ async function generateShareCard(km, dedication) {
   // Load logo
   try {
     const logo = new Image()
-    logo.crossOrigin = 'anonymous'
     logo.src = '/images/logos/logo-white-transparent.png'
     await new Promise((res, rej) => { logo.onload = res; logo.onerror = rej })
     const lh = 52, lw = logo.width * (lh / logo.height)
@@ -197,6 +202,30 @@ function downloadCanvas(canvas, filename) {
   link.download = filename
   link.href = canvas.toDataURL('image/png')
   link.click()
+}
+
+async function shareCard(canvas, km) {
+  try {
+    const blob = await new Promise(r => canvas.toBlob(r, 'image/png'))
+    const file = new File([blob], `why-not-me-km-${km}.png`, { type: 'image/png' })
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({
+        files: [file],
+        title: `I dedicated Km ${km} — Why Not Me?`,
+        text: `I just dedicated Kilometre ${km} of the Queenstown Marathon. Dedicate yours:`,
+        url: 'https://whynotme.co.nz/dedicate',
+      })
+      return
+    }
+  } catch (e) {
+    if (e.name === 'AbortError') return // user cancelled
+  }
+  // Fallback: download image + open Facebook share
+  downloadCanvas(canvas, `why-not-me-km-${km}.png`)
+  window.open(
+    `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent('https://whynotme.co.nz/dedicate')}`,
+    '_blank', 'width=600,height=400'
+  )
 }
 
 // ── Component ─────────────────────────────────────────────────
@@ -446,6 +475,44 @@ export default function DedicateKmPage() {
                 </g>
               )
             })}
+
+            {/* Finish .2km marker - dedicated to Nicole */}
+            {(() => {
+              const lastPt = POINTS[POINTS.length - 1]
+              const fx = lastPt.x + 34
+              const fy = lastPt.y + 2
+              const isHovered = hoveredKm === 'finish'
+              return (
+                <g
+                  onClick={() => setViewingKm('finish')}
+                  onMouseEnter={(e) => {
+                    if (!isMobile) {
+                      setHoveredKm('finish')
+                      const rect = e.currentTarget.getBoundingClientRect()
+                      setTooltip({ km: 'finish', x: rect.left + rect.width / 2, y: rect.top - 8, dedication: FINISH_DEDICATION })
+                    }
+                  }}
+                  onMouseLeave={handleMarkerLeave}
+                  style={{ cursor: 'pointer' }}
+                  role="button" tabIndex={0}
+                  aria-label="Finish line, 0.2 km, dedicated to Nicole by Dean"
+                >
+                  <circle cx={fx} cy={fy} r={20} fill="transparent" />
+                  <circle cx={fx} cy={fy} r={16} fill="rgba(168,142,93,0.15)" />
+                  <circle cx={fx} cy={fy} r={12} fill="#A88E5D" />
+                  <text x={fx} y={fy + 3.5} textAnchor="middle" fontSize="8" fontWeight="800"
+                    fontFamily="Montserrat, sans-serif" fill="#0D0D0D" style={{ pointerEvents: 'none' }}>
+                    .2
+                  </text>
+                  <line x1={fx} y1={SVG_H - PAD_BOT + 10} x2={fx} y2={SVG_H - PAD_BOT + 22}
+                    stroke="rgba(168,142,93,0.4)" strokeWidth="1" />
+                  <text x={fx} y={SVG_H - PAD_BOT + 36} textAnchor="middle" fontSize="10"
+                    fontFamily="Montserrat, sans-serif" fill="rgba(168,142,93,0.5)" style={{ pointerEvents: 'none' }}>
+                    Finish
+                  </text>
+                </g>
+              )
+            })()}
           </svg>
         </div>
       </section>
@@ -453,7 +520,7 @@ export default function DedicateKmPage() {
       {/* Hover tooltip (desktop only) */}
       {tooltip && (
         <div className="dedicate-tooltip" style={{ left: tooltip.x, top: tooltip.y }}>
-          <div className="dedicate-tooltip-km">Km {tooltip.km}</div>
+          <div className="dedicate-tooltip-km">{tooltip.km === 'finish' ? 'The Final .2 km' : `Km ${tooltip.km}`}</div>
           <div className="dedicate-tooltip-for">For {tooltip.dedication.dedicatedTo}</div>
           {tooltip.dedication.message && (
             <div className="dedicate-tooltip-msg">"{tooltip.dedication.message}"</div>
@@ -512,18 +579,24 @@ export default function DedicateKmPage() {
       )}
 
       {/* ---- View modal (tap claimed km) ---- */}
-      {viewingKm && dedications[String(viewingKm)] && (
+      {viewingKm && (viewingKm === 'finish' ? FINISH_DEDICATION : dedications[String(viewingKm)]) && (
         <div className="dedicate-modal-overlay" onClick={handleClose}>
           <div className="dedicate-modal dedicate-view-modal" onClick={(e) => e.stopPropagation()}>
             <button className="dedicate-modal-close" onClick={handleClose} aria-label="Close">&times;</button>
-            <div className="dedicate-modal-km">Km {viewingKm}</div>
+            <div className="dedicate-modal-km">{viewingKm === 'finish' ? 'The Final .2 km' : `Km ${viewingKm}`}</div>
             <div className="dedicate-view-for">Dedicated to</div>
-            <div className="dedicate-view-name">{dedications[String(viewingKm)].dedicatedTo}</div>
-            {dedications[String(viewingKm)].message && (
-              <p className="dedicate-view-message">"{dedications[String(viewingKm)].message}"</p>
+            <div className="dedicate-view-name">
+              {(viewingKm === 'finish' ? FINISH_DEDICATION : dedications[String(viewingKm)]).dedicatedTo}
+            </div>
+            {(viewingKm === 'finish' ? FINISH_DEDICATION : dedications[String(viewingKm)]).message && (
+              <p className="dedicate-view-message">
+                "{(viewingKm === 'finish' ? FINISH_DEDICATION : dedications[String(viewingKm)]).message}"
+              </p>
             )}
             <div className="dedicate-view-line" />
-            <div className="dedicate-view-by">By {dedications[String(viewingKm)].name}</div>
+            <div className="dedicate-view-by">
+              By {(viewingKm === 'finish' ? FINISH_DEDICATION : dedications[String(viewingKm)]).name}
+            </div>
           </div>
         </div>
       )}
@@ -545,10 +618,16 @@ export default function DedicateKmPage() {
             )}
             <div className="dedicate-success-actions">
               {shareCanvas && (
-                <button className="btn-primary"
-                  onClick={() => downloadCanvas(shareCanvas, `why-not-me-km-${successKm}.png`)}>
-                  Download Card
-                </button>
+                <>
+                  <button className="btn-primary"
+                    onClick={() => shareCard(shareCanvas, successKm)}>
+                    Share Card
+                  </button>
+                  <button className="btn-outline"
+                    onClick={() => downloadCanvas(shareCanvas, `why-not-me-km-${successKm}.png`)}>
+                    Download Card
+                  </button>
+                </>
               )}
               <button className="btn-outline" onClick={handleClose}>Done</button>
             </div>
