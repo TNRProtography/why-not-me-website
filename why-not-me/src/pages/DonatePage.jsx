@@ -66,9 +66,15 @@ export default function DonatePage() {
               <p className="section-body" style={{ maxWidth: '100%', textAlign: 'center' }}>
                 Nicole is raising funds through No Going Back. Every dollar goes toward Brain Tumour Support NZ, helping Kiwi families navigate the hardest diagnosis of their lives.
               </p>
-              <a href="https://nogoingback.nz/nicole-white" target="_blank" rel="noopener noreferrer" className="btn-primary" style={{ marginTop: 30 }}>
-                Donate through Raisely
-              </a>
+              <div style={{ display: 'flex', gap: 14, justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap', marginTop: 30 }}>
+                <a href="https://nogoingback.nz/nicole-white" target="_blank" rel="noopener noreferrer" className="btn-primary">
+                  Donate through Raisely
+                </a>
+                <Link to="/dedicate" className="btn-outline">Dedicate a Km — Free</Link>
+              </div>
+              <p style={{ margin: '18px auto 0', maxWidth: 420, color: 'var(--white-50)', fontSize: 13, lineHeight: 1.7 }}>
+                Want to support without spending money? It is free to dedicate a kilometre and add a name or message Nicole can carry on race day.
+              </p>
             </div>
           </RevealOnScroll>
 
@@ -91,23 +97,6 @@ export default function DonatePage() {
             </div>
           </RevealOnScroll>
         </div>
-      </section>
-
-
-      {/* Dedicate CTA */}
-      <section className="donate-dedicate-section" style={{ padding: '0 40px 70px', textAlign: 'center' }}>
-        <RevealOnScroll>
-          <div style={{ maxWidth: 760, margin: '0 auto', padding: '42px 34px', border: '1px solid var(--gold-20)', background: 'rgba(168, 142, 93, 0.06)' }}>
-            <p className="section-label">Make it personal</p>
-            <h2 style={{ fontFamily: 'var(--font-hero)', fontSize: 'clamp(34px, 6vw, 56px)', lineHeight: 1, marginBottom: 14 }}>
-              Dedicate a kilometre for someone you love.
-            </h2>
-            <p className="section-body" style={{ maxWidth: 560, margin: '0 auto 28px', textAlign: 'center' }}>
-              Choose a kilometre of Nicole's Queenstown Marathon and add a name or message she can carry with her on race day.
-            </p>
-            <Link to="/dedicate" className="btn-outline">Dedicate a Km</Link>
-          </div>
-        </RevealOnScroll>
       </section>
 
       {/* Social links */}

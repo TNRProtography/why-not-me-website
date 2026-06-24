@@ -423,7 +423,7 @@ export default function HomePage() {
           </p>
           <div style={{ marginTop: 34 }}>
             <Link to="/queenstown-marathon" className="btn-primary">Why Queenstown?</Link>
-            <Link to="/dedicate" className="btn-outline" style={{ marginLeft: 14 }}>Dedicate a Km</Link>
+            <Link to="/dedicate" className="btn-outline" style={{ marginLeft: 14 }}>Dedicate a Km — Free</Link>
           </div>
         </RevealOnScroll>
       </section>
@@ -438,6 +438,13 @@ export default function HomePage() {
             The full story, told by Nicole and the people closest to her. From diagnosis to remission, from the waiting rooms to the finish line. Released May 22, 2026.
           </p>
           <Link to="/documentary" className="btn-primary">Watch the Documentary</Link>
+          <div style={{ maxWidth: 720, margin: '34px auto 0', padding: '28px 24px', border: '1px solid var(--gold-20)', background: 'rgba(168, 142, 93, 0.06)' }}>
+            <p className="section-label" style={{ marginBottom: 10 }}>Free Race-Day Dedication</p>
+            <p className="section-body" style={{ maxWidth: 560, margin: '0 auto 22px', textAlign: 'center' }}>
+              Dedicate one of Nicole's Queenstown Marathon kilometres to someone you love. It is completely free — add a name, write a short message, and Nicole will carry it with her.
+            </p>
+            <Link to="/dedicate" className="btn-outline">Dedicate a Km — Free</Link>
+          </div>
         </RevealOnScroll>
       </section>
 

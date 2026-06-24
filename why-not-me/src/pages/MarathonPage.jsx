@@ -110,6 +110,18 @@ export default function MarathonPage() {
         </div>
       </section>
 
+      <section className="marathon-dedicate-prompt" style={{ maxWidth: 980, margin: '0 auto', padding: '34px 40px 10px', textAlign: 'center' }}>
+        <RevealOnScroll>
+          <div style={{ padding: '30px 28px', border: '1px solid var(--gold-20)', background: 'rgba(168, 142, 93, 0.06)' }}>
+            <p className="section-label">Free Race-Day Dedication</p>
+            <p className="section-body" style={{ maxWidth: 640, margin: '0 auto 22px', textAlign: 'center' }}>
+              Pick a kilometre of Nicole's Queenstown Marathon and dedicate it to a person, whānau, team, or cause. It is free, personal, and gives Nicole another name to carry toward the finish line.
+            </p>
+            <Link to="/dedicate" className="btn-outline">Dedicate a Km — Free</Link>
+          </div>
+        </RevealOnScroll>
+      </section>
+
       <section className="marathon-intro-section">
         <div className="marathon-intro-grid">
           <RevealOnScroll direction="left" className="marathon-intro-copy">
@@ -265,7 +277,7 @@ export default function MarathonPage() {
           </p>
           <div className="marathon-cta-buttons">
             <a href="https://nogoingback.nz/nicole-white" target="_blank" rel="noopener noreferrer" className="btn-primary">Donate Now</a>
-            <Link to="/dedicate" className="btn-outline">Dedicate a Km</Link>
+            <Link to="/dedicate" className="btn-outline">Dedicate a Km — Free</Link>
             <Link to="/documentary" className="btn-outline">Watch the Documentary</Link>
           </div>
         </RevealOnScroll>
