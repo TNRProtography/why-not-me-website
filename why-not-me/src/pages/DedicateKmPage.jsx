@@ -261,6 +261,9 @@ export default function DedicateKmPage() {
   const [selectedKm, setSelectedKm] = useState(null)
   const [viewingKm, setViewingKm] = useState(null)
   const [successKm, setSuccessKm] = useState(null)
+  const [openMessageForm, setOpenMessageForm] = useState(false)
+  const [genericMessages, setGenericMessages] = useState([])
+  const [messageSuccess, setMessageSuccess] = useState(false)
   const [hoveredKm, setHoveredKm] = useState(null)
   const [tooltip, setTooltip] = useState(null)
   const [formData, setFormData] = useState({ name: '', dedicatedTo: '', message: '' })
@@ -279,6 +282,7 @@ export default function DedicateKmPage() {
       if (res.ok) {
         const data = await res.json()
         setDedications(data.dedications || {})
+        setGenericMessages(data.messages || [])
       }
     } catch { /* silent */ }
     finally { setLoading(false) }
@@ -300,6 +304,8 @@ export default function DedicateKmPage() {
     setSelectedKm(null)
     setViewingKm(null)
     setSuccessKm(null)
+    setOpenMessageForm(false)
+    setMessageSuccess(false)
     setShareCanvas(null)
     setError('')
   }
@@ -332,6 +338,31 @@ export default function DedicateKmPage() {
           setShareCanvas(card)
         } catch { /* card gen failed, still show success */ }
       }
+    } catch {
+      setError('Could not connect. Please try again.')
+      setSubmitting(false)
+    }
+  }
+
+
+  const handleGenericMessageSubmit = async (e) => {
+    e.preventDefault()
+    setError('')
+    setSubmitting(true)
+    try {
+      const res = await fetch('/api/dedications/message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: formData.name, dedicatedTo: formData.dedicatedTo, message: formData.message }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setError(data.error || 'Something went wrong.'); setSubmitting(false); return }
+      setGenericMessages(data.messages || [])
+      setFormData({ name: '', dedicatedTo: '', message: '' })
+      setSubmitting(false)
+      setOpenMessageForm(false)
+      setMessageSuccess(true)
+      spawnConfetti()
     } catch {
       setError('Could not connect. Please try again.')
       setSubmitting(false)
@@ -407,6 +438,29 @@ export default function DedicateKmPage() {
           <span>Start</span>
           <span>Queenstown Marathon Route</span>
           <span>Finish</span>
+        </div>
+        <div className="dedicate-mobile-route" aria-label="Mobile kilometre dedication chooser">
+          <div className="dedicate-mobile-route-line" />
+          {POINTS.map((pt) => {
+            const dedication = dedications[String(pt.km)]
+            const isClaimed = !!dedication
+            return (
+              <button
+                key={pt.km}
+                type="button"
+                className={`dedicate-mobile-km ${isClaimed ? 'is-claimed' : 'is-open'}`}
+                onClick={() => handleOpen(pt.km)}
+                aria-label={isClaimed ? `Km ${pt.km}, dedicated by ${dedication.name} for ${dedication.dedicatedTo}` : `Km ${pt.km}, available`}
+              >
+                <span className="dedicate-mobile-km-number">{pt.km}</span>
+                <span className="dedicate-mobile-km-status">{isClaimed ? 'View' : 'Claim'}</span>
+              </button>
+            )
+          })}
+          <button type="button" className="dedicate-mobile-km is-finish" onClick={() => setViewingKm('finish')} aria-label="Final 0.2 kilometres, dedicated to Nicole by Dean">
+            <span className="dedicate-mobile-km-number">.2</span>
+            <span className="dedicate-mobile-km-status">Finish</span>
+          </button>
         </div>
         <div className="dedicate-elevation-scroll" ref={svgWrapRef}>
           <svg viewBox={`0 0 ${SVG_W} ${SVG_H}`} className="dedicate-elevation-svg" preserveAspectRatio="xMidYMid meet">
@@ -555,6 +609,26 @@ export default function DedicateKmPage() {
         </div>
       )}
 
+      {remaining === 0 && (
+        <section className="dedicate-full-section">
+          <p className="section-label">All Kilometres Claimed</p>
+          <h2>The road is full — but the love is not.</h2>
+          <p>Leave Nicole a message below and we’ll add it to the wall of support she carries with her.</p>
+          <button className="btn-primary" onClick={() => { setOpenMessageForm(true); setFormData({ name: '', dedicatedTo: 'Nicole', message: '' }); setError('') }}>Leave a Message</button>
+          {genericMessages.length > 0 && (
+            <div className="dedicate-message-wall">
+              {genericMessages.slice(0, 6).map((item) => (
+                <article className="dedicate-message-card" key={item.id || `${item.name}-${item.createdAt}`}>
+                  <div>For {item.dedicatedTo || 'Nicole'}</div>
+                  <p>“{item.message}”</p>
+                  <span>— {item.name}</span>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
       {/* Bottom CTA */}
       <section className="dedicate-cta-section">
         <RevealOnScroll>
@@ -623,6 +697,45 @@ export default function DedicateKmPage() {
             <div className="dedicate-view-by">
               By {(viewingKm === 'finish' ? FINISH_DEDICATION : dedications[String(viewingKm)]).name}
             </div>
+          </div>
+        </div>
+      )}
+
+      {openMessageForm && (
+        <div className="dedicate-modal-overlay" onClick={handleClose}>
+          <div className="dedicate-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="dedicate-modal-close" onClick={handleClose} aria-label="Close">&times;</button>
+            <div className="dedicate-modal-km">Message</div>
+            <div className="dedicate-modal-heading">Leave Support For Nicole</div>
+            <form className="dedicate-form" onSubmit={handleGenericMessageSubmit}>
+              <div className="dedicate-field">
+                <label htmlFor="generic-name">Your Name</label>
+                <input id="generic-name" type="text" placeholder="Your name" maxLength={80} value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} autoFocus required />
+              </div>
+              <div className="dedicate-field">
+                <label htmlFor="generic-for">Message For</label>
+                <input id="generic-for" type="text" placeholder="Nicole, the team, or a loved one" maxLength={80} value={formData.dedicatedTo} onChange={(e) => setFormData({ ...formData, dedicatedTo: e.target.value })} required />
+              </div>
+              <div className="dedicate-field">
+                <label htmlFor="generic-message">Message</label>
+                <textarea id="generic-message" placeholder="A short message for Nicole to carry with her" maxLength={150} value={formData.message} onChange={(e) => setFormData({ ...formData, message: e.target.value })} required />
+                <div className="dedicate-field-hint">{formData.message.length}/150</div>
+              </div>
+              <button type="submit" className="btn-primary dedicate-submit" disabled={submitting}>{submitting ? 'Sending…' : 'Send Message'}</button>
+              {error && <p className="dedicate-error">{error}</p>}
+            </form>
+          </div>
+        </div>
+      )}
+
+      {messageSuccess && (
+        <div className="dedicate-modal-overlay" onClick={handleClose}>
+          <div className="dedicate-modal dedicate-view-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="dedicate-modal-close" onClick={handleClose} aria-label="Close">&times;</button>
+            <div className="dedicate-success-icon">✓</div>
+            <div className="dedicate-success-title">Message received.</div>
+            <p className="dedicate-success-subtitle">Thank you — Nicole will see every word of support.</p>
+            <button className="btn-primary" onClick={handleClose}>Done</button>
           </div>
         </div>
       )}

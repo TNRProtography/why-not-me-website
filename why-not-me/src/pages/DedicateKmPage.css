@@ -473,3 +473,148 @@
     min-width: 1000px;
   }
 }
+
+/* ---- Mobile kilometre chooser ---- */
+.dedicate-mobile-route {
+  display: none;
+}
+
+.dedicate-full-section {
+  max-width: 860px;
+  margin: 42px auto 0;
+  padding: 44px 24px;
+  text-align: center;
+  border-top: 1px solid var(--white-15);
+  border-bottom: 1px solid var(--white-15);
+  background: radial-gradient(circle at 50% 0%, rgba(168, 142, 93, 0.12), transparent 58%);
+}
+
+.dedicate-full-section h2 {
+  font-family: var(--font-hero);
+  font-size: clamp(34px, 7vw, 58px);
+  margin: 8px 0 10px;
+}
+
+.dedicate-full-section p {
+  max-width: 560px;
+  margin: 0 auto 24px;
+  color: var(--white-60);
+  line-height: 1.7;
+}
+
+.dedicate-message-wall {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 30px;
+  text-align: left;
+}
+
+.dedicate-message-card {
+  padding: 18px;
+  border: 1px solid var(--white-15);
+  background: rgba(245, 243, 236, 0.035);
+}
+
+.dedicate-message-card div,
+.dedicate-message-card span {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.dedicate-message-card p {
+  margin: 10px 0 14px;
+  color: var(--white-70);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+@media (max-width: 640px) {
+  .dedicate-elevation-section {
+    padding: 32px 16px 14px;
+  }
+
+  .dedicate-elevation-labels {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 6px;
+    text-align: center;
+    padding: 0 0 18px;
+  }
+
+  .dedicate-elevation-labels span:first-child,
+  .dedicate-elevation-labels span:last-child {
+    display: none;
+  }
+
+  .dedicate-elevation-scroll {
+    display: none;
+  }
+
+  .dedicate-mobile-route {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    padding: 18px;
+    border: 1px solid var(--white-15);
+    background:
+      radial-gradient(circle at 20% 0%, rgba(168, 142, 93, 0.18), transparent 36%),
+      linear-gradient(180deg, rgba(245, 243, 236, 0.055), rgba(245, 243, 236, 0.015));
+    overflow: hidden;
+  }
+
+  .dedicate-mobile-route-line {
+    position: absolute;
+    inset: 30px 20px auto;
+    height: calc(100% - 60px);
+    background-image: linear-gradient(180deg, transparent, rgba(168, 142, 93, 0.25), transparent);
+    pointer-events: none;
+  }
+
+  .dedicate-mobile-km {
+    position: relative;
+    z-index: 1;
+    min-height: 74px;
+    padding: 10px 6px;
+    border: 1px solid var(--white-15);
+    background: rgba(13, 13, 13, 0.72);
+    color: var(--white);
+    text-align: center;
+  }
+
+  .dedicate-mobile-km.is-open {
+    border-color: rgba(168, 142, 93, 0.38);
+    box-shadow: inset 0 0 0 1px rgba(168, 142, 93, 0.08);
+  }
+
+  .dedicate-mobile-km.is-claimed,
+  .dedicate-mobile-km.is-finish {
+    background: linear-gradient(180deg, rgba(168, 142, 93, 0.95), rgba(139, 119, 72, 0.9));
+    color: var(--black);
+  }
+
+  .dedicate-mobile-km-number {
+    display: block;
+    font-family: var(--font-hero);
+    font-size: 30px;
+    line-height: 1;
+  }
+
+  .dedicate-mobile-km-status {
+    display: block;
+    margin-top: 7px;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+    opacity: 0.72;
+  }
+
+  .dedicate-message-wall {
+    grid-template-columns: 1fr;
+  }
+}
