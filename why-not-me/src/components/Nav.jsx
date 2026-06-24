@@ -6,6 +6,7 @@ const navItems = [
   { to: '/', label: 'Home', end: true },
   { to: '/documentary', label: 'Documentary' },
   { to: '/queenstown-marathon', label: 'Marathon' },
+  { to: '/dedicate', label: 'Dedicate a Km' },
 ]
 
 export default function Nav({ trackerEnabled = false, mobileDonationTracker = null }) {
@@ -59,6 +60,7 @@ export default function Nav({ trackerEnabled = false, mobileDonationTracker = nu
               {item.label}
             </NavLink>
           ))}
+          <a href="https://braintumoursupport.org.nz" target="_blank" rel="noopener noreferrer" className="nav-link">Support</a>
           <NavLink to="/donate" className="nav-donate-btn">Donate</NavLink>
         </div>
 
@@ -81,6 +83,9 @@ export default function Nav({ trackerEnabled = false, mobileDonationTracker = nu
                 <NavLink to={item.to} end={item.end} onClick={closeMobile}>{item.label}</NavLink>
               </div>
             ))}
+            <div>
+              <a href="https://braintumoursupport.org.nz" target="_blank" rel="noopener noreferrer" onClick={closeMobile}>Support</a>
+            </div>
           </div>
         </div>
       )}
