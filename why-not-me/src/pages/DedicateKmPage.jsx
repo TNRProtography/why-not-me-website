@@ -2,17 +2,12 @@
  * ============================================================
  * DEDICATE A KILOMETRE PAGE - /dedicate
  * ============================================================
- * 42 claimable kilometres of the Queenstown Marathon route.
- * Each visitor can dedicate a km to someone, leaving a name
- * and short message. Stored in Cloudflare KV via the worker.
- *
- * KV SETUP:
- *   Before deploying, create a KV namespace in Cloudflare:
- *     wrangler kv namespace create DEDICATIONS
- *   Then paste the returned id into wrangler.jsonc.
+ * Interactive elevation profile of the Queenstown Marathon.
+ * 42 claimable km with hover tooltips, confetti celebration,
+ * and branded shareable card on claim.
  * ============================================================
  */
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import PageTransition from '../components/PageTransition'
 import RevealOnScroll from '../components/RevealOnScroll'
@@ -20,17 +15,208 @@ import './DedicateKmPage.css'
 
 const TOTAL_KM = 42
 
+// Approximate Queenstown Marathon elevation (metres above sea level)
+const ELEVATIONS = [
+  310, 318, 325, 335, 342, 348, 340, 328, 315, 308,
+  312, 322, 338, 352, 368, 375, 378, 382, 388, 382,
+  372, 358, 348, 338, 332, 328, 322, 318, 312, 308,
+  305, 312, 322, 328, 332, 326, 318, 312, 308, 312,
+  318, 310,
+]
+
+// ── SVG elevation helpers ─────────────────────────────────────
+const SVG_W = 1500
+const SVG_H = 320
+const PAD_X = 50
+const PAD_TOP = 60
+const PAD_BOT = 60
+const CHART_H = SVG_H - PAD_TOP - PAD_BOT
+
+function getPoints() {
+  const minE = Math.min(...ELEVATIONS) - 5
+  const maxE = Math.max(...ELEVATIONS) + 5
+  const rangeE = maxE - minE
+  return ELEVATIONS.map((elev, i) => ({
+    km: i + 1,
+    x: PAD_X + (i / (TOTAL_KM - 1)) * (SVG_W - PAD_X * 2),
+    y: PAD_TOP + CHART_H - ((elev - minE) / rangeE) * CHART_H,
+    elev,
+  }))
+}
+
+function smoothPath(pts) {
+  if (pts.length < 2) return ''
+  let d = `M ${pts[0].x} ${pts[0].y}`
+  for (let i = 0; i < pts.length - 1; i++) {
+    const cpx = (pts[i].x + pts[i + 1].x) / 2
+    d += ` C ${cpx} ${pts[i].y}, ${cpx} ${pts[i + 1].y}, ${pts[i + 1].x} ${pts[i + 1].y}`
+  }
+  return d
+}
+
+function filledPath(pts) {
+  const line = smoothPath(pts)
+  return line + ` L ${pts[pts.length - 1].x} ${SVG_H - PAD_BOT + 10} L ${pts[0].x} ${SVG_H - PAD_BOT + 10} Z`
+}
+
+const POINTS = getPoints()
+
+// ── Confetti ──────────────────────────────────────────────────
+function spawnConfetti() {
+  const canvas = document.createElement('canvas')
+  canvas.style.cssText = 'position:fixed;inset:0;z-index:99999;pointer-events:none'
+  canvas.width = window.innerWidth
+  canvas.height = window.innerHeight
+  document.body.appendChild(canvas)
+  const ctx = canvas.getContext('2d')
+  const colors = ['#A88E5D', '#CBB299', '#F5F3EC', '#D4B96A', '#8B7748']
+  const particles = Array.from({ length: 90 }, () => ({
+    x: canvas.width / 2 + (Math.random() - 0.5) * 260,
+    y: canvas.height / 2 - 40,
+    vx: (Math.random() - 0.5) * 14,
+    vy: -Math.random() * 16 - 3,
+    w: Math.random() * 8 + 3,
+    h: Math.random() * 5 + 2,
+    color: colors[Math.floor(Math.random() * colors.length)],
+    opacity: 1,
+    rot: Math.random() * 360,
+    rotV: (Math.random() - 0.5) * 10,
+  }))
+  let frame = 0
+  ;(function tick() {
+    if (frame++ > 130) { canvas.remove(); return }
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    for (const p of particles) {
+      p.x += p.vx; p.vy += 0.28; p.y += p.vy
+      p.opacity = Math.max(0, p.opacity - 0.007)
+      p.rot += p.rotV
+      if (p.opacity <= 0) continue
+      ctx.save()
+      ctx.translate(p.x, p.y)
+      ctx.rotate((p.rot * Math.PI) / 180)
+      ctx.globalAlpha = p.opacity
+      ctx.fillStyle = p.color
+      ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h)
+      ctx.restore()
+    }
+    requestAnimationFrame(tick)
+  })()
+}
+
+// ── Share card generator ──────────────────────────────────────
+async function generateShareCard(km, dedication) {
+  const W = 1200, H = 630
+  const canvas = document.createElement('canvas')
+  canvas.width = W; canvas.height = H
+  const ctx = canvas.getContext('2d')
+
+  // Background
+  ctx.fillStyle = '#0D0D0D'
+  ctx.fillRect(0, 0, W, H)
+
+  // Subtle gradient glow
+  const glow = ctx.createRadialGradient(600, 260, 0, 600, 260, 420)
+  glow.addColorStop(0, 'rgba(168,142,93,0.08)')
+  glow.addColorStop(1, 'transparent')
+  ctx.fillStyle = glow
+  ctx.fillRect(0, 0, W, H)
+
+  // Gold border
+  ctx.strokeStyle = 'rgba(168,142,93,0.5)'
+  ctx.lineWidth = 2
+  ctx.strokeRect(28, 28, W - 56, H - 56)
+
+  // Inner border
+  ctx.strokeStyle = 'rgba(168,142,93,0.15)'
+  ctx.lineWidth = 1
+  ctx.strokeRect(38, 38, W - 76, H - 76)
+
+  // Load logo
+  try {
+    const logo = new Image()
+    logo.crossOrigin = 'anonymous'
+    logo.src = '/images/logos/logo-white-transparent.png'
+    await new Promise((res, rej) => { logo.onload = res; logo.onerror = rej })
+    const lh = 52, lw = logo.width * (lh / logo.height)
+    ctx.globalAlpha = 0.85
+    ctx.drawImage(logo, (W - lw) / 2, 56, lw, lh)
+    ctx.globalAlpha = 1
+  } catch { /* logo failed, continue without */ }
+
+  // "Km XX"
+  ctx.fillStyle = '#A88E5D'
+  ctx.textAlign = 'center'
+  ctx.font = 'italic 72px Damion, cursive'
+  ctx.fillText(`Km ${km}`, 600, 190)
+
+  // Gold line
+  ctx.strokeStyle = '#A88E5D'
+  ctx.lineWidth = 1
+  ctx.beginPath(); ctx.moveTo(540, 210); ctx.lineTo(660, 210); ctx.stroke()
+
+  // "Dedicated to"
+  ctx.fillStyle = 'rgba(245,243,236,0.45)'
+  ctx.font = '700 12px Montserrat, sans-serif'
+  ctx.fillText('DEDICATED TO', 600, 248)
+
+  // Dedicatee name
+  ctx.fillStyle = '#F5F3EC'
+  ctx.font = 'italic 46px Damion, cursive'
+  ctx.fillText(dedication.dedicatedTo, 600, 300)
+
+  // Message (word-wrapped)
+  if (dedication.message) {
+    ctx.fillStyle = 'rgba(203,178,153,0.75)'
+    ctx.font = 'italic 17px Montserrat, sans-serif'
+    const words = `"${dedication.message}"`.split(' ')
+    let line = '', y = 350
+    for (const word of words) {
+      const test = line + word + ' '
+      if (ctx.measureText(test).width > 700 && line) {
+        ctx.fillText(line.trim(), 600, y); y += 26; line = word + ' '
+      } else { line = test }
+    }
+    if (line.trim()) ctx.fillText(line.trim(), 600, y)
+  }
+
+  // "By Name"
+  ctx.fillStyle = '#A88E5D'
+  ctx.font = '700 12px Montserrat, sans-serif'
+  ctx.fillText(`BY ${dedication.name.toUpperCase()}`, 600, 490)
+
+  // URL
+  ctx.fillStyle = 'rgba(245,243,236,0.25)'
+  ctx.font = '11px Montserrat, sans-serif'
+  ctx.fillText('Dedicate yours at whynotme.co.nz/dedicate', 600, 568)
+
+  return canvas
+}
+
+function downloadCanvas(canvas, filename) {
+  const link = document.createElement('a')
+  link.download = filename
+  link.href = canvas.toDataURL('image/png')
+  link.click()
+}
+
+// ── Component ─────────────────────────────────────────────────
 export default function DedicateKmPage() {
   const [dedications, setDedications] = useState({})
   const [loading, setLoading] = useState(true)
   const [selectedKm, setSelectedKm] = useState(null)
   const [viewingKm, setViewingKm] = useState(null)
+  const [successKm, setSuccessKm] = useState(null)
+  const [hoveredKm, setHoveredKm] = useState(null)
+  const [tooltip, setTooltip] = useState(null)
   const [formData, setFormData] = useState({ name: '', dedicatedTo: '', message: '' })
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [shareCanvas, setShareCanvas] = useState(null)
+  const svgWrapRef = useRef(null)
 
   const claimed = Object.keys(dedications).length
   const remaining = TOTAL_KM - claimed
+  const isMobile = typeof window !== 'undefined' && window.matchMedia('(hover: none) and (pointer: coarse)').matches
 
   const fetchDedications = useCallback(async () => {
     try {
@@ -39,16 +225,11 @@ export default function DedicateKmPage() {
         const data = await res.json()
         setDedications(data.dedications || {})
       }
-    } catch {
-      // silent fail, show empty grid
-    } finally {
-      setLoading(false)
-    }
+    } catch { /* silent */ }
+    finally { setLoading(false) }
   }, [])
 
-  useEffect(() => {
-    fetchDedications()
-  }, [fetchDedications])
+  useEffect(() => { fetchDedications() }, [fetchDedications])
 
   const handleOpen = (km) => {
     if (dedications[String(km)]) {
@@ -63,6 +244,8 @@ export default function DedicateKmPage() {
   const handleClose = () => {
     setSelectedKm(null)
     setViewingKm(null)
+    setSuccessKm(null)
+    setShareCanvas(null)
     setError('')
   }
 
@@ -70,51 +253,63 @@ export default function DedicateKmPage() {
     e.preventDefault()
     setError('')
     setSubmitting(true)
-
     try {
       const res = await fetch('/api/dedications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          km: selectedKm,
-          name: formData.name,
-          dedicatedTo: formData.dedicatedTo,
-          message: formData.message,
-        }),
+        body: JSON.stringify({ km: selectedKm, name: formData.name, dedicatedTo: formData.dedicatedTo, message: formData.message }),
       })
-
       const data = await res.json()
+      if (!res.ok) { setError(data.error || 'Something went wrong.'); setSubmitting(false); return }
 
-      if (!res.ok) {
-        setError(data.error || 'Something went wrong.')
-        setSubmitting(false)
-        return
-      }
-
+      const claimedKm = selectedKm
       setDedications(data.dedications || {})
       setSelectedKm(null)
+      setSubmitting(false)
+
+      // Celebration
+      spawnConfetti()
+      const dedication = (data.dedications || {})[String(claimedKm)]
+      if (dedication) {
+        setSuccessKm(claimedKm)
+        try {
+          const card = await generateShareCard(claimedKm, dedication)
+          setShareCanvas(card)
+        } catch { /* card gen failed, still show success */ }
+      }
     } catch {
       setError('Could not connect. Please try again.')
-    } finally {
       setSubmitting(false)
     }
   }
 
-  // Close modal on escape key
+  const handleMarkerHover = (km, e) => {
+    if (isMobile) return
+    const dedication = dedications[String(km)]
+    if (!dedication) { setHoveredKm(km); setTooltip(null); return }
+    const rect = e.currentTarget.getBoundingClientRect()
+    setHoveredKm(km)
+    setTooltip({
+      km,
+      x: rect.left + rect.width / 2,
+      y: rect.top - 8,
+      dedication,
+    })
+  }
+
+  const handleMarkerLeave = () => {
+    setHoveredKm(null)
+    setTooltip(null)
+  }
+
   useEffect(() => {
-    const onKey = (e) => {
-      if (e.key === 'Escape') handleClose()
-    }
+    const onKey = (e) => { if (e.key === 'Escape') handleClose() }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
   if (loading) {
-    return (
-      <PageTransition>
-        <div className="dedicate-loading">Loading dedications…</div>
-      </PageTransition>
-    )
+    return <PageTransition><div className="dedicate-loading">Loading dedications…</div></PageTransition>
   }
 
   return (
@@ -151,48 +346,121 @@ export default function DedicateKmPage() {
         </div>
       </div>
 
-      {/* Route grid */}
-      <section className="dedicate-grid-section">
-        <RevealOnScroll>
-          <div className="dedicate-grid">
-            {Array.from({ length: TOTAL_KM }, (_, i) => {
-              const km = i + 1
-              const dedication = dedications[String(km)]
-              const isClaimed = !!dedication
+      {/* Elevation profile */}
+      <section className="dedicate-elevation-section">
+        <div className="dedicate-elevation-labels">
+          <span>Start</span>
+          <span>Queenstown Marathon Route</span>
+          <span>Finish</span>
+        </div>
+        <div className="dedicate-elevation-scroll" ref={svgWrapRef}>
+          <svg viewBox={`0 0 ${SVG_W} ${SVG_H}`} className="dedicate-elevation-svg" preserveAspectRatio="xMidYMid meet">
+            {/* Gradient definitions */}
+            <defs>
+              <linearGradient id="elevFillOpen" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="rgba(245,243,236,0.06)" />
+                <stop offset="100%" stopColor="rgba(245,243,236,0)" />
+              </linearGradient>
+              <linearGradient id="elevFillClaimed" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="rgba(168,142,93,0.18)" />
+                <stop offset="100%" stopColor="rgba(168,142,93,0)" />
+              </linearGradient>
+              <filter id="goldGlow">
+                <feGaussianBlur stdDeviation="4" result="blur" />
+                <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+              </filter>
+            </defs>
 
+            {/* Filled area under the line */}
+            <path d={filledPath(POINTS)} fill="url(#elevFillOpen)" />
+
+            {/* Main elevation line */}
+            <path d={smoothPath(POINTS)} fill="none" stroke="rgba(245,243,236,0.12)" strokeWidth="2" />
+
+            {/* Claimed segments glow */}
+            {POINTS.map((pt, i) => {
+              if (!dedications[String(pt.km)]) return null
+              const prev = POINTS[i - 1] || pt
+              const next = POINTS[i + 1] || pt
               return (
-                <div
-                  key={km}
-                  className={`km-marker ${isClaimed ? 'km-marker-claimed' : 'km-marker-open'}`}
-                  onClick={() => handleOpen(km)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => { if (e.key === 'Enter') handleOpen(km) }}
-                  aria-label={isClaimed
-                    ? `Kilometre ${km}, dedicated by ${dedication.name} for ${dedication.dedicatedTo}`
-                    : `Kilometre ${km}, available — click to dedicate`
-                  }
-                >
-                  <span className="km-marker-number">{km}</span>
-                  {isClaimed ? (
-                    <>
-                      <span className="km-marker-claimed-name">{dedication.dedicatedTo}</span>
-                      <span className="km-marker-claimed-for">by {dedication.name}</span>
-                    </>
-                  ) : (
-                    <span className="km-marker-status">Open</span>
-                  )}
-                </div>
+                <line key={`seg-${pt.km}`} x1={prev.x} y1={prev.y} x2={next.x} y2={next.y}
+                  stroke="#A88E5D" strokeWidth="2.5" opacity="0.5" />
               )
             })}
-            {/* The final .2 km */}
-            <div className="km-marker km-marker-finish" aria-label="Finish line — 0.2 km">
-              <span className="km-marker-number">.2</span>
-              <span className="km-marker-status">Finish</span>
-            </div>
-          </div>
-        </RevealOnScroll>
+
+            {/* Km markers */}
+            {POINTS.map((pt) => {
+              const dedication = dedications[String(pt.km)]
+              const isClaimed = !!dedication
+              const isHovered = hoveredKm === pt.km
+              const r = isClaimed ? 14 : (isHovered ? 12 : 10)
+
+              return (
+                <g key={pt.km}
+                  onClick={() => handleOpen(pt.km)}
+                  onMouseEnter={(e) => handleMarkerHover(pt.km, e)}
+                  onMouseLeave={handleMarkerLeave}
+                  style={{ cursor: 'pointer' }}
+                  role="button" tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleOpen(pt.km) }}
+                  aria-label={isClaimed
+                    ? `Km ${pt.km}, dedicated by ${dedication.name} for ${dedication.dedicatedTo}`
+                    : `Km ${pt.km}, available`
+                  }
+                >
+                  {/* Hit area */}
+                  <circle cx={pt.x} cy={pt.y} r={20} fill="transparent" />
+
+                  {/* Glow for claimed */}
+                  {isClaimed && <circle cx={pt.x} cy={pt.y} r={r + 4} fill="rgba(168,142,93,0.15)" />}
+
+                  {/* Marker circle */}
+                  <circle cx={pt.x} cy={pt.y} r={r}
+                    fill={isClaimed ? '#A88E5D' : (isHovered ? 'rgba(168,142,93,0.3)' : 'rgba(245,243,236,0.08)')}
+                    stroke={isClaimed ? '#A88E5D' : (isHovered ? '#A88E5D' : 'rgba(245,243,236,0.2)')}
+                    strokeWidth={isClaimed ? 0 : 1}
+                  />
+
+                  {/* Km number */}
+                  <text x={pt.x} y={pt.y + 4.5}
+                    textAnchor="middle" fontSize={isClaimed ? "10" : "11"}
+                    fontWeight="700" fontFamily="Montserrat, sans-serif"
+                    fill={isClaimed ? '#0D0D0D' : (isHovered ? '#A88E5D' : 'rgba(245,243,236,0.35)')}
+                    style={{ pointerEvents: 'none' }}
+                  >
+                    {pt.km}
+                  </text>
+
+                  {/* Vertical tick below */}
+                  {pt.km % 5 === 0 && (
+                    <>
+                      <line x1={pt.x} y1={SVG_H - PAD_BOT + 10} x2={pt.x} y2={SVG_H - PAD_BOT + 22}
+                        stroke="rgba(245,243,236,0.15)" strokeWidth="1" />
+                      <text x={pt.x} y={SVG_H - PAD_BOT + 36}
+                        textAnchor="middle" fontSize="10" fontFamily="Montserrat, sans-serif"
+                        fill="rgba(245,243,236,0.3)" style={{ pointerEvents: 'none' }}>
+                        {pt.km} km
+                      </text>
+                    </>
+                  )}
+                </g>
+              )
+            })}
+          </svg>
+        </div>
       </section>
+
+      {/* Hover tooltip (desktop only) */}
+      {tooltip && (
+        <div className="dedicate-tooltip" style={{ left: tooltip.x, top: tooltip.y }}>
+          <div className="dedicate-tooltip-km">Km {tooltip.km}</div>
+          <div className="dedicate-tooltip-for">For {tooltip.dedication.dedicatedTo}</div>
+          {tooltip.dedication.message && (
+            <div className="dedicate-tooltip-msg">"{tooltip.dedication.message}"</div>
+          )}
+          <div className="dedicate-tooltip-by">— {tooltip.dedication.name}</div>
+        </div>
+      )}
 
       {/* Bottom CTA */}
       <section className="dedicate-cta-section">
@@ -208,7 +476,7 @@ export default function DedicateKmPage() {
         </RevealOnScroll>
       </section>
 
-      {/* ---- Claim modal ---- */}
+      {/* ---- Claim form modal ---- */}
       {selectedKm && (
         <div className="dedicate-modal-overlay" onClick={handleClose}>
           <div className="dedicate-modal" onClick={(e) => e.stopPropagation()}>
@@ -218,38 +486,20 @@ export default function DedicateKmPage() {
             <form className="dedicate-form" onSubmit={handleSubmit}>
               <div className="dedicate-field">
                 <label htmlFor="dedicate-name">Your Name</label>
-                <input
-                  id="dedicate-name"
-                  type="text"
-                  placeholder="Your name"
-                  maxLength={80}
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  autoFocus
-                  required
-                />
+                <input id="dedicate-name" type="text" placeholder="Your name" maxLength={80}
+                  value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  autoFocus required />
               </div>
               <div className="dedicate-field">
                 <label htmlFor="dedicate-for">Dedicating This Km To</label>
-                <input
-                  id="dedicate-for"
-                  type="text"
-                  placeholder="A person, a group, or a cause"
-                  maxLength={80}
-                  value={formData.dedicatedTo}
-                  onChange={(e) => setFormData({ ...formData, dedicatedTo: e.target.value })}
-                  required
-                />
+                <input id="dedicate-for" type="text" placeholder="A person, a group, or a cause" maxLength={80}
+                  value={formData.dedicatedTo} onChange={(e) => setFormData({ ...formData, dedicatedTo: e.target.value })}
+                  required />
               </div>
               <div className="dedicate-field">
                 <label htmlFor="dedicate-message">Message (optional)</label>
-                <textarea
-                  id="dedicate-message"
-                  placeholder="A short message for Nicole to carry with her"
-                  maxLength={150}
-                  value={formData.message}
-                  onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                />
+                <textarea id="dedicate-message" placeholder="A short message for Nicole to carry with her" maxLength={150}
+                  value={formData.message} onChange={(e) => setFormData({ ...formData, message: e.target.value })} />
                 <div className="dedicate-field-hint">{formData.message.length}/150</div>
               </div>
               <button type="submit" className="btn-primary dedicate-submit" disabled={submitting}>
@@ -261,7 +511,7 @@ export default function DedicateKmPage() {
         </div>
       )}
 
-      {/* ---- View modal ---- */}
+      {/* ---- View modal (tap claimed km) ---- */}
       {viewingKm && dedications[String(viewingKm)] && (
         <div className="dedicate-modal-overlay" onClick={handleClose}>
           <div className="dedicate-modal dedicate-view-modal" onClick={(e) => e.stopPropagation()}>
@@ -274,6 +524,34 @@ export default function DedicateKmPage() {
             )}
             <div className="dedicate-view-line" />
             <div className="dedicate-view-by">By {dedications[String(viewingKm)].name}</div>
+          </div>
+        </div>
+      )}
+
+      {/* ---- Success / share card modal ---- */}
+      {successKm && dedications[String(successKm)] && (
+        <div className="dedicate-modal-overlay" onClick={handleClose}>
+          <div className="dedicate-modal dedicate-success-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="dedicate-modal-close" onClick={handleClose} aria-label="Close">&times;</button>
+            <div className="dedicate-success-icon">✓</div>
+            <div className="dedicate-success-title">Kilometre {successKm} is yours.</div>
+            <p className="dedicate-success-subtitle">
+              Nicole will carry this dedication with her. Share it so others can dedicate theirs.
+            </p>
+            {shareCanvas && (
+              <div className="dedicate-share-preview">
+                <img src={shareCanvas.toDataURL('image/png')} alt={`Share card for Km ${successKm}`} />
+              </div>
+            )}
+            <div className="dedicate-success-actions">
+              {shareCanvas && (
+                <button className="btn-primary"
+                  onClick={() => downloadCanvas(shareCanvas, `why-not-me-km-${successKm}.png`)}>
+                  Download Card
+                </button>
+              )}
+              <button className="btn-outline" onClick={handleClose}>Done</button>
+            </div>
           </div>
         </div>
       )}

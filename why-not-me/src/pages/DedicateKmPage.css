@@ -29,9 +29,7 @@
   max-width: 800px;
 }
 
-.dedicate-hero-content .section-label {
-  margin-bottom: 16px;
-}
+.dedicate-hero-content .section-label { margin-bottom: 16px; }
 
 .dedicate-hero-content h1 {
   font-family: var(--font-hero);
@@ -92,142 +90,101 @@
   background: var(--white-15);
 }
 
-/* ---- Route grid ---- */
-.dedicate-grid-section {
-  max-width: 1100px;
+/* ---- Elevation profile ---- */
+.dedicate-elevation-section {
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 60px 40px 80px;
+  padding: 40px 20px 20px;
 }
 
-.dedicate-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 12px;
-}
-
-/* ---- Individual km marker ---- */
-.km-marker {
-  position: relative;
-  aspect-ratio: 1;
-  border: 1px solid var(--white-15);
-  background: rgba(13, 13, 13, 0.6);
+.dedicate-elevation-labels {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: border-color 0.4s var(--ease-cinematic),
-              background 0.4s var(--ease-cinematic),
-              transform 0.4s var(--ease-cinematic),
-              box-shadow 0.4s var(--ease-cinematic);
-  overflow: hidden;
-}
-
-.km-marker::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image: var(--grain-texture);
-  opacity: 0.06;
-  pointer-events: none;
-}
-
-.km-marker-open:hover {
-  border-color: var(--gold);
-  background: rgba(168, 142, 93, 0.08);
-  transform: translateY(-3px);
-  box-shadow: 0 12px 36px rgba(168, 142, 93, 0.12);
-}
-
-.km-marker-number {
-  font-family: var(--font-hero);
-  font-size: 28px;
-  color: var(--white-30);
-  transition: color 0.4s var(--ease-cinematic);
-}
-
-.km-marker-open:hover .km-marker-number {
-  color: var(--gold);
-}
-
-.km-marker-status {
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  margin-top: 4px;
-  color: var(--white-15);
-  transition: color 0.4s var(--ease-cinematic);
-}
-
-.km-marker-open:hover .km-marker-status {
-  color: var(--gold);
-}
-
-/* Claimed state */
-.km-marker-claimed {
-  border-color: var(--gold-35);
-  background: linear-gradient(
-    160deg,
-    rgba(168, 142, 93, 0.14),
-    rgba(168, 142, 93, 0.04)
-  );
-}
-
-.km-marker-claimed .km-marker-number {
-  font-size: 20px;
-  color: var(--gold);
-}
-
-.km-marker-claimed-name {
+  justify-content: space-between;
+  padding: 0 30px 12px;
   font-size: 10px;
   font-weight: 600;
-  color: var(--white-70);
-  margin-top: 2px;
-  text-align: center;
-  padding: 0 6px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 100%;
-}
-
-.km-marker-claimed-for {
-  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
   color: var(--white-30);
-  margin-top: 1px;
-  text-align: center;
-  padding: 0 6px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 100%;
 }
 
-.km-marker-claimed:hover {
-  border-color: var(--gold);
-  transform: translateY(-3px);
-  box-shadow: 0 12px 36px rgba(168, 142, 93, 0.15);
+.dedicate-elevation-scroll {
+  overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 10px;
 }
 
-/* ---- Final .2 marker ---- */
-.km-marker-finish {
-  border-color: var(--gold-35);
-  background: linear-gradient(
-    160deg,
-    rgba(168, 142, 93, 0.1),
-    rgba(168, 142, 93, 0.03)
-  );
+.dedicate-elevation-svg {
+  display: block;
+  width: 100%;
+  min-width: 800px;
+  height: auto;
+}
+
+.dedicate-elevation-svg g {
+  outline: none;
+}
+
+.dedicate-elevation-svg g:focus-visible circle {
+  stroke: var(--gold);
+  stroke-width: 2;
+}
+
+/* ---- Hover tooltip ---- */
+.dedicate-tooltip {
+  position: fixed;
+  z-index: 9998;
+  transform: translate(-50%, -100%);
   pointer-events: none;
+  background: #1a1a1a;
+  border: 1px solid var(--gold-35);
+  padding: 14px 18px;
+  max-width: 280px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
 }
 
-.km-marker-finish .km-marker-number {
-  font-size: 18px;
+.dedicate-tooltip::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%) rotate(45deg);
+  width: 10px;
+  height: 10px;
+  background: #1a1a1a;
+  border-right: 1px solid var(--gold-35);
+  border-bottom: 1px solid var(--gold-35);
+}
+
+.dedicate-tooltip-km {
+  font-family: var(--font-hero);
+  font-size: 22px;
   color: var(--gold);
+  margin-bottom: 4px;
 }
 
-.km-marker-finish .km-marker-status {
-  color: var(--gold-35);
+.dedicate-tooltip-for {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--white-70);
+  margin-bottom: 4px;
+}
+
+.dedicate-tooltip-msg {
+  font-size: 12px;
+  color: var(--white-50);
+  font-style: italic;
+  line-height: 1.5;
+  margin-bottom: 6px;
+}
+
+.dedicate-tooltip-by {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--gold);
 }
 
 /* ---- Modal overlay ---- */
@@ -240,6 +197,7 @@
   align-items: center;
   justify-content: center;
   padding: 20px;
+  overflow-y: auto;
 }
 
 .dedicate-modal {
@@ -274,12 +232,9 @@
   font-size: 20px;
   cursor: pointer;
   z-index: 2;
-  transition: color 0.3s;
 }
 
-.dedicate-modal-close:hover {
-  color: var(--white);
-}
+.dedicate-modal-close:hover { color: var(--white); }
 
 .dedicate-modal-km {
   font-family: var(--font-hero);
@@ -329,45 +284,21 @@
   font-size: 15px;
   padding: 12px 16px;
   outline: none;
-  transition: border-color 0.3s;
 }
 
 .dedicate-field input:focus,
-.dedicate-field textarea:focus {
-  border-color: var(--gold);
-}
+.dedicate-field textarea:focus { border-color: var(--gold); }
 
 .dedicate-field input::placeholder,
-.dedicate-field textarea::placeholder {
-  color: var(--white-30);
-}
+.dedicate-field textarea::placeholder { color: var(--white-30); }
 
-.dedicate-field textarea {
-  resize: vertical;
-  min-height: 80px;
-}
+.dedicate-field textarea { resize: vertical; min-height: 80px; }
+.dedicate-field-hint { font-size: 11px; color: var(--white-30); margin-top: 4px; }
+.dedicate-submit { margin-top: 8px; }
+.dedicate-error { font-size: 13px; color: #d9534f; text-align: center; margin-top: 8px; }
 
-.dedicate-field-hint {
-  font-size: 11px;
-  color: var(--white-30);
-  margin-top: 4px;
-}
-
-.dedicate-submit {
-  margin-top: 8px;
-}
-
-.dedicate-error {
-  font-size: 13px;
-  color: #d9534f;
-  text-align: center;
-  margin-top: 8px;
-}
-
-/* ---- View modal (claimed km) ---- */
-.dedicate-view-modal {
-  text-align: center;
-}
+/* ---- View modal ---- */
+.dedicate-view-modal { text-align: center; }
 
 .dedicate-view-for {
   font-size: 13px;
@@ -415,7 +346,69 @@
   z-index: 1;
 }
 
-/* ---- Loading state ---- */
+/* ---- Success / share card modal ---- */
+.dedicate-success-modal {
+  max-width: 560px;
+  text-align: center;
+}
+
+.dedicate-success-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--gold);
+  color: var(--black);
+  font-size: 28px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+  position: relative;
+  z-index: 1;
+}
+
+.dedicate-success-title {
+  font-family: var(--font-hero);
+  font-size: 32px;
+  color: var(--white);
+  margin-bottom: 10px;
+  position: relative;
+  z-index: 1;
+}
+
+.dedicate-success-subtitle {
+  font-size: 14px;
+  color: var(--white-50);
+  line-height: 1.7;
+  margin-bottom: 28px;
+  position: relative;
+  z-index: 1;
+}
+
+.dedicate-share-preview {
+  position: relative;
+  z-index: 1;
+  margin-bottom: 24px;
+  border: 1px solid var(--white-15);
+}
+
+.dedicate-share-preview img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.dedicate-success-actions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* ---- Loading ---- */
 .dedicate-loading {
   text-align: center;
   padding: 120px 40px;
@@ -425,7 +418,7 @@
   text-transform: uppercase;
 }
 
-/* ---- CTA at bottom ---- */
+/* ---- CTA ---- */
 .dedicate-cta-section {
   text-align: center;
   padding: 60px 40px 80px;
@@ -449,58 +442,34 @@
 
 /* ---- Responsive ---- */
 @media (max-width: 900px) {
-  .dedicate-grid {
-    grid-template-columns: repeat(6, 1fr);
-    gap: 8px;
-  }
-
-  .km-marker-number {
-    font-size: 22px;
-  }
-
-  .km-marker-claimed .km-marker-number {
-    font-size: 16px;
-  }
-
-  .km-marker-claimed-name {
-    font-size: 8px;
-  }
-
-  .km-marker-claimed-for {
-    display: none;
-  }
-
   .dedicate-hero {
     min-height: 40vh;
     padding: 70px 24px 40px;
   }
 
-  .dedicate-grid-section {
-    padding: 40px 20px 60px;
+  .dedicate-elevation-section {
+    padding: 30px 10px 10px;
+  }
+
+  .dedicate-elevation-labels {
+    padding: 0 16px 8px;
+    font-size: 9px;
   }
 
   .dedicate-modal {
     padding: 40px 28px 32px;
   }
+
+  .dedicate-success-modal {
+    max-width: 100%;
+  }
 }
 
 @media (max-width: 540px) {
-  .dedicate-grid {
-    grid-template-columns: repeat(4, 1fr);
-    gap: 6px;
-  }
+  .dedicate-counter-inner { gap: 20px; }
+  .dedicate-counter-number { font-size: 28px; }
 
-  .dedicate-counter-inner {
-    gap: 20px;
-  }
-
-  .dedicate-counter-number {
-    font-size: 28px;
-  }
-}
-
-@media (max-width: 380px) {
-  .dedicate-grid {
-    grid-template-columns: repeat(3, 1fr);
+  .dedicate-elevation-svg {
+    min-width: 1000px;
   }
 }
