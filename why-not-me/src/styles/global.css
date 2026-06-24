@@ -1315,3 +1315,9 @@ body.is-mobile-view .portal-hero + section {
 .portal-letter-target::before {
   display: none !important;
 }
+
+/* Documentary hero: no extra scroll padding beyond the viewport-height stage */
+.documentary-hero.portal-hero,
+body.is-mobile-view .documentary-hero.portal-hero {
+  min-height: 100svh !important;
+}
