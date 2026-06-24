@@ -38,7 +38,7 @@ const MAX_DONATIONS = 2000
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Accept, Content-Type',
 }
 
@@ -267,6 +267,85 @@ async function handleAsset(request, env) {
   return assetResponse
 }
 
+const DEDICATIONS_KEY = 'dedications_v1'
+const TOTAL_KILOMETRES = 42
+
+function dedicationResponse(body, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      ...corsHeaders,
+      'Content-Type': 'application/json',
+      'Cache-Control': 'no-cache',
+    },
+  })
+}
+
+async function getDedications(env) {
+  const raw = await env.DEDICATIONS.get(DEDICATIONS_KEY)
+  return raw ? JSON.parse(raw) : {}
+}
+
+async function handleGetDedications(env) {
+  const dedications = await getDedications(env)
+  return dedicationResponse({
+    dedications,
+    totalKilometres: TOTAL_KILOMETRES,
+    claimed: Object.keys(dedications).length,
+    remaining: TOTAL_KILOMETRES - Object.keys(dedications).length,
+  })
+}
+
+async function handlePostDedication(request, env) {
+  let body
+  try {
+    body = await request.json()
+  } catch {
+    return dedicationResponse({ error: 'Invalid JSON.' }, 400)
+  }
+
+  const km = Number(body.km)
+  if (!Number.isInteger(km) || km < 1 || km > TOTAL_KILOMETRES) {
+    return dedicationResponse({ error: 'Invalid kilometre number.' }, 400)
+  }
+
+  const name = (body.name || '').trim().slice(0, 80)
+  const dedicatedTo = (body.dedicatedTo || '').trim().slice(0, 80)
+  const message = (body.message || '').trim().slice(0, 150)
+
+  if (!name) {
+    return dedicationResponse({ error: 'Name is required.' }, 400)
+  }
+  if (!dedicatedTo) {
+    return dedicationResponse({ error: 'Please say who this kilometre is for.' }, 400)
+  }
+
+  // Read current state, check availability, write back
+  const dedications = await getDedications(env)
+
+  if (dedications[String(km)]) {
+    return dedicationResponse({ error: 'This kilometre has already been claimed.' }, 409)
+  }
+
+  dedications[String(km)] = {
+    name,
+    dedicatedTo,
+    message,
+    createdAt: new Date().toISOString(),
+  }
+
+  await env.DEDICATIONS.put(DEDICATIONS_KEY, JSON.stringify(dedications))
+
+  return dedicationResponse({
+    success: true,
+    km,
+    dedications,
+    totalKilometres: TOTAL_KILOMETRES,
+    claimed: Object.keys(dedications).length,
+    remaining: TOTAL_KILOMETRES - Object.keys(dedications).length,
+  })
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url)
@@ -285,6 +364,23 @@ export default {
 
     if (url.pathname === '/api/donate') {
       return Response.redirect(RAISELY_DONATION_URL, 302)
+    }
+
+    if (url.pathname === '/api/dedications') {
+      if (request.method === 'GET') {
+        try {
+          return await handleGetDedications(env)
+        } catch (error) {
+          return dedicationResponse({ error: 'Unable to load dedications.' }, 500)
+        }
+      }
+      if (request.method === 'POST') {
+        try {
+          return await handlePostDedication(request, env)
+        } catch (error) {
+          return dedicationResponse({ error: 'Unable to save dedication.' }, 500)
+        }
+      }
     }
 
     return handleAsset(request, env)
