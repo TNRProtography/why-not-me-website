@@ -182,7 +182,7 @@ function CompactDonationTracker() {
 
         <div className="donation-strip__actions">
           <span>{supporterCount ? `${supporterCount} supporters` : 'Live from Raisely'}</span>
-          <a href="https://nogoingback.nz/nicole-white" target="_blank" rel="noopener noreferrer">Donate now</a>
+          <Link to="/donation-progress">Learn more</Link>
           <Link to="/dedicate">Dedicate a Km - Free</Link>
         </div>
       </div>
