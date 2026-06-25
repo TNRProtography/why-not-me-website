@@ -144,7 +144,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ========== 3. NICOLE'S STORY ========== */}
+      {/* ========== 3. NICOLE'S STORY (condensed) ========== */}
       <section style={{ padding: '120px 40px' }}>
         <div className="story-grid">
           <RevealOnScroll direction="left">
@@ -165,11 +165,14 @@ export default function HomePage() {
               <br />
               <p style={{ color: 'var(--warm)', fontStyle: 'italic' }}>In 2026, she was declared in remission.</p>
             </div>
+            <div style={{ marginTop: 30 }}>
+              <Link to="/nicoles-story" className="btn-primary">Read the Full Story</Link>
+            </div>
           </RevealOnScroll>
         </div>
       </section>
 
-      {/* ========== 3. STATS ========== */}
+      {/* ========== 4. STATS ========== */}
       <section style={{ padding: '40px 40px 100px' }}>
         <RevealOnScroll>
           <div className="stats-bar">
@@ -187,146 +190,6 @@ export default function HomePage() {
             </div>
           </div>
         </RevealOnScroll>
-      </section>
-
-      {/* ========== 4. THE TUMOUR (PLNTY) ========== */}
-      <section className="tumour-section">
-        <div className="tumour-grid">
-          <RevealOnScroll direction="left">
-            <p className="section-label">The Tumour</p>
-            <ScrollZoomFocus origin="left" scaleTo={2.05}><h2 className="section-title" style={{ fontSize: 'clamp(44px, 7vw, 90px)' }}>PLNTY.</h2></ScrollZoomFocus>
-            <h3 className="tumour-subtitle">One of only a few.</h3>
-            <div className="gold-line" />
-            <div className="section-body">
-              <p>Nicole's tumour is a Polymorphous Low-grade Neuro-epithelial Tumour of the Young, known as a PLNTY. It is an extremely rare brain tumour type, typically low-grade and slow-growing. For one to transform into a high-grade, aggressive tumour is nearly unheard of.</p>
-              <br />
-              <p>There are only a couple of documented cases in the world of a PLNTY undergoing malignant transformation. Nicole's case is, by any clinical measure, exceptional.</p>
-              <br />
-              <p>In late 2024, after her fourth brain surgery, histology confirmed the change. What had been a manageable, low-grade tumour for seven years had become something far more dangerous. Nicole was told it would most likely end her life. What followed was radiation, concurrent with low-dose Temozolomide, then six months of high-dose chemotherapy.</p>
-              <br />
-              <p>In 2026, Nicole was officially declared in remission.</p>
-            </div>
-          </RevealOnScroll>
-          <RevealOnScroll direction="right" className="tumour-images tumour-images--single">
-            <img src="/images/surgery/bed.jpg" alt="Nicole in hospital" onClick={() => setLightbox('/images/surgery/bed.jpg')} />
-          </RevealOnScroll>
-        </div>
-      </section>
-
-      {/* ========== 5. TREATMENT ========== */}
-      <section style={{ padding: '120px 40px' }}>
-        <div className="treatment-grid">
-          <RevealOnScroll direction="left" className="treatment-images">
-            <img src="/images/surgery/gown.jpg" alt="Before surgery" onClick={() => setLightbox('/images/surgery/gown.jpg')} />
-            <img src="/images/surgery/stitches.jpg" alt="Surgery stitches" onClick={() => setLightbox('/images/surgery/stitches.jpg')} />
-            <img src="/images/surgery/recovery.jpg" alt="Recovery" onClick={() => setLightbox('/images/surgery/recovery.jpg')} />
-            <img src="/images/surgery/hospital2.jpg" alt="Hospital" onClick={() => setLightbox('/images/surgery/hospital2.jpg')} />
-          </RevealOnScroll>
-          <RevealOnScroll direction="right" className="treatment-text">
-            <p className="section-label">Treatment</p>
-            <ScrollZoomFocus origin="left"><h2 className="section-title">The reality behind the resilience.</h2></ScrollZoomFocus>
-            <div className="gold-line" />
-            <div className="section-body">
-              <p>Nicole did not tolerate her treatment well. She had four brain surgeries in total. The first was in November 2017 at age 17. It was her first surgery of any kind. She woke up in the recovery room crying, overwhelmed and very sick.</p>
-              <br />
-              <p>After the November 2024 surgery, the histology came back. The tumour had changed. A six and a half week radiation programme followed in Christchurch, Monday to Friday, concurrent with low-dose Temozolomide.</p>
-              <br />
-              <p>High-dose chemo stretched across six months: one week on, three weeks off. Nicole's on-weeks were brutal. Vomiting constantly, unable to eat, exhausted in ways sleep could not fix. But on her off-weeks, she went back to work.</p>
-              <br />
-              <p>She spent years caring for patients in the same health system keeping her alive. That dual knowledge, patient and professional, runs through every part of this story.</p>
-            </div>
-          </RevealOnScroll>
-        </div>
-      </section>
-
-      {/* ========== 6. TIMELINE (individual years) ========== */}
-      <section style={{ padding: '80px 40px 120px' }}>
-        <RevealOnScroll>
-          <div style={{ textAlign: 'center', marginBottom: 80 }}>
-            <p className="section-label">Key Timeline</p>
-            <ScrollZoomFocus><h2 className="section-title">A decade of fighting.</h2></ScrollZoomFocus>
-          </div>
-        </RevealOnScroll>
-        <div className="timeline">
-          <div className="timeline-line" />
-
-          {/* 2016 */}
-          <RevealOnScroll className="timeline-item">
-            <div className="timeline-dot" />
-            <div className="timeline-year">2016</div>
-            <div className="timeline-text">Had her first seizure while driving, right after getting her licence. Had another seizure in November. Started on anti-seizure medication.</div>
-          </RevealOnScroll>
-
-          {/* 2017 */}
-          <RevealOnScroll className="timeline-item" delay={0.05}>
-            <div className="timeline-dot" />
-            <div className="timeline-year">2017</div>
-            <div className="timeline-text">Diagnosed with a brain tumour in May. Initially told it was not a tumour, but an emergency MRI confirmed it. Found out it had some rare characteristics. Another MRI in October showed growth. First brain surgery in November. Missed end of year exams. Got given the all clear and was told the tumour would not grow back.</div>
-          </RevealOnScroll>
-
-          {/* 2018 */}
-          <RevealOnScroll className="timeline-item" delay={0.05}>
-            <div className="timeline-dot" />
-            <div className="timeline-year">2018</div>
-            <div className="timeline-text">Gap year started. Still being told the tumour would not grow back and she was all clear. Then in November, found out the tumour had grown back again.</div>
-          </RevealOnScroll>
-
-          {/* 2019 */}
-          <RevealOnScroll className="timeline-item" delay={0.05}>
-            <div className="timeline-dot" />
-            <div className="timeline-year">2019</div>
-            <div className="timeline-text">Started university in Dunedin. Scan mid-year showed the tumour had grown and needed action. Had her second surgery in August. Had to put studies on hold.</div>
-          </RevealOnScroll>
-
-          {/* 2020 */}
-          <RevealOnScroll className="timeline-item" delay={0.05}>
-            <div className="timeline-dot" />
-            <div className="timeline-year">2020</div>
-            <div className="timeline-text">Started nursing in February. Scan at six months post-op showed tumour regrowth again. Started on Dabrafenib, an oral chemotherapy drug.</div>
-          </RevealOnScroll>
-
-          {/* 2021 */}
-          <RevealOnScroll className="timeline-item" delay={0.05}>
-            <div className="timeline-dot" />
-            <div className="timeline-year">2021</div>
-            <div className="timeline-text">Tumour officially stable. Felt miserable on Dabrafenib but it meant she could keep studying, so she pushed through.</div>
-          </RevealOnScroll>
-
-          {/* 2022 */}
-          <RevealOnScroll className="timeline-item" delay={0.05}>
-            <div className="timeline-dot" />
-            <div className="timeline-year">2022</div>
-            <div className="timeline-text">Settled into student life. Ran the Dunedin half marathon for Brain Tumour Support NZ, raising $4,500. Graduated as a registered nurse.</div>
-          </RevealOnScroll>
-
-          {/* 2023 */}
-          <RevealOnScroll className="timeline-item" delay={0.05}>
-            <div className="timeline-dot" />
-            <div className="timeline-year">2023</div>
-            <div className="timeline-text">Started her new grad nursing job in Greymouth. Met Dean. Tumour showed small changes and she was taken off Dabrafenib at the end of November. Ran the Queenstown Marathon while on chemo.</div>
-          </RevealOnScroll>
-
-          {/* 2024 */}
-          <RevealOnScroll className="timeline-item" delay={0.05}>
-            <div className="timeline-dot timeline-dot-danger" />
-            <div className="timeline-year">2024</div>
-            <div className="timeline-text">Changes to the tumour raised concern. Had surgery in June. The tumour grew back, so she had surgery again in November. At the same time, Dad was going through his own prostate cancer journey and had surgery three days after Nicole. Got a call from the surgeon to come in and discuss histology. Was told the tumour had changed its spots and was now aggressive and likely terminal. Started planning for radiation and chemo.</div>
-          </RevealOnScroll>
-
-          {/* 2025 */}
-          <RevealOnScroll className="timeline-item" delay={0.05}>
-            <div className="timeline-dot" />
-            <div className="timeline-year">2025</div>
-            <div className="timeline-text">Started the process of egg preservation. Began radiation in February, sessions Monday to Friday for six and a half weeks, with low-dose Temozolomide running alongside it. After a small break, started high-dose Temozolomide for six months. Most people tolerate it well. Nicole did not. Vomiting constantly, no appetite. Returned to work in small increments during her off-weeks.</div>
-          </RevealOnScroll>
-
-          {/* 2026 */}
-          <RevealOnScroll className="timeline-item" delay={0.05}>
-            <div className="timeline-dot timeline-dot-gold" />
-            <div className="timeline-year" style={{ color: 'var(--gold)' }}>2026</div>
-            <div className="timeline-text">Officially went into remission. Found out on her birthday that she had been discharged from oncology, one day shy of the anniversary of starting treatment. Back at work. Training for a marathon. Living with the knowledge that it could return, but choosing to live fully anyway.</div>
-          </RevealOnScroll>
-        </div>
       </section>
 
       {/* ========== 7. PHOTO GRID ========== */}
