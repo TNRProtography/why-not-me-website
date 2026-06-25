@@ -135,7 +135,7 @@ export default function HomePage() {
             <p className="home-video-caption">Autoplays muted. Tap the player for sound.</p>
           </RevealOnScroll>
           <RevealOnScroll className="home-video-dedicate-cta">
-            <p className="section-label">Free Race-Day Dedication</p>
+            <p className="section-label">Race-Day Dedication</p>
             <p>
               Donate to Nicole's No Going Back campaign and dedicate one of her Queenstown Marathon kilometres to someone you love. Add a name, write a short message, and Nicole will carry it with her.
             </p>

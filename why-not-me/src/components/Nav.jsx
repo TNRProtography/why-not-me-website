@@ -4,6 +4,7 @@ import './Nav.css'
 
 const navItems = [
   { to: '/', label: 'Home', end: true },
+  { to: '/nicoles-story', label: "Nicole's Story" },
   { to: '/documentary', label: 'Documentary' },
   { to: '/queenstown-marathon', label: 'Marathon' },
   { to: '/dedicate', label: 'Dedicate a Km' },
