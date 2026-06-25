@@ -1,29 +1,17 @@
 /*
  * ============================================================
- * RAISELY LIVE DONATION PROGRESS - request handler
+ * WHY NOT ME - API WORKER
  * ============================================================
- * This handler powers /api/raisely-progress, which the donation
- * tracker fetches for live fundraising numbers, and also serves
- * the static site with single-page-app fallback.
+ * Handles:
+ *   /api/raisely-progress  — live donation progress from Raisely
+ *   /api/donate             — redirect to Raisely donation page
+ *   /api/dedications (GET)  — list all claimed km dedications
+ *   /api/dedications (POST) — claim a km (requires verified donation)
+ *   /api/dedications/message (POST) — leave a support message
  *
- * It is written so the SAME code works in BOTH Cloudflare
- * deployment models:
- *   - Workers (wrangler.jsonc -> main: this file)
- *   - Pages "advanced mode" (a copy lives at public/_worker.js,
- *     which Vite emits to dist/_worker.js for Pages to run)
- *
- * In both models the static-assets binding is `env.ASSETS`.
- *
- * Data source: Raisely public API (https://api.raisely.com/v3).
- * Nicole's profile is publicly readable by UUID, so no API key
- * is required for read-only progress.
- *   Profile (headline numbers): GET /v3/profiles/{uuid}
- *   Public donations:           GET /v3/profiles/{uuid}/donations
- *
- * The headline numbers come from the PROFILE call alone. The
- * donations list is fetched separately and is allowed to fail
- * without breaking the page, so a hiccup on the donations feed
- * never blanks out the progress bar.
+ * KV binding:   DEDICATIONS
+ * Secret:       RAISELY_API_KEY
+ * Asset binding: ASSETS (static site)
  * ============================================================
  */
 
@@ -62,7 +50,6 @@ function centsToCurrency(value) {
 function goalToCurrency(value) {
   const number = Number(value)
   if (!Number.isFinite(number)) return 0
-  // Raisely stores money in cents. Large values are treated as cents.
   return number > 100000 ? number / 100 : number
 }
 
@@ -250,10 +237,6 @@ async function handleProgress() {
 async function handleAsset(request, env) {
   const assetResponse = await env.ASSETS.fetch(request)
 
-  // On Pages advanced mode, unknown routes 404. For HTML navigations,
-  // serve the SPA shell so client-side routes (e.g. /donation-progress)
-  // work on a hard refresh. (On Workers-with-assets, not_found_handling
-  // already returns index.html, so this simply never triggers.)
   if (
     assetResponse.status === 404 &&
     request.method === 'GET' &&
@@ -266,6 +249,8 @@ async function handleAsset(request, env) {
 
   return assetResponse
 }
+
+// ── Dedications ──────────────────────────────────────────────
 
 const LEGACY_DEDICATIONS_KEY = 'dedications_v1'
 const DEDICATION_KEY_PREFIX = 'dedication_km_'
@@ -296,7 +281,6 @@ async function getDedications(env) {
     if (raw) dedications[km] = JSON.parse(raw)
   }))
 
-  // Backwards compatibility for data written before each kilometre had its own KV entry.
   const legacyRaw = await env.DEDICATIONS.get(LEGACY_DEDICATIONS_KEY)
   if (legacyRaw) {
     const legacyDedications = JSON.parse(legacyRaw)
@@ -327,6 +311,49 @@ async function handleGetDedications(env) {
   })
 }
 
+// ── Raisely Donation Verification ────────────────────────────
+
+async function verifyDonation(email, env) {
+  if (!email) return { verified: false }
+  if (!env.RAISELY_API_KEY) {
+    console.error('RAISELY_API_KEY secret is not set')
+    return { verified: false, error: 'Donation verification is not configured.' }
+  }
+
+  const url = new URL(`${RAISELY_API_BASE}/donations`)
+  url.searchParams.set('campaign', RAISELY_CAMPAIGN_UUID)
+  url.searchParams.set('private', 'true')
+  url.searchParams.set('q', email.trim().toLowerCase())
+  url.searchParams.set('status', 'OK')
+  url.searchParams.set('limit', '5')
+
+  const res = await fetch(url.toString(), {
+    headers: {
+      Authorization: `Bearer ${env.RAISELY_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+  })
+
+  if (!res.ok) {
+    console.error(`Raisely verification failed: ${res.status} ${res.statusText}`)
+    return { verified: false, error: 'Could not verify donation status.' }
+  }
+
+  const data = await res.json()
+  const donations = data.data || []
+
+  if (donations.length === 0) return { verified: false }
+
+  // The q param is fuzzy — double-check exact email match
+  const match = donations.find(
+    (d) => d.email?.toLowerCase() === email.trim().toLowerCase()
+  )
+
+  return match ? { verified: true } : { verified: false }
+}
+
+// ── Post Dedication (with verification) ──────────────────────
+
 async function handlePostDedication(request, env) {
   let body
   try {
@@ -341,6 +368,7 @@ async function handlePostDedication(request, env) {
   }
 
   const name = (body.name || '').trim().slice(0, 80)
+  const email = (body.email || '').trim().toLowerCase()
   const dedicatedTo = (body.dedicatedTo || '').trim().slice(0, 80)
   const message = (body.message || '').trim().slice(0, 150)
 
@@ -350,8 +378,27 @@ async function handlePostDedication(request, env) {
   if (!dedicatedTo) {
     return dedicationResponse({ error: 'Please say who this kilometre is for.' }, 400)
   }
+  if (!email) {
+    return dedicationResponse({ error: 'Please enter the email you donated with.' }, 400)
+  }
 
-  // Read current state, check availability, write back
+  // ── Verify donation via Raisely ──
+  const verification = await verifyDonation(email, env)
+
+  if (verification.error) {
+    return dedicationResponse({
+      error: 'Unable to verify your donation right now. Please try again shortly.',
+    }, 503)
+  }
+
+  if (!verification.verified) {
+    return dedicationResponse({
+      error: "We couldn't find a donation matching that email. Please donate first, then come back to claim your kilometre!",
+      donateUrl: RAISELY_DONATION_URL,
+    }, 403)
+  }
+
+  // ── Donation verified — proceed with claiming ──
   const dedications = await getDedications(env)
 
   if (dedications[String(km)]) {
@@ -376,7 +423,6 @@ async function handlePostDedication(request, env) {
     remaining: TOTAL_KILOMETRES - Object.keys(dedications).length,
   })
 }
-
 
 async function handlePostDedicationMessage(request, env) {
   let body
@@ -418,6 +464,8 @@ async function handlePostDedicationMessage(request, env) {
     messages: nextMessages,
   })
 }
+
+// ── Main router ──────────────────────────────────────────────
 
 export default {
   async fetch(request, env) {

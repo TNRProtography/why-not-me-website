@@ -266,7 +266,8 @@ export default function DedicateKmPage() {
   const [messageSuccess, setMessageSuccess] = useState(false)
   const [hoveredKm, setHoveredKm] = useState(null)
   const [tooltip, setTooltip] = useState(null)
-  const [formData, setFormData] = useState({ name: '', dedicatedTo: '', message: '' })
+  const [formData, setFormData] = useState({ name: '', email: '', dedicatedTo: '', message: '' })
+  const [donateUrl, setDonateUrl] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [shareCanvas, setShareCanvas] = useState(null)
@@ -295,8 +296,9 @@ export default function DedicateKmPage() {
       setViewingKm(km)
     } else {
       setSelectedKm(km)
-      setFormData({ name: '', dedicatedTo: '', message: '' })
+      setFormData({ name: '', email: '', dedicatedTo: '', message: '' })
       setError('')
+      setDonateUrl(null)
     }
   }
 
@@ -308,6 +310,7 @@ export default function DedicateKmPage() {
     setMessageSuccess(false)
     setShareCanvas(null)
     setError('')
+    setDonateUrl(null)
   }
 
   const handleSubmit = async (e) => {
@@ -318,10 +321,10 @@ export default function DedicateKmPage() {
       const res = await fetch('/api/dedications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ km: selectedKm, name: formData.name, dedicatedTo: formData.dedicatedTo, message: formData.message }),
+        body: JSON.stringify({ km: selectedKm, name: formData.name, email: formData.email, dedicatedTo: formData.dedicatedTo, message: formData.message }),
       })
       const data = await res.json()
-      if (!res.ok) { setError(data.error || 'Something went wrong.'); setSubmitting(false); return }
+      if (!res.ok) { setError(data.error || 'Something went wrong.'); setDonateUrl(data.donateUrl || null); setSubmitting(false); return }
 
       const claimedKm = selectedKm
       setDedications(data.dedications || {})
@@ -358,7 +361,7 @@ export default function DedicateKmPage() {
       const data = await res.json()
       if (!res.ok) { setError(data.error || 'Something went wrong.'); setSubmitting(false); return }
       setGenericMessages(data.messages || [])
-      setFormData({ name: '', dedicatedTo: '', message: '' })
+      setFormData({ name: '', email: '', dedicatedTo: '', message: '' })
       setSubmitting(false)
       setOpenMessageForm(false)
       setMessageSuccess(true)
@@ -614,7 +617,7 @@ export default function DedicateKmPage() {
           <p className="section-label">All Kilometres Claimed</p>
           <h2>The road is full - but the love is not.</h2>
           <p>Leave Nicole a message below and we’ll add it to the wall of support she carries with her.</p>
-          <button className="btn-primary" onClick={() => { setOpenMessageForm(true); setFormData({ name: '', dedicatedTo: 'Nicole', message: '' }); setError('') }}>Leave a Message</button>
+          <button className="btn-primary" onClick={() => { setOpenMessageForm(true); setFormData({ name: '', email: '', dedicatedTo: 'Nicole', message: '' }); setError('') }}>Leave a Message</button>
           {genericMessages.length > 0 && (
             <div className="dedicate-message-wall">
               {genericMessages.slice(0, 6).map((item) => (
@@ -658,6 +661,13 @@ export default function DedicateKmPage() {
                   autoFocus required />
               </div>
               <div className="dedicate-field">
+                <label htmlFor="dedicate-email">Donation Email</label>
+                <input id="dedicate-email" type="email" placeholder="The email you donated with"
+                  value={formData.email} onChange={(e) => { setFormData({ ...formData, email: e.target.value }); setDonateUrl(null); setError('') }}
+                  required />
+                <div className="dedicate-field-hint">The email address you used when donating via No Going Back</div>
+              </div>
+              <div className="dedicate-field">
                 <label htmlFor="dedicate-for">Dedicating This Km To</label>
                 <input id="dedicate-for" type="text" placeholder="A person, a group, or a cause" maxLength={80}
                   value={formData.dedicatedTo} onChange={(e) => setFormData({ ...formData, dedicatedTo: e.target.value })}
@@ -673,6 +683,11 @@ export default function DedicateKmPage() {
                 {submitting ? 'Claiming…' : 'Claim This Kilometre'}
               </button>
               {error && <p className="dedicate-error">{error}</p>}
+              {donateUrl && (
+                <a href={donateUrl} target="_blank" rel="noopener noreferrer" className="btn-primary" style={{ marginTop: '0.5rem', display: 'inline-block', textAlign: 'center', width: '100%' }}>
+                  Donate Now
+                </a>
+              )}
             </form>
           </div>
         </div>
