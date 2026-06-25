@@ -1,759 +1,778 @@
 /*
  * ============================================================
- * RAISELY LIVE DONATION PROGRESS + DEDICATION APPROVAL SYSTEM
+ * DEDICATE A KILOMETRE PAGE - /dedicate
  * ============================================================
- * This handler powers:
- *   /api/raisely-progress  - live fundraising numbers
- *   /api/dedications       - GET/POST km dedications
- *   /api/dedications/message - overflow messages
- *   /api/dedications/review  - approve/deny from email link
- *   /api/donate            - redirect to Raisely
- *
- * Dedication flow:
- *   1. User submits → saved as PENDING in KV
- *   2. Approval email sent via Cloudflare Email Service with last 5 donations
- *   3. Admin clicks Approve/Deny link in email
- *   4. Approved → visible on site. Denied → km released.
- *
- * Environment bindings required:
- *   ASSETS       - Cloudflare static assets
- *   DEDICATIONS  - KV namespace for dedications
- *   EMAIL        - Cloudflare Email Service send binding
- *   APPROVAL_EMAIL - Destination email (vars in wrangler config)
- *   SENDER_EMAIL   - From address on your domain (vars in wrangler config)
+ * Interactive elevation profile of the Queenstown Marathon.
+ * 42 claimable km with hover tooltips, confetti celebration,
+ * and branded shareable card on claim.
  * ============================================================
  */
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { Link } from 'react-router-dom'
+import PageTransition from '../components/PageTransition'
+import RevealOnScroll from '../components/RevealOnScroll'
+import './DedicateKmPage.css'
 
-const RAISELY_API_BASE = 'https://api.raisely.com/v3'
-const RAISELY_PROFILE_UUID = '5726f720-4406-11f1-b02c-c194de4f7b8f'
-const RAISELY_PROFILE_PATH = 'nicole-white'
-const RAISELY_CAMPAIGN_UUID = 'e6ecc870-bfd9-11ee-925d-ab85a9665c6e'
-const RAISELY_DONATION_URL = 'https://nogoingback.nz/nicole-white'
-const CACHE_TTL_SECONDS = 45
-const DONATION_LIMIT = 100
-const MAX_DONATIONS = 2000
+const TOTAL_KM = 42
 
-const LEGACY_DEDICATIONS_KEY = 'dedications_v1'
-const DEDICATION_KEY_PREFIX = 'dedication_km_'
-const DEDICATION_MESSAGES_KEY = 'dedication_messages_v1'
-const APPROVAL_TOKEN_PREFIX = 'approval_token_'
-const TOTAL_KILOMETRES = 42
-
-const STATUS_PENDING = 'pending'
-const STATUS_APPROVED = 'approved'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Accept, Content-Type',
+const FINISH_DEDICATION = {
+  name: 'Dean',
+  dedicatedTo: 'Nicole',
+  message: 'You are the strongest person I know and I\'m so incredibly proud of you. I love you always forever.',
 }
 
-function jsonResponse(body, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: {
-      ...corsHeaders,
-      'Content-Type': 'application/json',
-      'Cache-Control': `public, max-age=${CACHE_TTL_SECONDS}`,
-    },
-  })
-}
+// Approximate Queenstown Marathon elevation (metres above sea level)
+const ELEVATIONS = [
+  310, 318, 325, 335, 342, 348, 340, 328, 315, 308,
+  312, 322, 338, 352, 368, 375, 378, 382, 388, 382,
+  372, 358, 348, 338, 332, 328, 322, 318, 312, 308,
+  305, 312, 322, 328, 332, 326, 318, 312, 308, 312,
+  318, 310,
+]
 
-function dedicationResponse(body, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: {
-      ...corsHeaders,
-      'Content-Type': 'application/json',
-      'Cache-Control': 'no-cache',
-    },
-  })
-}
+// ── SVG elevation helpers ─────────────────────────────────────
+const SVG_W = 1500
+const SVG_H = 320
+const PAD_X = 50
+const PAD_TOP = 60
+const PAD_BOT = 60
+const CHART_H = SVG_H - PAD_TOP - PAD_BOT
 
-function htmlResponse(html, status = 200) {
-  return new Response(html, {
-    status,
-    headers: {
-      ...corsHeaders,
-      'Content-Type': 'text/html; charset=utf-8',
-      'Cache-Control': 'no-cache',
-    },
-  })
-}
-
-function centsToCurrency(value) {
-  const number = Number(value)
-  if (!Number.isFinite(number)) return 0
-  return number / 100
-}
-
-function goalToCurrency(value) {
-  const number = Number(value)
-  if (!Number.isFinite(number)) return 0
-  return number > 100000 ? number / 100 : number
-}
-
-function firstValue(...values) {
-  return values.find((value) => value !== undefined && value !== null && value !== '')
-}
-
-function truncate(value, maxLength = 220) {
-  if (!value || typeof value !== 'string') return ''
-  const clean = value.replace(/\s+/g, ' ').trim()
-  return clean.length > maxLength ? `${clean.slice(0, maxLength - 3)}...` : clean
-}
-
-function dedicationKey(km) {
-  return `${DEDICATION_KEY_PREFIX}${km}`
-}
-
-function tokenKey(token) {
-  return `${APPROVAL_TOKEN_PREFIX}${token}`
-}
-
-// ── Raisely helpers ─────────────────────────────────────────
-
-async function raiselyFetch(path, params = {}) {
-  const url = new URL(`${RAISELY_API_BASE}${path}`)
-  Object.entries(params).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== '') {
-      url.searchParams.set(key, value)
-    }
-  })
-
-  const response = await fetch(url.toString(), {
-    headers: { Accept: 'application/json' },
-  })
-
-  if (!response.ok) {
-    throw new Error(`Raisely request failed (${response.status}) for ${path}`)
-  }
-
-  return response.json()
-}
-
-function resolveGoal(profile) {
-  const rawGoal = firstValue(
-    profile.goal,
-    profile.donationGoal,
-    profile.fundraisingGoal,
-    profile.target,
-    profile.public?.goal,
-    profile.public?.donationGoal,
-    profile.public?.fundraisingGoal,
-  )
-
-  if (rawGoal) return goalToCurrency(rawGoal)
-
-  const total = Number(profile.total)
-  const percent = Number(profile.totalPercent)
-  if (Number.isFinite(total) && Number.isFinite(percent) && percent > 0) {
-    return centsToCurrency(total / (percent / 100))
-  }
-
-  return 0
-}
-
-function normaliseProfile(profile) {
-  const raised = centsToCurrency(firstValue(
-    profile.total,
-    profile.grandTotal,
-    profile.campaignDisplayTotal,
-    profile.campaignTotal,
-    profile.selfDonationTotal,
-  ))
-  const goal = resolveGoal(profile)
-  const percent = goal > 0 ? (raised / goal) * 100 : Number(profile.totalPercent) || 0
-
-  return {
-    id: profile.uuid || profile.path,
-    name: (profile.name || profile.path || 'Why Not Me?').replace(/\s+/g, ' ').trim(),
-    path: profile.path,
-    raised,
-    goal,
-    percent,
-    currency: profile.currency || profile.parent?.currency || 'NZD',
-    donorCount: Number(firstValue(profile.uniqueDonors, profile.uniqueDonorCount, profile.donorCount)) || 0,
-    donationCount: Number(profile.donationCount) || 0,
-    allDonationCount: Number(profile.donationCount) || 0,
-  }
-}
-
-function normaliseDonation(donation) {
-  const publicData = donation.public || {}
-  const name = firstValue(
-    donation.displayName,
-    donation.name,
-    donation.preferredName,
-    donation.user?.preferredName,
-    donation.user?.displayName,
-    [donation.firstName, donation.lastName].filter(Boolean).join(' '),
-    publicData.name,
-  )
-  const message = firstValue(
-    donation.message,
-    donation.comment,
-    donation.note,
-    publicData.message,
-    publicData.comment,
-  )
-
-  return {
-    id: donation.uuid || `${donation.createdAt}-${donation.total}`,
-    name: donation.anonymous ? 'Anonymous supporter' : (truncate(name, 80) || 'Anonymous supporter'),
-    message: truncate(message),
-    amount: centsToCurrency(firstValue(donation.total, donation.amount, donation.displayTotal)),
-    currency: donation.currency || 'NZD',
-    createdAt: donation.createdAt || donation.paidAt || donation.updatedAt,
-  }
-}
-
-async function getProfile() {
-  try {
-    const byUuid = await raiselyFetch(`/profiles/${encodeURIComponent(RAISELY_PROFILE_UUID)}`)
-    return byUuid.data || byUuid
-  } catch (uuidError) {
-    const byPath = await raiselyFetch(`/profiles/${encodeURIComponent(RAISELY_PROFILE_PATH)}`)
-    return byPath.data || byPath
-  }
-}
-
-async function getAllPublicDonations() {
-  const donations = []
-  let offset = 0
-
-  const endpoints = [
-    (params) => raiselyFetch(`/profiles/${encodeURIComponent(RAISELY_PROFILE_UUID)}/donations`, params),
-    (params) => raiselyFetch('/donations', { ...params, profile: RAISELY_PROFILE_UUID }),
-    (params) => raiselyFetch(`/campaigns/${encodeURIComponent(RAISELY_CAMPAIGN_UUID)}/donations`, { ...params, profile: RAISELY_PROFILE_UUID }),
-  ]
-
-  let chosen = null
-
-  while (donations.length < MAX_DONATIONS) {
-    const params = { limit: DONATION_LIMIT, offset }
-    let page = null
-
-    if (chosen) {
-      try {
-        const response = await chosen(params)
-        page = response.data || []
-      } catch {
-        break
-      }
-    } else {
-      for (const endpoint of endpoints) {
-        try {
-          const response = await endpoint(params)
-          page = response.data || []
-          chosen = endpoint
-          break
-        } catch {
-          // try next candidate
-        }
-      }
-      if (!chosen) break
-    }
-
-    if (!page || page.length === 0) break
-    donations.push(...page)
-    if (page.length < DONATION_LIMIT) break
-    offset += DONATION_LIMIT
-  }
-
-  return donations.slice(0, MAX_DONATIONS)
-}
-
-/* Fetch just the 5 most recent donations for the approval email */
-async function fetchRecentDonationsForEmail() {
-  const endpoints = [
-    (params) => raiselyFetch(`/profiles/${encodeURIComponent(RAISELY_PROFILE_UUID)}/donations`, params),
-    (params) => raiselyFetch('/donations', { ...params, profile: RAISELY_PROFILE_UUID }),
-  ]
-
-  for (const endpoint of endpoints) {
-    try {
-      const response = await endpoint({ limit: 5, offset: 0 })
-      return (response.data || []).map(normaliseDonation)
-    } catch {
-      // try next
-    }
-  }
-  return []
-}
-
-async function handleProgress() {
-  const profile = await getProfile()
-
-  let donations = []
-  try {
-    donations = await getAllPublicDonations()
-  } catch {
-    donations = []
-  }
-
-  return jsonResponse({
-    profile: normaliseProfile(profile),
-    donations: donations.map(normaliseDonation),
-    updatedAt: new Date().toISOString(),
-  })
-}
-
-// ── Dedication helpers ──────────────────────────────────────
-
-async function getDedications(env) {
-  const dedications = {}
-
-  await Promise.all(Array.from({ length: TOTAL_KILOMETRES }, async (_, index) => {
-    const km = String(index + 1)
-    const raw = await env.DEDICATIONS.get(dedicationKey(km))
-    if (raw) dedications[km] = JSON.parse(raw)
+function getPoints() {
+  const minE = Math.min(...ELEVATIONS) - 5
+  const maxE = Math.max(...ELEVATIONS) + 5
+  const rangeE = maxE - minE
+  return ELEVATIONS.map((elev, i) => ({
+    km: i + 1,
+    x: PAD_X + (i / (TOTAL_KM - 1)) * (SVG_W - PAD_X * 2),
+    y: PAD_TOP + CHART_H - ((elev - minE) / rangeE) * CHART_H,
+    elev,
   }))
+}
 
-  // Backwards compatibility for data written before per-km KV entries
-  const legacyRaw = await env.DEDICATIONS.get(LEGACY_DEDICATIONS_KEY)
-  if (legacyRaw) {
-    const legacyDedications = JSON.parse(legacyRaw)
-    for (const [km, dedication] of Object.entries(legacyDedications)) {
-      if (!dedications[km]) dedications[km] = dedication
+function smoothPath(pts) {
+  if (pts.length < 2) return ''
+  let d = `M ${pts[0].x} ${pts[0].y}`
+  for (let i = 0; i < pts.length - 1; i++) {
+    const cpx = (pts[i].x + pts[i + 1].x) / 2
+    d += ` C ${cpx} ${pts[i].y}, ${cpx} ${pts[i + 1].y}, ${pts[i + 1].x} ${pts[i + 1].y}`
+  }
+  return d
+}
+
+function filledPath(pts) {
+  const line = smoothPath(pts)
+  return line + ` L ${pts[pts.length - 1].x} ${SVG_H - PAD_BOT + 10} L ${pts[0].x} ${SVG_H - PAD_BOT + 10} Z`
+}
+
+const POINTS = getPoints()
+
+// ── Confetti ──────────────────────────────────────────────────
+function spawnConfetti() {
+  const canvas = document.createElement('canvas')
+  canvas.style.cssText = 'position:fixed;inset:0;z-index:99999;pointer-events:none'
+  canvas.width = window.innerWidth
+  canvas.height = window.innerHeight
+  document.body.appendChild(canvas)
+  const ctx = canvas.getContext('2d')
+  const colors = ['#A88E5D', '#CBB299', '#F5F3EC', '#D4B96A', '#8B7748']
+  const particles = Array.from({ length: 90 }, () => ({
+    x: canvas.width / 2 + (Math.random() - 0.5) * 260,
+    y: canvas.height / 2 - 40,
+    vx: (Math.random() - 0.5) * 14,
+    vy: -Math.random() * 16 - 3,
+    w: Math.random() * 8 + 3,
+    h: Math.random() * 5 + 2,
+    color: colors[Math.floor(Math.random() * colors.length)],
+    opacity: 1,
+    rot: Math.random() * 360,
+    rotV: (Math.random() - 0.5) * 10,
+  }))
+  let frame = 0
+  ;(function tick() {
+    if (frame++ > 130) { canvas.remove(); return }
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    for (const p of particles) {
+      p.x += p.vx; p.vy += 0.28; p.y += p.vy
+      p.opacity = Math.max(0, p.opacity - 0.007)
+      p.rot += p.rotV
+      if (p.opacity <= 0) continue
+      ctx.save()
+      ctx.translate(p.x, p.y)
+      ctx.rotate((p.rot * Math.PI) / 180)
+      ctx.globalAlpha = p.opacity
+      ctx.fillStyle = p.color
+      ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h)
+      ctx.restore()
+    }
+    requestAnimationFrame(tick)
+  })()
+}
+
+// ── Share card generator ──────────────────────────────────────
+function fitText(ctx, text, maxWidth, { maxSize, minSize, family, weight = '', style = '' }) {
+  for (let size = maxSize; size >= minSize; size -= 2) {
+    ctx.font = `${style} ${weight} ${size}px ${family}`.replace(/\s+/g, ' ').trim()
+    if (ctx.measureText(text).width <= maxWidth) return size
+  }
+  return minSize
+}
+
+function wrapText(ctx, text, maxWidth, maxLines) {
+  const words = text.split(' ')
+  const lines = []
+  let line = ''
+
+  for (const word of words) {
+    const test = `${line}${word} `
+    if (ctx.measureText(test).width > maxWidth && line) {
+      lines.push(line.trim())
+      line = `${word} `
+      if (lines.length === maxLines - 1) break
+    } else {
+      line = test
     }
   }
 
-  return dedications
+  if (line.trim() && lines.length < maxLines) lines.push(line.trim())
+  return lines
 }
 
-async function getDedicationMessages(env) {
-  const raw = await env.DEDICATIONS.get(DEDICATION_MESSAGES_KEY)
-  if (!raw) return []
-  const messages = JSON.parse(raw)
-  return Array.isArray(messages) ? messages : []
-}
+async function generateShareCard(km, dedication) {
+  const W = 1080, H = 1080
+  const canvas = document.createElement('canvas')
+  canvas.width = W; canvas.height = H
+  const ctx = canvas.getContext('2d')
 
-/*
- * Sanitise dedications for public consumption.
- * - Approved (or legacy without status) → full details
- * - Pending → only expose status and km, hide message content
- */
-function sanitiseDedicationsForPublic(dedications) {
-  const result = {}
-  for (const [km, ded] of Object.entries(dedications)) {
-    const status = ded.status || STATUS_APPROVED // legacy compat
-    if (status === STATUS_APPROVED) {
-      result[km] = { ...ded, status: STATUS_APPROVED }
-    } else if (status === STATUS_PENDING) {
-      result[km] = { status: STATUS_PENDING, createdAt: ded.createdAt }
-    }
-  }
-  return result
-}
+  // Background
+  ctx.fillStyle = '#0D0D0D'
+  ctx.fillRect(0, 0, W, H)
 
-async function handleGetDedications(env) {
-  const dedications = await getDedications(env)
-  const messages = await getDedicationMessages(env)
-  const publicDedications = sanitiseDedicationsForPublic(dedications)
-  const approvedCount = Object.values(dedications).filter(d => (d.status || STATUS_APPROVED) === STATUS_APPROVED).length
-  const pendingCount = Object.values(dedications).filter(d => d.status === STATUS_PENDING).length
+  // Subtle gradient glow
+  const glow = ctx.createRadialGradient(540, 455, 0, 540, 455, 560)
+  glow.addColorStop(0, 'rgba(168,142,93,0.14)')
+  glow.addColorStop(0.58, 'rgba(168,142,93,0.045)')
+  glow.addColorStop(1, 'transparent')
+  ctx.fillStyle = glow
+  ctx.fillRect(0, 0, W, H)
 
-  return dedicationResponse({
-    dedications: publicDedications,
-    messages,
-    totalKilometres: TOTAL_KILOMETRES,
-    claimed: approvedCount,
-    pending: pendingCount,
-    remaining: TOTAL_KILOMETRES - approvedCount - pendingCount,
-  })
-}
+  // Gold borders
+  ctx.strokeStyle = 'rgba(168,142,93,0.55)'
+  ctx.lineWidth = 3
+  ctx.strokeRect(28, 28, W - 56, H - 56)
+  ctx.strokeStyle = 'rgba(168,142,93,0.18)'
+  ctx.lineWidth = 1
+  ctx.strokeRect(44, 44, W - 88, H - 88)
 
-async function handlePostDedication(request, env) {
-  let body
+  // Load logo
   try {
-    body = await request.json()
-  } catch {
-    return dedicationResponse({ error: 'Invalid JSON.' }, 400)
+    const logo = new Image()
+    logo.src = '/images/logos/logo-white-transparent.png'
+    await new Promise((res, rej) => { logo.onload = res; logo.onerror = rej })
+    const lh = 128, lw = logo.width * (lh / logo.height)
+    ctx.globalAlpha = 0.95
+    ctx.drawImage(logo, (W - lw) / 2, 60, lw, lh)
+    ctx.globalAlpha = 1
+  } catch { /* logo failed, continue without */ }
+
+  ctx.textAlign = 'center'
+
+  ctx.fillStyle = '#A88E5D'
+  fitText(ctx, `Km ${km}`, 760, { maxSize: 136, minSize: 86, family: 'Damion, cursive', style: 'italic' })
+  ctx.fillText(`Km ${km}`, 540, 310)
+
+  ctx.strokeStyle = '#A88E5D'
+  ctx.lineWidth = 2
+  ctx.beginPath(); ctx.moveTo(350, 342); ctx.lineTo(730, 342); ctx.stroke()
+
+  ctx.fillStyle = 'rgba(245,243,236,0.52)'
+  ctx.font = '700 24px Montserrat, sans-serif'
+  ctx.fillText('DEDICATED TO', 540, 405)
+
+  ctx.fillStyle = '#F5F3EC'
+  fitText(ctx, dedication.dedicatedTo, 840, { maxSize: 92, minSize: 54, family: 'Damion, cursive', style: 'italic' })
+  ctx.fillText(dedication.dedicatedTo, 540, 500)
+
+  if (dedication.message) {
+    const quote = `"${dedication.message}"`
+    const messageSize = fitText(ctx, quote, 860, { maxSize: 34, minSize: 24, family: 'Montserrat, sans-serif', style: 'italic' })
+    ctx.font = `italic ${messageSize}px Montserrat, sans-serif`
+    const lines = wrapText(ctx, quote, 860, 5)
+    ctx.fillStyle = 'rgba(203,178,153,0.82)'
+    const lineHeight = Math.max(38, messageSize * 1.35)
+    const yStart = 585 - ((lines.length - 1) * lineHeight) / 2
+    lines.forEach((line, index) => ctx.fillText(line, 540, yStart + index * lineHeight))
   }
 
-  const km = Number(body.km)
-  if (!Number.isInteger(km) || km < 1 || km > TOTAL_KILOMETRES) {
-    return dedicationResponse({ error: 'Invalid kilometre number.' }, 400)
-  }
+  ctx.fillStyle = '#A88E5D'
+  ctx.font = '800 24px Montserrat, sans-serif'
+  ctx.fillText(`BY ${dedication.name.toUpperCase()}`, 540, 810)
 
-  const name = (body.name || '').trim().slice(0, 80)
-  const dedicatedTo = (body.dedicatedTo || '').trim().slice(0, 80)
-  const message = (body.message || '').trim().slice(0, 150)
+  ctx.strokeStyle = 'rgba(168,142,93,0.38)'
+  ctx.lineWidth = 2
+  ctx.beginPath(); ctx.moveTo(390, 850); ctx.lineTo(690, 850); ctx.stroke()
 
-  if (!name) {
-    return dedicationResponse({ error: 'Name is required.' }, 400)
-  }
-  if (!dedicatedTo) {
-    return dedicationResponse({ error: 'Please say who this kilometre is for.' }, 400)
-  }
+  ctx.fillStyle = 'rgba(168,142,93,0.72)'
+  ctx.font = '800 32px Montserrat, sans-serif'
+  ctx.fillText('#WhyNotMe', 540, 915)
 
-  const dedications = await getDedications(env)
+  ctx.fillStyle = 'rgba(245,243,236,0.34)'
+  ctx.font = '18px Montserrat, sans-serif'
+  ctx.fillText('Dedicate yours at whynotme.co.nz/dedicate', 540, 1000)
 
-  if (dedications[String(km)]) {
-    return dedicationResponse({ error: 'This kilometre has already been claimed.' }, 409)
-  }
+  return canvas
+}
 
-  const approvalToken = crypto.randomUUID()
+function downloadCanvas(canvas, filename) {
+  const link = document.createElement('a')
+  link.download = filename
+  link.href = canvas.toDataURL('image/png')
+  link.click()
+}
 
-  const dedication = {
-    name,
-    dedicatedTo,
-    message,
-    status: STATUS_PENDING,
-    token: approvalToken,
-    createdAt: new Date().toISOString(),
-  }
-
-  dedications[String(km)] = dedication
-
-  // Save dedication to KV
-  await env.DEDICATIONS.put(dedicationKey(km), JSON.stringify(dedication))
-  // Save token → km mapping for quick lookup
-  await env.DEDICATIONS.put(tokenKey(approvalToken), String(km))
-
-  // Send approval email (best-effort, don't block on failure)
-  const siteUrl = new URL(request.url).origin
+async function shareCard(canvas, km) {
   try {
-    const recentDonations = await fetchRecentDonationsForEmail()
-    await sendApprovalEmail(dedication, km, recentDonations, siteUrl, env)
-  } catch (emailError) {
-    // Email failed but dedication is saved as pending
-    console.error('Approval email failed:', emailError)
-  }
-
-  return dedicationResponse({
-    success: true,
-    km,
-    status: STATUS_PENDING,
-    dedications: sanitiseDedicationsForPublic(dedications),
-    totalKilometres: TOTAL_KILOMETRES,
-    claimed: Object.values(dedications).filter(d => (d.status || STATUS_APPROVED) === STATUS_APPROVED).length,
-    pending: Object.values(dedications).filter(d => d.status === STATUS_PENDING).length,
-    remaining: TOTAL_KILOMETRES - Object.keys(dedications).length,
-  })
-}
-
-async function handlePostDedicationMessage(request, env) {
-  let body
-  try {
-    body = await request.json()
-  } catch {
-    return dedicationResponse({ error: 'Invalid JSON.' }, 400)
-  }
-
-  const name = (body.name || '').trim().slice(0, 80)
-  const dedicatedTo = (body.dedicatedTo || '').trim().slice(0, 80)
-  const message = (body.message || '').trim().slice(0, 150)
-
-  if (!name) {
-    return dedicationResponse({ error: 'Name is required.' }, 400)
-  }
-  if (!dedicatedTo) {
-    return dedicationResponse({ error: 'Please say who this message is for.' }, 400)
-  }
-  if (!message) {
-    return dedicationResponse({ error: 'Please add a message.' }, 400)
-  }
-
-  const messages = await getDedicationMessages(env)
-  const nextMessage = {
-    id: crypto.randomUUID(),
-    name,
-    dedicatedTo,
-    message,
-    createdAt: new Date().toISOString(),
-  }
-  const nextMessages = [nextMessage, ...messages].slice(0, 200)
-
-  await env.DEDICATIONS.put(DEDICATION_MESSAGES_KEY, JSON.stringify(nextMessages))
-
-  return dedicationResponse({
-    success: true,
-    message: nextMessage,
-    messages: nextMessages,
-  })
-}
-
-// ── Review (approve / deny) ─────────────────────────────────
-
-async function handleReview(request, env) {
-  const url = new URL(request.url)
-  const token = url.searchParams.get('token')
-  const action = url.searchParams.get('action')
-
-  if (!token || !['approve', 'deny'].includes(action)) {
-    return htmlResponse(generateReviewPageHtml('error', null, null, 'Invalid review link.'), 400)
-  }
-
-  // Look up which km this token belongs to
-  const kmStr = await env.DEDICATIONS.get(tokenKey(token))
-  if (!kmStr) {
-    return htmlResponse(generateReviewPageHtml('error', null, null, 'This review link has already been used or has expired.'), 404)
-  }
-
-  const km = Number(kmStr)
-  const raw = await env.DEDICATIONS.get(dedicationKey(km))
-  if (!raw) {
-    await env.DEDICATIONS.delete(tokenKey(token))
-    return htmlResponse(generateReviewPageHtml('error', null, null, 'Dedication not found. It may have already been reviewed.'), 404)
-  }
-
-  const dedication = JSON.parse(raw)
-
-  // Check token matches
-  if (dedication.token !== token) {
-    return htmlResponse(generateReviewPageHtml('error', null, null, 'Token mismatch. This link may be outdated.'), 403)
-  }
-
-  // Already approved?
-  if (dedication.status === STATUS_APPROVED && action === 'approve') {
-    return htmlResponse(generateReviewPageHtml('already-approved', km, dedication))
-  }
-
-  if (action === 'approve') {
-    dedication.status = STATUS_APPROVED
-    await env.DEDICATIONS.put(dedicationKey(km), JSON.stringify(dedication))
-    await env.DEDICATIONS.delete(tokenKey(token))
-    return htmlResponse(generateReviewPageHtml('approved', km, dedication))
-  }
-
-  if (action === 'deny') {
-    // Delete the dedication → releases the km
-    await env.DEDICATIONS.delete(dedicationKey(km))
-    await env.DEDICATIONS.delete(tokenKey(token))
-    return htmlResponse(generateReviewPageHtml('denied', km, dedication))
-  }
-}
-
-// ── Email sending via Cloudflare Email Service ──────────────
-
-async function sendApprovalEmail(dedication, km, recentDonations, siteUrl, env) {
-  if (!env.EMAIL) {
-    console.log('EMAIL binding not configured. Skipping approval email.')
-    return
-  }
-
-  const toEmail = env.APPROVAL_EMAIL
-  const fromEmail = env.SENDER_EMAIL || 'noreply@whynotme.co.nz'
-  if (!toEmail) {
-    console.log('APPROVAL_EMAIL not set. Skipping approval email.')
-    return
-  }
-
-  const approveUrl = `${siteUrl}/api/dedications/review?token=${dedication.token}&action=approve`
-  const denyUrl = `${siteUrl}/api/dedications/review?token=${dedication.token}&action=deny`
-
-  const donationRows = recentDonations.length > 0
-    ? recentDonations.map(d => {
-        const amount = new Intl.NumberFormat('en-NZ', { style: 'currency', currency: d.currency || 'NZD', maximumFractionDigits: 0 }).format(d.amount)
-        const date = d.createdAt ? new Date(d.createdAt).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' }) : 'Recent'
-        return `<tr>
-          <td style="padding:8px 12px;border-bottom:1px solid #2a2a2a;color:#ccc;font-size:14px;">${escapeHtml(d.name)}</td>
-          <td style="padding:8px 12px;border-bottom:1px solid #2a2a2a;color:#A88E5D;font-size:14px;font-weight:600;">${amount}</td>
-          <td style="padding:8px 12px;border-bottom:1px solid #2a2a2a;color:#888;font-size:13px;">${date}</td>
-        </tr>`
-      }).join('')
-    : `<tr><td colspan="3" style="padding:12px;color:#666;text-align:center;">No recent public donations found.</td></tr>`
-
-  const emailHtml = `
-<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head>
-<body style="margin:0;padding:0;background:#0D0D0D;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-  <div style="max-width:600px;margin:0 auto;padding:40px 24px;">
-
-    <div style="text-align:center;margin-bottom:32px;">
-      <div style="font-size:11px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#A88E5D;">New Dedication Request</div>
-      <div style="font-size:36px;font-weight:300;color:#F5F3EC;margin-top:8px;">Km ${km}</div>
-    </div>
-
-    <div style="background:#151515;border:1px solid #2a2a2a;padding:28px;margin-bottom:24px;">
-      <table style="width:100%;border-collapse:collapse;">
-        <tr>
-          <td style="padding:6px 0;color:#888;font-size:12px;text-transform:uppercase;letter-spacing:1px;width:100px;">From</td>
-          <td style="padding:6px 0;color:#F5F3EC;font-size:15px;font-weight:600;">${escapeHtml(dedication.name)}</td>
-        </tr>
-        <tr>
-          <td style="padding:6px 0;color:#888;font-size:12px;text-transform:uppercase;letter-spacing:1px;">For</td>
-          <td style="padding:6px 0;color:#F5F3EC;font-size:15px;font-weight:600;">${escapeHtml(dedication.dedicatedTo)}</td>
-        </tr>
-        ${dedication.message ? `<tr>
-          <td style="padding:6px 0;color:#888;font-size:12px;text-transform:uppercase;letter-spacing:1px;vertical-align:top;">Message</td>
-          <td style="padding:6px 0;color:#ccc;font-size:14px;font-style:italic;line-height:1.6;">"${escapeHtml(dedication.message)}"</td>
-        </tr>` : ''}
-      </table>
-    </div>
-
-    <div style="text-align:center;margin-bottom:32px;">
-      <a href="${approveUrl}" style="display:inline-block;background:#A88E5D;color:#0D0D0D;padding:14px 36px;font-size:14px;font-weight:700;letter-spacing:1px;text-transform:uppercase;text-decoration:none;margin:0 8px 12px;">✓ Approve</a>
-      <a href="${denyUrl}" style="display:inline-block;background:transparent;border:1px solid #666;color:#ccc;padding:14px 36px;font-size:14px;font-weight:700;letter-spacing:1px;text-transform:uppercase;text-decoration:none;margin:0 8px 12px;">✗ Deny</a>
-    </div>
-
-    <div style="margin-bottom:12px;">
-      <div style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#A88E5D;margin-bottom:14px;">Last 5 Raisely Donations</div>
-      <table style="width:100%;border-collapse:collapse;background:#151515;border:1px solid #2a2a2a;">
-        <tr>
-          <th style="padding:10px 12px;text-align:left;font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #333;">Name</th>
-          <th style="padding:10px 12px;text-align:left;font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #333;">Amount</th>
-          <th style="padding:10px 12px;text-align:left;font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #333;">Date</th>
-        </tr>
-        ${donationRows}
-      </table>
-      <div style="margin-top:8px;font-size:12px;color:#555;">Cross-reference the dedicator's name against recent donors above.</div>
-    </div>
-
-    <div style="text-align:center;margin-top:32px;padding-top:20px;border-top:1px solid #2a2a2a;">
-      <div style="font-size:11px;color:#555;">Why Not Me? &middot; whynotme.co.nz</div>
-    </div>
-  </div>
-</body>
-</html>`
-
-  await env.EMAIL.send({
-    to: toEmail,
-    from: fromEmail,
-    subject: `Km ${km} dedication from ${dedication.name} for ${dedication.dedicatedTo}`,
-    html: emailHtml,
-    text: `New dedication for Km ${km}. From: ${dedication.name}. For: ${dedication.dedicatedTo}. Message: ${dedication.message || 'None'}. Approve: ${approveUrl} Deny: ${denyUrl}`,
-  })
-}
-
-function escapeHtml(str) {
-  if (!str) return ''
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-}
-
-// ── Review confirmation page ────────────────────────────────
-
-function generateReviewPageHtml(action, km, dedication, errorMessage = '') {
-  const titles = {
-    'approved': 'Dedication Approved',
-    'denied': 'Dedication Denied',
-    'already-approved': 'Already Approved',
-    'error': 'Review Error',
-  }
-  const icons = {
-    'approved': '✓',
-    'denied': '✗',
-    'already-approved': '✓',
-    'error': '!',
-  }
-  const colors = {
-    'approved': '#A88E5D',
-    'denied': '#888',
-    'already-approved': '#A88E5D',
-    'error': '#d9534f',
-  }
-  const messages = {
-    'approved': `Km ${km} is now live on the site. Dedicated to <strong>${escapeHtml(dedication?.dedicatedTo)}</strong> by <strong>${escapeHtml(dedication?.name)}</strong>.`,
-    'denied': `Km ${km} has been released and is available for someone else. The dedication from <strong>${escapeHtml(dedication?.name)}</strong> for <strong>${escapeHtml(dedication?.dedicatedTo)}</strong> has been removed.`,
-    'already-approved': `Km ${km} was already approved. Dedicated to <strong>${escapeHtml(dedication?.dedicatedTo)}</strong> by <strong>${escapeHtml(dedication?.name)}</strong>.`,
-    'error': escapeHtml(errorMessage),
-  }
-
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>${titles[action]} - Why Not Me?</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #0D0D0D; color: #F5F3EC; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
-    .card { max-width: 480px; width: 100%; text-align: center; background: #151515; border: 1px solid #2a2a2a; padding: 60px 40px; }
-    .icon { width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; font-size: 32px; font-weight: 800; color: #0D0D0D; background: ${colors[action]}; }
-    h1 { font-size: 28px; font-weight: 300; margin-bottom: 16px; }
-    p { font-size: 15px; color: #999; line-height: 1.7; }
-    p strong { color: #F5F3EC; }
-    .link { display: inline-block; margin-top: 28px; color: #A88E5D; text-decoration: none; font-size: 13px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; }
-    .link:hover { text-decoration: underline; }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <div class="icon">${icons[action]}</div>
-    <h1>${titles[action]}</h1>
-    <p>${messages[action]}</p>
-    <a href="/dedicate" class="link">View Dedications →</a>
-  </div>
-</body>
-</html>`
-}
-
-// ── Static asset serving ────────────────────────────────────
-
-async function handleAsset(request, env) {
-  const assetResponse = await env.ASSETS.fetch(request)
-
-  if (
-    assetResponse.status === 404 &&
-    request.method === 'GET' &&
-    (request.headers.get('Accept') || '').includes('text/html')
-  ) {
-    const indexUrl = new URL(request.url)
-    indexUrl.pathname = '/index.html'
-    return env.ASSETS.fetch(new Request(indexUrl.toString(), { headers: request.headers }))
-  }
-
-  return assetResponse
-}
-
-// ── Main router ─────────────────────────────────────────────
-
-export default {
-  async fetch(request, env) {
-    const url = new URL(request.url)
-
-    if (request.method === 'OPTIONS') {
-      return new Response(null, { headers: corsHeaders })
+    const blob = await new Promise(r => canvas.toBlob(r, 'image/png'))
+    const file = new File([blob], `why-not-me-km-${km}.png`, { type: 'image/png' })
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({
+        files: [file],
+        title: `I dedicated Km ${km} - Why Not Me?`,
+        text: `I just dedicated Kilometre ${km} of the Queenstown Marathon. Dedicate yours:`,
+        url: 'https://whynotme.co.nz/dedicate',
+      })
+      return
     }
+  } catch (e) {
+    if (e.name === 'AbortError') return // user cancelled
+  }
+  // Fallback: download image + open Facebook share
+  downloadCanvas(canvas, `why-not-me-km-${km}.png`)
+  window.open(
+    `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent('https://whynotme.co.nz/dedicate')}`,
+    '_blank', 'width=600,height=400'
+  )
+}
 
-    if (url.pathname === '/api/raisely-progress') {
-      try {
-        return await handleProgress()
-      } catch (error) {
-        return jsonResponse({ error: 'Unable to load Raisely donation progress right now.' }, 502)
+// ── Component ─────────────────────────────────────────────────
+export default function DedicateKmPage() {
+  const [dedications, setDedications] = useState({})
+  const [loading, setLoading] = useState(true)
+  const [selectedKm, setSelectedKm] = useState(null)
+  const [viewingKm, setViewingKm] = useState(null)
+  const [successKm, setSuccessKm] = useState(null)
+  const [openMessageForm, setOpenMessageForm] = useState(false)
+  const [genericMessages, setGenericMessages] = useState([])
+  const [messageSuccess, setMessageSuccess] = useState(false)
+  const [hoveredKm, setHoveredKm] = useState(null)
+  const [tooltip, setTooltip] = useState(null)
+  const [formData, setFormData] = useState({ name: '', dedicatedTo: '', message: '' })
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
+  const [shareCanvas, setShareCanvas] = useState(null)
+  const svgWrapRef = useRef(null)
+
+  const claimed = Object.keys(dedications).length
+  const remaining = TOTAL_KM - claimed
+  const isMobile = typeof window !== 'undefined' && window.matchMedia('(hover: none) and (pointer: coarse)').matches
+
+  const fetchDedications = useCallback(async () => {
+    try {
+      const res = await fetch('/api/dedications')
+      if (res.ok) {
+        const data = await res.json()
+        setDedications(data.dedications || {})
+        setGenericMessages(data.messages || [])
       }
-    }
+    } catch { /* silent */ }
+    finally { setLoading(false) }
+  }, [])
 
-    if (url.pathname === '/api/donate') {
-      return Response.redirect(RAISELY_DONATION_URL, 302)
-    }
+  useEffect(() => { fetchDedications() }, [fetchDedications])
 
-    if (url.pathname === '/api/dedications/review' && request.method === 'GET') {
-      try {
-        return await handleReview(request, env)
-      } catch (error) {
-        return htmlResponse(generateReviewPageHtml('error', null, null, 'Something went wrong processing this review.'), 500)
-      }
+  const handleOpen = (km) => {
+    if (dedications[String(km)]) {
+      setViewingKm(km)
+    } else {
+      setSelectedKm(km)
+      setFormData({ name: '', dedicatedTo: '', message: '' })
+      setError('')
     }
+  }
 
-    if (url.pathname === '/api/dedications/message' && request.method === 'POST') {
-      try {
-        return await handlePostDedicationMessage(request, env)
-      } catch (error) {
-        return dedicationResponse({ error: 'Unable to save message.' }, 500)
-      }
-    }
+  const handleClose = () => {
+    setSelectedKm(null)
+    setViewingKm(null)
+    setSuccessKm(null)
+    setOpenMessageForm(false)
+    setMessageSuccess(false)
+    setShareCanvas(null)
+    setError('')
+  }
 
-    if (url.pathname === '/api/dedications') {
-      if (request.method === 'GET') {
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setError('')
+    setSubmitting(true)
+    try {
+      const res = await fetch('/api/dedications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ km: selectedKm, name: formData.name, dedicatedTo: formData.dedicatedTo, message: formData.message }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setError(data.error || 'Something went wrong.'); setSubmitting(false); return }
+
+      const claimedKm = selectedKm
+      setDedications(data.dedications || {})
+      setSelectedKm(null)
+      setSubmitting(false)
+
+      // Celebration
+      spawnConfetti()
+      const dedication = (data.dedications || {})[String(claimedKm)]
+      if (dedication) {
+        setSuccessKm(claimedKm)
         try {
-          return await handleGetDedications(env)
-        } catch (error) {
-          return dedicationResponse({ error: 'Unable to load dedications.' }, 500)
-        }
+          const card = await generateShareCard(claimedKm, dedication)
+          setShareCanvas(card)
+        } catch { /* card gen failed, still show success */ }
       }
-      if (request.method === 'POST') {
-        try {
-          return await handlePostDedication(request, env)
-        } catch (error) {
-          return dedicationResponse({ error: 'Unable to save dedication.' }, 500)
-        }
-      }
+    } catch {
+      setError('Could not connect. Please try again.')
+      setSubmitting(false)
     }
+  }
 
-    return handleAsset(request, env)
-  },
+
+  const handleGenericMessageSubmit = async (e) => {
+    e.preventDefault()
+    setError('')
+    setSubmitting(true)
+    try {
+      const res = await fetch('/api/dedications/message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: formData.name, dedicatedTo: formData.dedicatedTo, message: formData.message }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setError(data.error || 'Something went wrong.'); setSubmitting(false); return }
+      setGenericMessages(data.messages || [])
+      setFormData({ name: '', dedicatedTo: '', message: '' })
+      setSubmitting(false)
+      setOpenMessageForm(false)
+      setMessageSuccess(true)
+      spawnConfetti()
+    } catch {
+      setError('Could not connect. Please try again.')
+      setSubmitting(false)
+    }
+  }
+
+  const handleMarkerHover = (km, e) => {
+    if (isMobile) return
+    const dedication = dedications[String(km)]
+    if (!dedication) { setHoveredKm(km); setTooltip(null); return }
+    const rect = e.currentTarget.getBoundingClientRect()
+    setHoveredKm(km)
+    setTooltip({
+      km,
+      x: rect.left + rect.width / 2,
+      y: rect.top - 8,
+      dedication,
+    })
+  }
+
+  const handleMarkerLeave = () => {
+    setHoveredKm(null)
+    setTooltip(null)
+  }
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') handleClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
+  if (loading) {
+    return <PageTransition><div className="dedicate-loading">Loading dedications…</div></PageTransition>
+  }
+
+  return (
+    <PageTransition>
+      {/* Hero */}
+      <section className="dedicate-hero">
+        <div className="dedicate-hero-bg" />
+        <div className="dedicate-hero-content">
+          <p className="section-label">Queenstown Marathon</p>
+          <h1>Dedicate a Kilometre.</h1>
+          <p className="dedicate-hero-subtitle">
+            Nicole is running 42.2 km for Brain Tumour Support NZ. Claim a kilometre, dedicate it to someone who matters to you, and she will carry every name along the road with her.
+          </p>
+        </div>
+      </section>
+
+      {/* Counter */}
+      <div className="dedicate-counter-bar">
+        <div className="dedicate-counter-inner">
+          <div className="dedicate-counter-stat">
+            <span className="dedicate-counter-number">{claimed}</span>
+            <span className="dedicate-counter-label">Claimed</span>
+          </div>
+          <div className="dedicate-counter-divider" />
+          <div className="dedicate-counter-stat">
+            <span className="dedicate-counter-number">{remaining}</span>
+            <span className="dedicate-counter-label">Remaining</span>
+          </div>
+          <div className="dedicate-counter-divider" />
+          <div className="dedicate-counter-stat">
+            <span className="dedicate-counter-number">42.2</span>
+            <span className="dedicate-counter-label">km Total</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Elevation profile */}
+      <section className="dedicate-elevation-section">
+        <div className="dedicate-elevation-labels">
+          <span>Start</span>
+          <span>Queenstown Marathon Route</span>
+          <span>Finish</span>
+        </div>
+        <div className="dedicate-mobile-route" aria-label="Mobile kilometre dedication chooser">
+          <div className="dedicate-mobile-route-line" />
+          {POINTS.map((pt) => {
+            const dedication = dedications[String(pt.km)]
+            const isClaimed = !!dedication
+            return (
+              <button
+                key={pt.km}
+                type="button"
+                className={`dedicate-mobile-km ${isClaimed ? 'is-claimed' : 'is-open'}`}
+                onClick={() => handleOpen(pt.km)}
+                aria-label={isClaimed ? `Km ${pt.km}, dedicated by ${dedication.name} for ${dedication.dedicatedTo}` : `Km ${pt.km}, available`}
+              >
+                <span className="dedicate-mobile-km-number">{pt.km}</span>
+                <span className="dedicate-mobile-km-status">{isClaimed ? 'View' : 'Claim'}</span>
+              </button>
+            )
+          })}
+          <button type="button" className="dedicate-mobile-km is-finish" onClick={() => setViewingKm('finish')} aria-label="Final 0.2 kilometres, dedicated to Nicole by Dean">
+            <span className="dedicate-mobile-km-number">.2</span>
+            <span className="dedicate-mobile-km-status">Finish</span>
+          </button>
+        </div>
+        <div className="dedicate-elevation-scroll" ref={svgWrapRef}>
+          <svg viewBox={`0 0 ${SVG_W} ${SVG_H}`} className="dedicate-elevation-svg" preserveAspectRatio="xMidYMid meet">
+            {/* Gradient definitions */}
+            <defs>
+              <linearGradient id="elevFillOpen" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="rgba(245,243,236,0.06)" />
+                <stop offset="100%" stopColor="rgba(245,243,236,0)" />
+              </linearGradient>
+              <linearGradient id="elevFillClaimed" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="rgba(168,142,93,0.18)" />
+                <stop offset="100%" stopColor="rgba(168,142,93,0)" />
+              </linearGradient>
+              <filter id="goldGlow">
+                <feGaussianBlur stdDeviation="4" result="blur" />
+                <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+              </filter>
+            </defs>
+
+            {/* Filled area under the line */}
+            <path d={filledPath(POINTS)} fill="url(#elevFillOpen)" />
+
+            {/* Main elevation line */}
+            <path d={smoothPath(POINTS)} fill="none" stroke="rgba(245,243,236,0.12)" strokeWidth="2" />
+
+            {/* Claimed segments glow */}
+            {POINTS.map((pt, i) => {
+              if (!dedications[String(pt.km)]) return null
+              const prev = POINTS[i - 1] || pt
+              const next = POINTS[i + 1] || pt
+              return (
+                <line key={`seg-${pt.km}`} x1={prev.x} y1={prev.y} x2={next.x} y2={next.y}
+                  stroke="#A88E5D" strokeWidth="2.5" opacity="0.5" />
+              )
+            })}
+
+            {/* Km markers */}
+            {POINTS.map((pt) => {
+              const dedication = dedications[String(pt.km)]
+              const isClaimed = !!dedication
+              const isHovered = hoveredKm === pt.km
+              const r = isClaimed ? 14 : (isHovered ? 12 : 10)
+
+              return (
+                <g key={pt.km}
+                  onClick={() => handleOpen(pt.km)}
+                  onMouseEnter={(e) => handleMarkerHover(pt.km, e)}
+                  onMouseLeave={handleMarkerLeave}
+                  style={{ cursor: 'pointer' }}
+                  role="button" tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleOpen(pt.km) }}
+                  aria-label={isClaimed
+                    ? `Km ${pt.km}, dedicated by ${dedication.name} for ${dedication.dedicatedTo}`
+                    : `Km ${pt.km}, available`
+                  }
+                >
+                  {/* Hit area */}
+                  <circle cx={pt.x} cy={pt.y} r={20} fill="transparent" />
+
+                  {/* Glow for claimed */}
+                  {isClaimed && <circle cx={pt.x} cy={pt.y} r={r + 4} fill="rgba(168,142,93,0.15)" />}
+
+                  {/* Marker circle */}
+                  <circle cx={pt.x} cy={pt.y} r={r}
+                    fill={isClaimed ? '#A88E5D' : (isHovered ? 'rgba(168,142,93,0.3)' : 'rgba(245,243,236,0.08)')}
+                    stroke={isClaimed ? '#A88E5D' : (isHovered ? '#A88E5D' : 'rgba(245,243,236,0.2)')}
+                    strokeWidth={isClaimed ? 0 : 1}
+                  />
+
+                  {/* Km number */}
+                  <text x={pt.x} y={pt.y + 4.5}
+                    textAnchor="middle" fontSize={isClaimed ? "10" : "11"}
+                    fontWeight="700" fontFamily="Montserrat, sans-serif"
+                    fill={isClaimed ? '#0D0D0D' : (isHovered ? '#A88E5D' : 'rgba(245,243,236,0.35)')}
+                    style={{ pointerEvents: 'none' }}
+                  >
+                    {pt.km}
+                  </text>
+
+                  {/* Vertical tick below */}
+                  {pt.km % 5 === 0 && (
+                    <>
+                      <line x1={pt.x} y1={SVG_H - PAD_BOT + 10} x2={pt.x} y2={SVG_H - PAD_BOT + 22}
+                        stroke="rgba(245,243,236,0.15)" strokeWidth="1" />
+                      <text x={pt.x} y={SVG_H - PAD_BOT + 36}
+                        textAnchor="middle" fontSize="10" fontFamily="Montserrat, sans-serif"
+                        fill="rgba(245,243,236,0.3)" style={{ pointerEvents: 'none' }}>
+                        {pt.km} km
+                      </text>
+                    </>
+                  )}
+                </g>
+              )
+            })}
+
+            {/* Finish .2km marker - dedicated to Nicole */}
+            {(() => {
+              const lastPt = POINTS[POINTS.length - 1]
+              const fx = lastPt.x + 34
+              const fy = lastPt.y + 2
+              const isHovered = hoveredKm === 'finish'
+              return (
+                <g
+                  onClick={() => setViewingKm('finish')}
+                  onMouseEnter={(e) => {
+                    if (!isMobile) {
+                      setHoveredKm('finish')
+                      const rect = e.currentTarget.getBoundingClientRect()
+                      setTooltip({ km: 'finish', x: rect.left + rect.width / 2, y: rect.top - 8, dedication: FINISH_DEDICATION })
+                    }
+                  }}
+                  onMouseLeave={handleMarkerLeave}
+                  style={{ cursor: 'pointer' }}
+                  role="button" tabIndex={0}
+                  aria-label="Finish line, 0.2 km, dedicated to Nicole by Dean"
+                >
+                  <circle cx={fx} cy={fy} r={20} fill="transparent" />
+                  <circle cx={fx} cy={fy} r={16} fill="rgba(168,142,93,0.15)" />
+                  <circle cx={fx} cy={fy} r={12} fill="#A88E5D" />
+                  <text x={fx} y={fy + 3.5} textAnchor="middle" fontSize="8" fontWeight="800"
+                    fontFamily="Montserrat, sans-serif" fill="#0D0D0D" style={{ pointerEvents: 'none' }}>
+                    .2
+                  </text>
+                  <line x1={fx} y1={SVG_H - PAD_BOT + 10} x2={fx} y2={SVG_H - PAD_BOT + 22}
+                    stroke="rgba(168,142,93,0.4)" strokeWidth="1" />
+                  <text x={fx} y={SVG_H - PAD_BOT + 36} textAnchor="middle" fontSize="10"
+                    fontFamily="Montserrat, sans-serif" fill="rgba(168,142,93,0.5)" style={{ pointerEvents: 'none' }}>
+                    Finish
+                  </text>
+                </g>
+              )
+            })()}
+          </svg>
+        </div>
+      </section>
+
+      {/* Hover tooltip (desktop only) */}
+      {tooltip && (
+        <div className="dedicate-tooltip" style={{ left: tooltip.x, top: tooltip.y }}>
+          <div className="dedicate-tooltip-km">{tooltip.km === 'finish' ? 'The Final .2 km' : `Km ${tooltip.km}`}</div>
+          <div className="dedicate-tooltip-for">For {tooltip.dedication.dedicatedTo}</div>
+          {tooltip.dedication.message && (
+            <div className="dedicate-tooltip-msg">"{tooltip.dedication.message}"</div>
+          )}
+          <div className="dedicate-tooltip-by">- {tooltip.dedication.name}</div>
+        </div>
+      )}
+
+      {remaining === 0 && (
+        <section className="dedicate-full-section">
+          <p className="section-label">All Kilometres Claimed</p>
+          <h2>The road is full - but the love is not.</h2>
+          <p>Leave Nicole a message below and we’ll add it to the wall of support she carries with her.</p>
+          <button className="btn-primary" onClick={() => { setOpenMessageForm(true); setFormData({ name: '', dedicatedTo: 'Nicole', message: '' }); setError('') }}>Leave a Message</button>
+          {genericMessages.length > 0 && (
+            <div className="dedicate-message-wall">
+              {genericMessages.slice(0, 6).map((item) => (
+                <article className="dedicate-message-card" key={item.id || `${item.name}-${item.createdAt}`}>
+                  <div>For {item.dedicatedTo || 'Nicole'}</div>
+                  <p>“{item.message}”</p>
+                  <span>- {item.name}</span>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* Bottom CTA */}
+      <section className="dedicate-cta-section">
+        <RevealOnScroll>
+          <p className="section-label">Every Kilometre Counts</p>
+          <p className="section-body">
+            Whether you dedicate a kilometre, donate, or share this page, you are part of the road Nicole is running. Every bit of support goes to Brain Tumour Support NZ.
+          </p>
+          <div className="dedicate-cta-buttons">
+            <a href="https://nogoingback.nz/nicole-white" target="_blank" rel="noopener noreferrer" className="btn-primary">Donate Now</a>
+            <Link to="/queenstown-marathon" className="btn-outline">The Marathon Story</Link>
+          </div>
+        </RevealOnScroll>
+      </section>
+
+      {/* ---- Claim form modal ---- */}
+      {selectedKm && (
+        <div className="dedicate-modal-overlay" onClick={handleClose}>
+          <div className="dedicate-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="dedicate-modal-close" onClick={handleClose} aria-label="Close">&times;</button>
+            <div className="dedicate-modal-km">Km {selectedKm}</div>
+            <div className="dedicate-modal-heading">Dedicate This Kilometre</div>
+            <form className="dedicate-form" onSubmit={handleSubmit}>
+              <div className="dedicate-field">
+                <label htmlFor="dedicate-name">Your Name</label>
+                <input id="dedicate-name" type="text" placeholder="Your name" maxLength={80}
+                  value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  autoFocus required />
+              </div>
+              <div className="dedicate-field">
+                <label htmlFor="dedicate-for">Dedicating This Km To</label>
+                <input id="dedicate-for" type="text" placeholder="A person, a group, or a cause" maxLength={80}
+                  value={formData.dedicatedTo} onChange={(e) => setFormData({ ...formData, dedicatedTo: e.target.value })}
+                  required />
+              </div>
+              <div className="dedicate-field">
+                <label htmlFor="dedicate-message">Message (optional)</label>
+                <textarea id="dedicate-message" placeholder="A short message for Nicole to carry with her" maxLength={150}
+                  value={formData.message} onChange={(e) => setFormData({ ...formData, message: e.target.value })} />
+                <div className="dedicate-field-hint">{formData.message.length}/150</div>
+              </div>
+              <button type="submit" className="btn-primary dedicate-submit" disabled={submitting}>
+                {submitting ? 'Claiming…' : 'Claim This Kilometre'}
+              </button>
+              {error && <p className="dedicate-error">{error}</p>}
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ---- View modal (tap claimed km) ---- */}
+      {viewingKm && (viewingKm === 'finish' ? FINISH_DEDICATION : dedications[String(viewingKm)]) && (
+        <div className="dedicate-modal-overlay" onClick={handleClose}>
+          <div className="dedicate-modal dedicate-view-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="dedicate-modal-close" onClick={handleClose} aria-label="Close">&times;</button>
+            <div className="dedicate-modal-km">{viewingKm === 'finish' ? 'The Final .2 km' : `Km ${viewingKm}`}</div>
+            <div className="dedicate-view-for">Dedicated to</div>
+            <div className="dedicate-view-name">
+              {(viewingKm === 'finish' ? FINISH_DEDICATION : dedications[String(viewingKm)]).dedicatedTo}
+            </div>
+            {(viewingKm === 'finish' ? FINISH_DEDICATION : dedications[String(viewingKm)]).message && (
+              <p className="dedicate-view-message">
+                "{(viewingKm === 'finish' ? FINISH_DEDICATION : dedications[String(viewingKm)]).message}"
+              </p>
+            )}
+            <div className="dedicate-view-line" />
+            <div className="dedicate-view-by">
+              By {(viewingKm === 'finish' ? FINISH_DEDICATION : dedications[String(viewingKm)]).name}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {openMessageForm && (
+        <div className="dedicate-modal-overlay" onClick={handleClose}>
+          <div className="dedicate-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="dedicate-modal-close" onClick={handleClose} aria-label="Close">&times;</button>
+            <div className="dedicate-modal-km">Message</div>
+            <div className="dedicate-modal-heading">Leave Support For Nicole</div>
+            <form className="dedicate-form" onSubmit={handleGenericMessageSubmit}>
+              <div className="dedicate-field">
+                <label htmlFor="generic-name">Your Name</label>
+                <input id="generic-name" type="text" placeholder="Your name" maxLength={80} value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} autoFocus required />
+              </div>
+              <div className="dedicate-field">
+                <label htmlFor="generic-for">Message For</label>
+                <input id="generic-for" type="text" placeholder="Nicole, the team, or a loved one" maxLength={80} value={formData.dedicatedTo} onChange={(e) => setFormData({ ...formData, dedicatedTo: e.target.value })} required />
+              </div>
+              <div className="dedicate-field">
+                <label htmlFor="generic-message">Message</label>
+                <textarea id="generic-message" placeholder="A short message for Nicole to carry with her" maxLength={150} value={formData.message} onChange={(e) => setFormData({ ...formData, message: e.target.value })} required />
+                <div className="dedicate-field-hint">{formData.message.length}/150</div>
+              </div>
+              <button type="submit" className="btn-primary dedicate-submit" disabled={submitting}>{submitting ? 'Sending…' : 'Send Message'}</button>
+              {error && <p className="dedicate-error">{error}</p>}
+            </form>
+          </div>
+        </div>
+      )}
+
+      {messageSuccess && (
+        <div className="dedicate-modal-overlay" onClick={handleClose}>
+          <div className="dedicate-modal dedicate-view-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="dedicate-modal-close" onClick={handleClose} aria-label="Close">&times;</button>
+            <div className="dedicate-success-icon">✓</div>
+            <div className="dedicate-success-title">Message received.</div>
+            <p className="dedicate-success-subtitle">Thank you - Nicole will see every word of support.</p>
+            <button className="btn-primary" onClick={handleClose}>Done</button>
+          </div>
+        </div>
+      )}
+
+      {/* ---- Success / share card modal ---- */}
+      {successKm && dedications[String(successKm)] && (
+        <div className="dedicate-modal-overlay" onClick={handleClose}>
+          <div className="dedicate-modal dedicate-success-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="dedicate-modal-close" onClick={handleClose} aria-label="Close">&times;</button>
+            <div className="dedicate-success-icon">✓</div>
+            <div className="dedicate-success-title">Kilometre {successKm} is yours.</div>
+            <p className="dedicate-success-subtitle">
+              Nicole will carry this dedication with her. Share it so others can dedicate theirs.
+            </p>
+            {shareCanvas && (
+              <div className="dedicate-share-preview">
+                <img src={shareCanvas.toDataURL('image/png')} alt={`Share card for Km ${successKm}`} />
+              </div>
+            )}
+            <div className="dedicate-success-actions">
+              {shareCanvas && (
+                <>
+                  <button className="btn-primary"
+                    onClick={() => shareCard(shareCanvas, successKm)}>
+                    Share Card
+                  </button>
+                  <button className="btn-outline"
+                    onClick={() => downloadCanvas(shareCanvas, `why-not-me-km-${successKm}.png`)}>
+                    Download Card
+                  </button>
+                </>
+              )}
+              <button className="btn-outline" onClick={handleClose}>Done</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </PageTransition>
+  )
 }
