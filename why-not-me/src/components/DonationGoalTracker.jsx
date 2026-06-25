@@ -183,7 +183,7 @@ function CompactDonationTracker() {
         <div className="donation-strip__actions">
           <span>{supporterCount ? `${supporterCount} supporters` : 'Live from Raisely'}</span>
           <Link to="/donation-progress">Learn more</Link>
-          <Link to="/dedicate">Dedicate a Km - Free</Link>
+          <Link to="/dedicate">Donate &amp; Dedicate a Km</Link>
         </div>
       </div>
       {error && <p className="donation-strip__error">{error}</p>}

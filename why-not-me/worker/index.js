@@ -393,7 +393,7 @@ async function handlePostDedication(request, env) {
 
   if (!verification.verified) {
     return dedicationResponse({
-      error: "We couldn't find a donation matching that email. Please donate first, then come back to claim your kilometre!",
+      error: "We couldn't find a donation matching that email. Donate via No Going Back to dedicate a kilometre!",
       donateUrl: RAISELY_DONATION_URL,
     }, 403)
   }

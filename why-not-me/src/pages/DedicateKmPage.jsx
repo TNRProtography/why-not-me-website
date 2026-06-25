@@ -218,7 +218,7 @@ async function generateShareCard(km, dedication) {
 
   ctx.fillStyle = 'rgba(245,243,236,0.34)'
   ctx.font = '18px Montserrat, sans-serif'
-  ctx.fillText('Dedicate yours at whynotme.co.nz/dedicate', 540, 1000)
+  ctx.fillText('Donate & dedicate yours at whynotme.co.nz/dedicate', 540, 1000)
 
   return canvas
 }
@@ -238,7 +238,7 @@ async function shareCard(canvas, km) {
       await navigator.share({
         files: [file],
         title: `I dedicated Km ${km} - Why Not Me?`,
-        text: `I just dedicated Kilometre ${km} of the Queenstown Marathon. Dedicate yours:`,
+        text: `I donated and dedicated Kilometre ${km} of the Queenstown Marathon for Brain Tumour Support NZ. Donate and dedicate yours:`,
         url: 'https://whynotme.co.nz/dedicate',
       })
       return
@@ -410,7 +410,7 @@ export default function DedicateKmPage() {
           <p className="section-label">Queenstown Marathon</p>
           <h1>Dedicate a Kilometre.</h1>
           <p className="dedicate-hero-subtitle">
-            Nicole is running 42.2 km for Brain Tumour Support NZ. Claim a kilometre, dedicate it to someone who matters to you, and she will carry every name along the road with her.
+            Nicole is running 42.2 km for Brain Tumour Support NZ. Donate to her No Going Back campaign, dedicate a kilometre to someone who matters to you, and she will carry every name along the road with her.
           </p>
         </div>
       </section>
@@ -453,10 +453,10 @@ export default function DedicateKmPage() {
                 type="button"
                 className={`dedicate-mobile-km ${isClaimed ? 'is-claimed' : 'is-open'}`}
                 onClick={() => handleOpen(pt.km)}
-                aria-label={isClaimed ? `Km ${pt.km}, dedicated by ${dedication.name} for ${dedication.dedicatedTo}` : `Km ${pt.km}, available`}
+                aria-label={isClaimed ? `Km ${pt.km}, dedicated by ${dedication.name} for ${dedication.dedicatedTo}` : `Km ${pt.km}, donate to dedicate`}
               >
                 <span className="dedicate-mobile-km-number">{pt.km}</span>
-                <span className="dedicate-mobile-km-status">{isClaimed ? 'View' : 'Claim'}</span>
+                <span className="dedicate-mobile-km-status">{isClaimed ? 'View' : 'Donate'}</span>
               </button>
             )
           })}
@@ -517,7 +517,7 @@ export default function DedicateKmPage() {
                   onKeyDown={(e) => { if (e.key === 'Enter') handleOpen(pt.km) }}
                   aria-label={isClaimed
                     ? `Km ${pt.km}, dedicated by ${dedication.name} for ${dedication.dedicatedTo}`
-                    : `Km ${pt.km}, available`
+                    : `Km ${pt.km}, donate to dedicate`
                   }
                 >
                   {/* Hit area */}
@@ -637,10 +637,10 @@ export default function DedicateKmPage() {
         <RevealOnScroll>
           <p className="section-label">Every Kilometre Counts</p>
           <p className="section-body">
-            Whether you dedicate a kilometre, donate, or share this page, you are part of the road Nicole is running. Every bit of support goes to Brain Tumour Support NZ.
+            Every donation claims a kilometre of Nicole's marathon. Dedicate it to someone you love and she'll carry their name with her. All support goes to Brain Tumour Support NZ.
           </p>
           <div className="dedicate-cta-buttons">
-            <a href="https://nogoingback.nz/nicole-white" target="_blank" rel="noopener noreferrer" className="btn-primary">Donate Now</a>
+            <a href="https://nogoingback.nz/nicole-white" target="_blank" rel="noopener noreferrer" className="btn-primary">Donate &amp; Dedicate a Km</a>
             <Link to="/queenstown-marathon" className="btn-outline">The Marathon Story</Link>
           </div>
         </RevealOnScroll>
@@ -653,6 +653,9 @@ export default function DedicateKmPage() {
             <button className="dedicate-modal-close" onClick={handleClose} aria-label="Close">&times;</button>
             <div className="dedicate-modal-km">Km {selectedKm}</div>
             <div className="dedicate-modal-heading">Dedicate This Kilometre</div>
+            <p className="dedicate-modal-subtext" style={{ fontSize: '0.85rem', opacity: 0.6, margin: '-0.25rem 0 1rem', textAlign: 'center' }}>
+              Donated via <a href="https://nogoingback.nz/nicole-white" target="_blank" rel="noopener noreferrer" style={{ color: '#A88E5D' }}>No Going Back</a>? Enter your details below to dedicate this km.
+            </p>
             <form className="dedicate-form" onSubmit={handleSubmit}>
               <div className="dedicate-field">
                 <label htmlFor="dedicate-name">Your Name</label>
@@ -680,12 +683,12 @@ export default function DedicateKmPage() {
                 <div className="dedicate-field-hint">{formData.message.length}/150</div>
               </div>
               <button type="submit" className="btn-primary dedicate-submit" disabled={submitting}>
-                {submitting ? 'Claiming…' : 'Claim This Kilometre'}
+                {submitting ? 'Verifying…' : 'Dedicate This Kilometre'}
               </button>
               {error && <p className="dedicate-error">{error}</p>}
               {donateUrl && (
                 <a href={donateUrl} target="_blank" rel="noopener noreferrer" className="btn-primary" style={{ marginTop: '0.5rem', display: 'inline-block', textAlign: 'center', width: '100%' }}>
-                  Donate Now
+                  Donate via No Going Back
                 </a>
               )}
             </form>
@@ -763,7 +766,7 @@ export default function DedicateKmPage() {
             <div className="dedicate-success-icon">✓</div>
             <div className="dedicate-success-title">Kilometre {successKm} is yours.</div>
             <p className="dedicate-success-subtitle">
-              Nicole will carry this dedication with her. Share it so others can dedicate theirs.
+              Nicole will carry this dedication with her. Share it so others can donate and dedicate theirs.
             </p>
             {shareCanvas && (
               <div className="dedicate-share-preview">
