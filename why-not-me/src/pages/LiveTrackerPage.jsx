@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import PageTransition from '../components/PageTransition'
+import { trackLiveTrackerView, trackLiveTrackerMapInteraction } from '../utils/analytics'
 import './LiveTrackerPage.css'
 
 const API_BASE = 'https://marathon-tracking-proxy.why-not-me-nicole-white.workers.dev'
@@ -451,6 +452,7 @@ export default function LiveTrackerPage() {
 
   useEffect(() => {
     let isMounted = true
+    trackLiveTrackerView()
 
     fetch(KML_ROUTE_URL)
       .then((res) => {
@@ -980,6 +982,7 @@ export default function LiveTrackerPage() {
   // ---- Recenter ----
   const handleRecenter = () => {
     if (!mapRef.current) return
+    trackLiveTrackerMapInteraction('recenter')
     fetchData({ force: true })
     if (data?.location) {
       mapRef.current.flyTo([data.location.lat, data.location.lng], 15, { duration: 1.2 })
@@ -991,6 +994,7 @@ export default function LiveTrackerPage() {
   // ---- Fit trail bounds ----
   const handleFitTrail = () => {
     if (!mapRef.current || !window.L) return
+    trackLiveTrackerMapInteraction('fit_trail')
     const historyPoints = sortedHistory.filter(p => p.location?.lat && p.location?.lng)
     const routePoints = routeLatLngs.length > 1
       ? routeLatLngs
@@ -1006,6 +1010,7 @@ export default function LiveTrackerPage() {
 
   const handleCenterOnMe = () => {
     if (!navigator.geolocation || !mapRef.current || !window.L) return
+    trackLiveTrackerMapInteraction('center_on_me')
     navigator.geolocation.getCurrentPosition((pos) => {
       const { latitude, longitude, accuracy } = pos.coords
       const L = window.L
@@ -1391,7 +1396,7 @@ export default function LiveTrackerPage() {
             <input
               type="checkbox"
               checked={showStartEnd}
-              onChange={(event) => setShowStartEnd(event.target.checked)}
+              onChange={(event) => { setShowStartEnd(event.target.checked); trackLiveTrackerMapInteraction(event.target.checked ? 'show_start_end' : 'hide_start_end') }}
             />
             <span>Show start &amp; finish</span>
           </label>

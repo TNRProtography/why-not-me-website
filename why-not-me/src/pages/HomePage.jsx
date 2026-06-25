@@ -34,6 +34,7 @@ import ScrollZoomFocus from '../components/ScrollZoomFocus'
 import HeroPortalTitle from '../components/HeroPortalTitle'
 import Lightbox from '../components/Lightbox'
 import BrainTumourSupportSection from '../components/BrainTumourSupportSection'
+import { trackCtaClick, trackLightboxOpen, trackDonateClick, trackSocialClick, trackExternalLink } from '../utils/analytics'
 import './HomePage.css'
 
 export default function HomePage() {
@@ -139,7 +140,7 @@ export default function HomePage() {
             <p>
               Donate to Nicole's No Going Back campaign and dedicate one of her Queenstown Marathon kilometres to someone you love. Add a name, write a short message, and Nicole will carry it with her.
             </p>
-            <Link to="/dedicate" className="btn-outline">Donate & Dedicate a Km</Link>
+            <Link to="/dedicate" className="btn-outline" onClick={() => trackCtaClick('Donate & Dedicate a Km', 'video_section', '/dedicate')}>Donate & Dedicate a Km</Link>
           </RevealOnScroll>
         </div>
       </section>
@@ -166,7 +167,7 @@ export default function HomePage() {
               <p style={{ color: 'var(--warm)', fontStyle: 'italic' }}>In 2026, she was declared in remission.</p>
             </div>
             <div style={{ marginTop: 30 }}>
-              <Link to="/nicoles-story" className="btn-primary">Read the Full Story</Link>
+              <Link to="/nicoles-story" className="btn-primary" onClick={() => trackCtaClick('Read the Full Story', 'story_section', '/nicoles-story')}>Read the Full Story</Link>
             </div>
           </RevealOnScroll>
         </div>
@@ -195,12 +196,12 @@ export default function HomePage() {
       {/* ========== 7. PHOTO GRID ========== */}
       <section style={{ padding: '0' }}>
         <div className="photo-grid">
-          <img src="/images/lores/arms-ocean.jpg" alt="Arms spread at ocean" className="span-2" onClick={() => setLightbox('/images/lores/arms-ocean.jpg')} />
-          <img src="/images/lores/sunset-portrait.jpg" alt="Sunset" onClick={() => setLightbox('/images/lores/sunset-portrait.jpg')} />
-          <img src="/images/lores/running-dog.jpg" alt="Running with Cindy" onClick={() => setLightbox('/images/lores/running-dog.jpg')} />
-          <img src="/images/lores/sunlight-run.jpg" alt="Trail run" onClick={() => setLightbox('/images/lores/sunlight-run.jpg')} />
-          <img src="/images/lores/coastal-run-3.jpg" alt="Coastal run" onClick={() => setLightbox('/images/lores/coastal-run-3.jpg')} />
-          <img src="/images/lores/jumping-path.jpg" alt="Jumping for joy" className="span-2" onClick={() => setLightbox('/images/lores/jumping-path.jpg')} />
+          <img src="/images/lores/arms-ocean.jpg" alt="Arms spread at ocean" className="span-2" onClick={() => { setLightbox('/images/lores/arms-ocean.jpg'); trackLightboxOpen('arms-ocean') }} />
+          <img src="/images/lores/sunset-portrait.jpg" alt="Sunset" onClick={() => { setLightbox('/images/lores/sunset-portrait.jpg'); trackLightboxOpen('sunset-portrait') }} />
+          <img src="/images/lores/running-dog.jpg" alt="Running with Cindy" onClick={() => { setLightbox('/images/lores/running-dog.jpg'); trackLightboxOpen('running-dog') }} />
+          <img src="/images/lores/sunlight-run.jpg" alt="Trail run" onClick={() => { setLightbox('/images/lores/sunlight-run.jpg'); trackLightboxOpen('sunlight-run') }} />
+          <img src="/images/lores/coastal-run-3.jpg" alt="Coastal run" onClick={() => { setLightbox('/images/lores/coastal-run-3.jpg'); trackLightboxOpen('coastal-run-3') }} />
+          <img src="/images/lores/jumping-path.jpg" alt="Jumping for joy" className="span-2" onClick={() => { setLightbox('/images/lores/jumping-path.jpg'); trackLightboxOpen('jumping-path') }} />
         </div>
       </section>
 
@@ -292,8 +293,8 @@ export default function HomePage() {
             "So far I'm feeling good, feeling strong and capable. I'm happy with where I am at the moment."
           </p>
           <div style={{ marginTop: 34 }}>
-            <Link to="/queenstown-marathon" className="btn-primary">Why Queenstown?</Link>
-            <Link to="/dedicate" className="btn-outline" style={{ marginLeft: 14 }}>Donate & Dedicate a Km</Link>
+            <Link to="/queenstown-marathon" className="btn-primary" onClick={() => trackCtaClick('Why Queenstown?', 'marathon_section', '/queenstown-marathon')}>Why Queenstown?</Link>
+            <Link to="/dedicate" className="btn-outline" style={{ marginLeft: 14 }} onClick={() => trackCtaClick('Donate & Dedicate a Km', 'marathon_section', '/dedicate')}>Donate & Dedicate a Km</Link>
           </div>
         </RevealOnScroll>
       </section>
@@ -307,7 +308,7 @@ export default function HomePage() {
           <p className="section-body" style={{ maxWidth: 600, margin: '0 auto 40px' }}>
             The full story, told by Nicole and the people closest to her. From diagnosis to remission, from the waiting rooms to the finish line. Released May 22, 2026.
           </p>
-          <Link to="/documentary" className="btn-primary">Watch the Documentary</Link>
+          <Link to="/documentary" className="btn-primary" onClick={() => trackCtaClick('Watch the Documentary', 'documentary_teaser', '/documentary')}>Watch the Documentary</Link>
         </RevealOnScroll>
       </section>
 
@@ -321,13 +322,13 @@ export default function HomePage() {
             Nicole is available for print and digital interviews, TV and radio appearances, podcast features, brain tumour awareness campaigns, marathon and fundraising coverage, and health and wellness storytelling.
           </p>
           <div className="social-links">
-            <a href="https://www.facebook.com/nicole.white.why.not.me/" target="_blank" rel="noopener noreferrer" className="btn-outline">Facebook</a>
-            <a href="https://www.tiktok.com/@nicole_white_why_not_me" target="_blank" rel="noopener noreferrer" className="btn-outline">TikTok</a>
-            <a href="https://www.youtube.com/@WhyNotMeNicoleWhite" target="_blank" rel="noopener noreferrer" className="btn-outline">YouTube</a>
-            <a href="mailto:nicole@whynotme.co.nz" className="btn-outline">Email</a>
+            <a href="https://www.facebook.com/nicole.white.why.not.me/" target="_blank" rel="noopener noreferrer" className="btn-outline" onClick={() => trackSocialClick('facebook', 'connect_section')}>Facebook</a>
+            <a href="https://www.tiktok.com/@nicole_white_why_not_me" target="_blank" rel="noopener noreferrer" className="btn-outline" onClick={() => trackSocialClick('tiktok', 'connect_section')}>TikTok</a>
+            <a href="https://www.youtube.com/@WhyNotMeNicoleWhite" target="_blank" rel="noopener noreferrer" className="btn-outline" onClick={() => trackSocialClick('youtube', 'connect_section')}>YouTube</a>
+            <a href="mailto:nicole@whynotme.co.nz" className="btn-outline" onClick={() => trackSocialClick('email', 'connect_section')}>Email</a>
           </div>
           <div style={{ marginTop: 30 }}>
-            <a href="https://nogoingback.nz/nicole-white" target="_blank" rel="noopener noreferrer" className="btn-primary">Donate Now</a>
+            <a href="https://nogoingback.nz/nicole-white" target="_blank" rel="noopener noreferrer" className="btn-primary" onClick={() => trackDonateClick('connect_section')}>Donate Now</a>
           </div>
         </RevealOnScroll>
       </section>

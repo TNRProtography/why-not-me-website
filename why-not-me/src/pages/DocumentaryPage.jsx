@@ -20,6 +20,7 @@ import PageTransition from '../components/PageTransition'
 import RevealOnScroll from '../components/RevealOnScroll'
 import ScrollZoomFocus from '../components/ScrollZoomFocus'
 import HeroPortalTitle from '../components/HeroPortalTitle'
+import { trackSocialClick, trackDonateClick } from '../utils/analytics'
 
 export default function DocumentaryPage() {
   const heroRef = useRef(null)
@@ -91,10 +92,10 @@ export default function DocumentaryPage() {
               If this story moved you, share it. Every view, every share, every conversation about brain tumours matters. Brain cancer survival rates have barely changed in 30 years. Stories like Nicole's help change that.
             </p>
             <div className="documentary-actions" style={{ marginTop: 30, display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <a href="https://www.facebook.com/nicole.white.why.not.me" target="_blank" rel="noopener noreferrer" className="btn-outline">
+              <a href="https://www.facebook.com/nicole.white.why.not.me" target="_blank" rel="noopener noreferrer" className="btn-outline" onClick={() => trackSocialClick('facebook', 'documentary')}>
                 Share on Facebook
               </a>
-              <a href="https://nogoingback.nz/nicole-white" target="_blank" rel="noopener noreferrer" className="btn-primary">
+              <a href="https://nogoingback.nz/nicole-white" target="_blank" rel="noopener noreferrer" className="btn-primary" onClick={() => trackDonateClick('documentary')}>
                 Donate Now
               </a>
             </div>

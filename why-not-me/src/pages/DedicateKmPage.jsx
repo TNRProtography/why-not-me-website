@@ -11,6 +11,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import PageTransition from '../components/PageTransition'
 import RevealOnScroll from '../components/RevealOnScroll'
+import { trackKmClick, trackKmHover, trackDedicationFormOpen, trackDedicationFormSubmit, trackDedicationSuccess, trackDedicationError, trackDedicationShare, trackDedicationViewModal, trackSupportMessageFormOpen, trackSupportMessageSubmit, trackDonateClick, trackCtaClick } from '../utils/analytics'
 import './DedicateKmPage.css'
 
 const TOTAL_KM = 42
@@ -241,12 +242,14 @@ async function shareCard(canvas, km) {
         text: `I donated and dedicated Kilometre ${km} of the Queenstown Marathon for Brain Tumour Support NZ. Donate and dedicate yours:`,
         url: 'https://whynotme.co.nz/dedicate',
       })
+      trackDedicationShare(km, 'native_share_complete')
       return
     }
   } catch (e) {
     if (e.name === 'AbortError') return // user cancelled
   }
   // Fallback: download image + open Facebook share
+  trackDedicationShare(km, 'facebook_fallback')
   downloadCanvas(canvas, `why-not-me-km-${km}.png`)
   window.open(
     `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent('https://whynotme.co.nz/dedicate')}`,
@@ -293,8 +296,12 @@ export default function DedicateKmPage() {
 
   const handleOpen = (km) => {
     if (dedications[String(km)]) {
+      trackKmClick(km, 'claimed')
+      trackDedicationViewModal(km)
       setViewingKm(km)
     } else {
+      trackKmClick(km, 'open')
+      trackDedicationFormOpen(km)
       setSelectedKm(km)
       setFormData({ name: '', email: '', dedicatedTo: '', message: '' })
       setError('')
@@ -317,6 +324,7 @@ export default function DedicateKmPage() {
     e.preventDefault()
     setError('')
     setSubmitting(true)
+    trackDedicationFormSubmit(selectedKm)
     try {
       const res = await fetch('/api/dedications', {
         method: 'POST',
@@ -324,12 +332,13 @@ export default function DedicateKmPage() {
         body: JSON.stringify({ km: selectedKm, name: formData.name, email: formData.email, dedicatedTo: formData.dedicatedTo, message: formData.message }),
       })
       const data = await res.json()
-      if (!res.ok) { setError(data.error || 'Something went wrong.'); setDonateUrl(data.donateUrl || null); setSubmitting(false); return }
+      if (!res.ok) { const errMsg = data.error || 'Something went wrong.'; setError(errMsg); setDonateUrl(data.donateUrl || null); setSubmitting(false); trackDedicationError(selectedKm, errMsg); return }
 
       const claimedKm = selectedKm
       setDedications(data.dedications || {})
       setSelectedKm(null)
       setSubmitting(false)
+      trackDedicationSuccess(claimedKm)
 
       // Celebration
       spawnConfetti()
@@ -344,6 +353,7 @@ export default function DedicateKmPage() {
     } catch {
       setError('Could not connect. Please try again.')
       setSubmitting(false)
+      trackDedicationError(selectedKm, 'network_error')
     }
   }
 
@@ -352,6 +362,7 @@ export default function DedicateKmPage() {
     e.preventDefault()
     setError('')
     setSubmitting(true)
+    trackSupportMessageSubmit()
     try {
       const res = await fetch('/api/dedications/message', {
         method: 'POST',
@@ -374,6 +385,7 @@ export default function DedicateKmPage() {
 
   const handleMarkerHover = (km, e) => {
     if (isMobile) return
+    trackKmHover(km)
     const dedication = dedications[String(km)]
     if (!dedication) { setHoveredKm(km); setTooltip(null); return }
     const rect = e.currentTarget.getBoundingClientRect()
@@ -460,7 +472,7 @@ export default function DedicateKmPage() {
               </button>
             )
           })}
-          <button type="button" className="dedicate-mobile-km is-finish" onClick={() => setViewingKm('finish')} aria-label="Final 0.2 kilometres, dedicated to Nicole by Dean">
+          <button type="button" className="dedicate-mobile-km is-finish" onClick={() => { trackKmClick('finish', 'finish'); trackDedicationViewModal('finish'); setViewingKm('finish') }} aria-label="Final 0.2 kilometres, dedicated to Nicole by Dean">
             <span className="dedicate-mobile-km-number">.2</span>
             <span className="dedicate-mobile-km-status">Finish</span>
           </button>
@@ -567,7 +579,7 @@ export default function DedicateKmPage() {
               const isHovered = hoveredKm === 'finish'
               return (
                 <g
-                  onClick={() => setViewingKm('finish')}
+                  onClick={() => { trackKmClick('finish', 'finish'); trackDedicationViewModal('finish'); setViewingKm('finish') }}
                   onMouseEnter={(e) => {
                     if (!isMobile) {
                       setHoveredKm('finish')
@@ -617,7 +629,7 @@ export default function DedicateKmPage() {
           <p className="section-label">All Kilometres Claimed</p>
           <h2>The road is full - but the love is not.</h2>
           <p>Leave Nicole a message below and we’ll add it to the wall of support she carries with her.</p>
-          <button className="btn-primary" onClick={() => { setOpenMessageForm(true); setFormData({ name: '', email: '', dedicatedTo: 'Nicole', message: '' }); setError('') }}>Leave a Message</button>
+          <button className="btn-primary" onClick={() => { setOpenMessageForm(true); setFormData({ name: '', email: '', dedicatedTo: 'Nicole', message: '' }); setError(''); trackSupportMessageFormOpen() }}>Leave a Message</button>
           {genericMessages.length > 0 && (
             <div className="dedicate-message-wall">
               {genericMessages.slice(0, 6).map((item) => (
@@ -640,8 +652,8 @@ export default function DedicateKmPage() {
             Every donation claims a kilometre of Nicole's marathon. Dedicate it to someone you love and she'll carry their name with her. All support goes to Brain Tumour Support NZ.
           </p>
           <div className="dedicate-cta-buttons">
-            <a href="https://nogoingback.nz/nicole-white" target="_blank" rel="noopener noreferrer" className="btn-primary">Donate &amp; Dedicate a Km</a>
-            <Link to="/queenstown-marathon" className="btn-outline">The Marathon Story</Link>
+            <a href="https://nogoingback.nz/nicole-white" target="_blank" rel="noopener noreferrer" className="btn-primary" onClick={() => trackDonateClick('dedicate_bottom_cta')}>Donate &amp; Dedicate a Km</a>
+            <Link to="/queenstown-marathon" className="btn-outline" onClick={() => trackCtaClick('The Marathon Story', 'dedicate_bottom_cta', '/queenstown-marathon')}>The Marathon Story</Link>
           </div>
         </RevealOnScroll>
       </section>
@@ -687,7 +699,7 @@ export default function DedicateKmPage() {
               </button>
               {error && <p className="dedicate-error">{error}</p>}
               {donateUrl && (
-                <a href={donateUrl} target="_blank" rel="noopener noreferrer" className="btn-primary" style={{ marginTop: '0.5rem', display: 'inline-block', textAlign: 'center', width: '100%' }}>
+                <a href={donateUrl} target="_blank" rel="noopener noreferrer" className="btn-primary" style={{ marginTop: '0.5rem', display: 'inline-block', textAlign: 'center', width: '100%' }} onClick={() => trackDonateClick('dedication_modal_fallback')}>
                   Donate via No Going Back
                 </a>
               )}
@@ -777,11 +789,11 @@ export default function DedicateKmPage() {
               {shareCanvas && (
                 <>
                   <button className="btn-primary"
-                    onClick={() => shareCard(shareCanvas, successKm)}>
+                    onClick={() => { trackDedicationShare(successKm, 'native_share'); shareCard(shareCanvas, successKm) }}>
                     Share Card
                   </button>
                   <button className="btn-outline"
-                    onClick={() => downloadCanvas(shareCanvas, `why-not-me-km-${successKm}.png`)}>
+                    onClick={() => { trackDedicationShare(successKm, 'download'); downloadCanvas(shareCanvas, `why-not-me-km-${successKm}.png`) }}>
                     Download Card
                   </button>
                 </>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { NavLink, Link } from 'react-router-dom'
+import { trackNavClick, trackMobileMenuToggle, trackDonateClick, trackExternalLink } from '../utils/analytics'
 import './Nav.css'
 
 const navItems = [
@@ -57,17 +58,18 @@ export default function Nav({ trackerEnabled = false, mobileDonationTracker = nu
               to={item.to}
               end={item.end}
               className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}
+              onClick={() => trackNavClick(item.label, item.to)}
             >
               {item.label}
             </NavLink>
           ))}
-          <a href="https://braintumoursupport.org.nz" target="_blank" rel="noopener noreferrer" className="nav-link">Support</a>
-          <NavLink to="/donate" className="nav-donate-btn">Donate</NavLink>
+          <a href="https://braintumoursupport.org.nz" target="_blank" rel="noopener noreferrer" className="nav-link" onClick={() => trackExternalLink('https://braintumoursupport.org.nz', 'Support', 'nav')}>Support</a>
+          <NavLink to="/donate" className="nav-donate-btn" onClick={() => trackNavClick('Donate', '/donate')}>Donate</NavLink>
         </div>
 
         <button
           className={`hamburger ${mobileOpen ? 'open' : ''}`}
-          onClick={() => setMobileOpen(!mobileOpen)}
+          onClick={() => { const next = !mobileOpen; setMobileOpen(next); trackMobileMenuToggle(next) }}
           aria-label="Toggle menu"
           aria-expanded={mobileOpen}
         >
@@ -81,11 +83,11 @@ export default function Nav({ trackerEnabled = false, mobileDonationTracker = nu
           <div className="mobile-menu-inner">
             {[...visibleNavItems, { to: '/donate', label: 'Donate' }].map((item) => (
               <div key={item.to}>
-                <NavLink to={item.to} end={item.end} onClick={closeMobile}>{item.label}</NavLink>
+                <NavLink to={item.to} end={item.end} onClick={() => { closeMobile(); trackNavClick(item.label, item.to) }}>{item.label}</NavLink>
               </div>
             ))}
             <div>
-              <a href="https://braintumoursupport.org.nz" target="_blank" rel="noopener noreferrer" onClick={closeMobile}>Support</a>
+              <a href="https://braintumoursupport.org.nz" target="_blank" rel="noopener noreferrer" onClick={() => { closeMobile(); trackExternalLink('https://braintumoursupport.org.nz', 'Support', 'mobile_menu') }}>Support</a>
             </div>
           </div>
         </div>

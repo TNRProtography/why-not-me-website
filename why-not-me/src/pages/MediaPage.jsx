@@ -25,6 +25,7 @@
  */
 import PageTransition from '../components/PageTransition'
 import RevealOnScroll from '../components/RevealOnScroll'
+import { trackExternalLink, trackSocialClick, trackDonateClick } from '../utils/analytics'
 import './MediaPage.css'
 
 export default function MediaPage() {
@@ -212,7 +213,7 @@ export default function MediaPage() {
                 <p style={{ fontSize: 14, color: 'var(--white-70)' }}>
                   "A Little Bit of Vengeance"<br />
                   Released May 22, 2026<br />
-                  <a href="https://www.youtube.com/watch?v=pnLhzEzXKpc" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--gold)' }}>Watch on YouTube</a>
+                  <a href="https://www.youtube.com/watch?v=pnLhzEzXKpc" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--gold)' }} onClick={() => trackExternalLink('https://www.youtube.com/watch?v=pnLhzEzXKpc', 'Watch on YouTube', 'media_documentary')}>Watch on YouTube</a>
                 </p>
               </div>
             </div>
@@ -248,6 +249,7 @@ export default function MediaPage() {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn-primary"
+                onClick={() => trackExternalLink('https://drive.google.com/drive/folders/1dPs5lWdQ1JJW_9sMPyfVsSE4rq88KWK3', 'Open Google Drive Media Folder', 'media_assets')}
               >
                 Open Google Drive Media Folder
               </a>
@@ -257,7 +259,7 @@ export default function MediaPage() {
               <p className="section-label" style={{ marginBottom: 6 }}>Media Enquiries</p>
               <p style={{ fontSize: 14, color: 'var(--white-70)' }}>
                 Image & video use: via contact form at{' '}
-                <a href="https://tnrprotography.co.nz" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--gold)' }}>tnrprotography.co.nz</a>
+                <a href="https://tnrprotography.co.nz" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--gold)' }} onClick={() => trackExternalLink('https://tnrprotography.co.nz', 'TNR Protography', 'media_enquiries')}>tnrprotography.co.nz</a>
               </p>
             </div>
           </RevealOnScroll>
@@ -276,26 +278,26 @@ export default function MediaPage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 30, marginTop: 40, textAlign: 'left', maxWidth: 900, margin: '40px auto 0' }}>
             <div>
               <p className="section-label" style={{ marginBottom: 6 }}>Email</p>
-              <a href="mailto:nicole@whynotme.co.nz" style={{ fontSize: 14, color: 'var(--white-70)' }}>nicole@whynotme.co.nz</a>
+              <a href="mailto:nicole@whynotme.co.nz" style={{ fontSize: 14, color: 'var(--white-70)' }} onClick={() => trackSocialClick('email', 'media_contact')}>nicole@whynotme.co.nz</a>
             </div>
             <div>
               <p className="section-label" style={{ marginBottom: 6 }}>Donate</p>
-              <a href="https://nogoingback.nz/nicole-white" target="_blank" rel="noopener noreferrer" style={{ fontSize: 14, color: 'var(--gold)' }}>Open Nicole's Raisely page</a>
+              <a href="https://nogoingback.nz/nicole-white" target="_blank" rel="noopener noreferrer" style={{ fontSize: 14, color: 'var(--gold)' }} onClick={() => trackDonateClick('media_contact')}>Open Nicole's Raisely page</a>
             </div>
             <div>
               <p className="section-label" style={{ marginBottom: 6 }}>Socials</p>
               <p style={{ fontSize: 14, color: 'var(--white-70)' }}>
-                <a href="https://www.facebook.com/nicole.white.why.not.me/" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--white-70)' }}>Facebook</a><br />
-                <a href="https://www.tiktok.com/@nicole_white_why_not_me" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--white-70)' }}>TikTok</a><br />
-                <a href="https://www.youtube.com/@WhyNotMeNicoleWhite" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--white-70)' }}>YouTube</a><br />
+                <a href="https://www.facebook.com/nicole.white.why.not.me/" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--white-70)' }} onClick={() => trackSocialClick('facebook', 'media_contact')}>Facebook</a><br />
+                <a href="https://www.tiktok.com/@nicole_white_why_not_me" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--white-70)' }} onClick={() => trackSocialClick('tiktok', 'media_contact')}>TikTok</a><br />
+                <a href="https://www.youtube.com/@WhyNotMeNicoleWhite" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--white-70)' }} onClick={() => trackSocialClick('youtube', 'media_contact')}>YouTube</a><br />
                 #WhyNotMe
               </p>
             </div>
             <div>
               <p className="section-label" style={{ marginBottom: 6 }}>Partners</p>
               <p style={{ fontSize: 14, color: 'var(--white-70)' }}>
-                <a href="https://braintumoursupport.org.nz" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--gold)' }}>Brain Tumour Support NZ</a><br />
-                <a href="https://tnrprotography.co.nz" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--gold)' }}>TNR Protography</a>
+                <a href="https://braintumoursupport.org.nz" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--gold)' }} onClick={() => trackExternalLink('https://braintumoursupport.org.nz', 'Brain Tumour Support NZ', 'media_partners')}>Brain Tumour Support NZ</a><br />
+                <a href="https://tnrprotography.co.nz" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--gold)' }} onClick={() => trackExternalLink('https://tnrprotography.co.nz', 'TNR Protography', 'media_partners')}>TNR Protography</a>
               </p>
             </div>
           </div>

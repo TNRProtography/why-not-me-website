@@ -6,6 +6,7 @@ import RevealOnScroll from '../components/RevealOnScroll'
 import ScrollZoomFocus from '../components/ScrollZoomFocus'
 import HeroPortalTitle from '../components/HeroPortalTitle'
 import BrainTumourSupportSection from '../components/BrainTumourSupportSection'
+import { trackCtaClick, trackDonateClick } from '../utils/analytics'
 import './MarathonPage.css'
 
 const historyItems = [
@@ -117,7 +118,7 @@ export default function MarathonPage() {
             <p className="section-body" style={{ maxWidth: 640, margin: '0 auto 22px', textAlign: 'center' }}>
               Donate to Nicole's No Going Back campaign and pick a kilometre of her Queenstown Marathon to dedicate to a person, whānau, team, or cause. Every donation gives Nicole another name to carry toward the finish line.
             </p>
-            <Link to="/dedicate" className="btn-outline">Donate & Dedicate a Km</Link>
+            <Link to="/dedicate" className="btn-outline" onClick={() => trackCtaClick('Donate & Dedicate a Km', 'marathon_dedicate_section', '/dedicate')}>Donate & Dedicate a Km</Link>
           </div>
         </RevealOnScroll>
       </section>
@@ -276,9 +277,9 @@ export default function MarathonPage() {
             The marathon gives the campaign a physical goal, but the purpose is bigger than the race. It is about raising money for Brain Tumour Support NZ, helping people talk about cancer without fear, and making sure families facing brain tumours feel less alone.
           </p>
           <div className="marathon-cta-buttons">
-            <a href="https://nogoingback.nz/nicole-white" target="_blank" rel="noopener noreferrer" className="btn-primary">Donate Now</a>
-            <Link to="/dedicate" className="btn-outline">Donate & Dedicate a Km</Link>
-            <Link to="/documentary" className="btn-outline">Watch the Documentary</Link>
+            <a href="https://nogoingback.nz/nicole-white" target="_blank" rel="noopener noreferrer" className="btn-primary" onClick={() => trackDonateClick('marathon_bottom_cta')}>Donate Now</a>
+            <Link to="/dedicate" className="btn-outline" onClick={() => trackCtaClick('Donate & Dedicate a Km', 'marathon_bottom_cta', '/dedicate')}>Donate & Dedicate a Km</Link>
+            <Link to="/documentary" className="btn-outline" onClick={() => trackCtaClick('Watch the Documentary', 'marathon_bottom_cta', '/documentary')}>Watch the Documentary</Link>
           </div>
         </RevealOnScroll>
       </section>

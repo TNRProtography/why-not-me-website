@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
 import Nav from './components/Nav'
 import Footer from './components/Footer'
 import ScrollToTop from './components/ScrollToTop'
@@ -13,6 +13,19 @@ import DedicateKmPage from './pages/DedicateKmPage'
 import LiveTrackerPage from './pages/LiveTrackerPage'
 import NicolesStoryPage from './pages/NicolesStoryPage'
 import { isTrackerWindowOpen } from './config/trackerAvailability'
+import { trackPageView, initScrollTracking } from './utils/analytics'
+
+function PageViewTracker() {
+  const location = useLocation()
+
+  useEffect(() => {
+    trackPageView(location.pathname, document.title)
+    const cleanup = initScrollTracking()
+    return cleanup
+  }, [location.pathname])
+
+  return null
+}
 
 function AnimatedRoutes({ trackerEnabled }) {
   return (
@@ -86,6 +99,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <div className={`site-shell ${isMobileView ? 'mobile-view' : 'desktop-view'}`} data-mobile-view={isMobileView}>
+        <PageViewTracker />
         <ScrollToTop />
         <ScrollAtmosphere />
         <header className="site-header-sticky">

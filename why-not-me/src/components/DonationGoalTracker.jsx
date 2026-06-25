@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { trackDonateClick, trackDonationSortChange, trackCtaClick } from '../utils/analytics'
 import './DonationGoalTracker.css'
 
 const REFRESH_INTERVAL_MS = 60000
@@ -208,9 +209,9 @@ function DetailedDonationTracker({ middleSlot = null }) {
               The totals below update from Raisely and show the public support behind Nicole's marathon for Brain Tumour Support NZ.
             </p>
             <div className="donation-detail__actions">
-              <a href="https://nogoingback.nz/nicole-white" className="btn-primary" target="_blank" rel="noopener noreferrer">Donate now</a>
-              <Link to="/dedicate" className="btn-outline">Dedicate a Km - Free</Link>
-              <a href="#all-donations" className="btn-outline">See all donations</a>
+              <a href="https://nogoingback.nz/nicole-white" className="btn-primary" target="_blank" rel="noopener noreferrer" onClick={() => trackDonateClick('donation_detail')}>Donate now</a>
+              <Link to="/dedicate" className="btn-outline" onClick={() => trackCtaClick('Dedicate a Km - Free', 'donation_detail', '/dedicate')}>Dedicate a Km - Free</Link>
+              <a href="#all-donations" className="btn-outline" onClick={() => trackCtaClick('See all donations', 'donation_detail', '#all-donations')}>See all donations</a>
             </div>
           </div>
 
@@ -271,7 +272,7 @@ function DetailedDonationTracker({ middleSlot = null }) {
               </div>
               <label className="donation-detail__sort">
                 <span>Sort by</span>
-                <select value={sortBy} onChange={(event) => setSortBy(event.target.value)}>
+                <select value={sortBy} onChange={(event) => { setSortBy(event.target.value); trackDonationSortChange(event.target.value) }}>
                   {sortOptions.map((option) => (
                     <option value={option.value} key={option.value}>{option.label}</option>
                   ))}

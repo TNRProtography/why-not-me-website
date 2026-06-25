@@ -18,6 +18,7 @@
  */
 import RevealOnScroll from './RevealOnScroll'
 import ScrollZoomFocus from './ScrollZoomFocus'
+import { trackDonateClick, trackExternalLink } from '../utils/analytics'
 import './BrainTumourSupportSection.css'
 
 export default function BrainTumourSupportSection({
@@ -40,6 +41,7 @@ export default function BrainTumourSupportSection({
             rel="noopener noreferrer"
             className="btsnz-block__media-link"
             aria-label="Visit the Brain Tumour Support NZ website"
+            onClick={() => trackExternalLink('https://braintumoursupport.org.nz', 'BTSNZ Logo', 'btsnz_section')}
           >
             <img
               src="/images/logos/btsnz.png"
@@ -68,6 +70,7 @@ export default function BrainTumourSupportSection({
               target="_blank"
               rel="noopener noreferrer"
               className="btn-primary"
+              onClick={() => trackDonateClick('btsnz_section')}
             >
               Donate at No Going Back
             </a>
@@ -76,6 +79,7 @@ export default function BrainTumourSupportSection({
               target="_blank"
               rel="noopener noreferrer"
               className="btn-outline"
+              onClick={() => trackExternalLink('https://braintumoursupport.org.nz', 'Visit Brain Tumour Support NZ', 'btsnz_section')}
             >
               Visit Brain Tumour Support NZ
             </a>

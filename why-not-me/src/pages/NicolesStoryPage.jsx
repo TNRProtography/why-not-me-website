@@ -12,6 +12,7 @@ import { useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, useScroll, useTransform, useInView } from 'framer-motion'
 import PageTransition from '../components/PageTransition'
+import { trackCtaClick, trackDonateClick } from '../utils/analytics'
 import './NicolesStoryPage.css'
 
 /* Scroll-triggered reveal */
@@ -413,9 +414,9 @@ export default function NicolesStoryPage() {
           </p>
         </Reveal>
         <Reveal delay={0.2} className="story-cta-btns">
-          <a href="https://nogoingback.nz/nicole-white" target="_blank" rel="noopener noreferrer" className="btn-primary">Donate Now</a>
-          <Link to="/dedicate" className="btn-outline">Donate &amp; Dedicate a Km</Link>
-          <Link to="/documentary" className="btn-outline">Watch the Documentary</Link>
+          <a href="https://nogoingback.nz/nicole-white" target="_blank" rel="noopener noreferrer" className="btn-primary" onClick={() => trackDonateClick('nicoles_story_bottom')}>Donate Now</a>
+          <Link to="/dedicate" className="btn-outline" onClick={() => trackCtaClick('Donate & Dedicate a Km', 'nicoles_story_bottom', '/dedicate')}>Donate &amp; Dedicate a Km</Link>
+          <Link to="/documentary" className="btn-outline" onClick={() => trackCtaClick('Watch the Documentary', 'nicoles_story_bottom', '/documentary')}>Watch the Documentary</Link>
         </Reveal>
       </section>
 

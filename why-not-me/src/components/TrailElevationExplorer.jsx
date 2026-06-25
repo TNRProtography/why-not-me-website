@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
+import { trackElevationExplorerInteraction } from '../utils/analytics'
 import './TrailElevationExplorer.css'
 
 /*
@@ -847,7 +848,7 @@ export default function TrailElevationExplorer({ history = [] }) {
             <button
               key={key}
               className={`explorer-basemap-btn ${basemap === key ? 'active' : ''}`}
-              onClick={() => setBasemap(key)}
+              onClick={() => { setBasemap(key); trackElevationExplorerInteraction(`basemap_${key}`) }}
             >
               {config.label}
             </button>
@@ -889,16 +890,16 @@ export default function TrailElevationExplorer({ history = [] }) {
           <div className="explorer-replay-overlay">
             <div className="explorer-replay-controls">
               {replayState === 'playing' && (
-                <button className="explorer-replay-btn" onClick={pauseReplay}>
+                <button className="explorer-replay-btn" onClick={() => { pauseReplay(); trackElevationExplorerInteraction('replay_pause') }}>
                   <svg viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="3" width="4" height="18" /><rect x="15" y="3" width="4" height="18" /></svg>
                 </button>
               )}
               {replayState === 'paused' && (
                 <>
-                  <button className="explorer-replay-btn play" onClick={resumeReplay}>
+                  <button className="explorer-replay-btn play" onClick={() => { resumeReplay(); trackElevationExplorerInteraction('replay_resume') }}>
                     <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6,3 20,12 6,21" /></svg>
                   </button>
-                  <button className="explorer-replay-btn stop" onClick={stopReplay}>
+                  <button className="explorer-replay-btn stop" onClick={() => { stopReplay(); trackElevationExplorerInteraction('replay_stop') }}>
                     <svg viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2" /></svg>
                   </button>
                 </>
@@ -926,7 +927,7 @@ export default function TrailElevationExplorer({ history = [] }) {
 
         {/* Replay start button - center of map when idle */}
         {hasReplayData && replayState === 'idle' && (
-          <button className="explorer-replay-start" onClick={startReplay}>
+          <button className="explorer-replay-start" onClick={() => { startReplay(); trackElevationExplorerInteraction('replay_start') }}>
             <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6,3 20,12 6,21" /></svg>
             <span>Replay Run</span>
           </button>

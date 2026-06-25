@@ -27,6 +27,7 @@ import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import PageTransition from '../components/PageTransition'
 import RevealOnScroll from '../components/RevealOnScroll'
+import { trackSocialClick, trackExternalLink, trackDonateClick } from '../utils/analytics'
 import './SponsorshipPage.css'
 
 /* ---- SPONSORSHIP TIER DATA ----
@@ -309,22 +310,22 @@ export default function SponsorshipPage() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 30, marginTop: 50, textAlign: 'left', maxWidth: 900, margin: '50px auto 0' }} className="contact-grid">
               <div>
                 <p className="section-label" style={{ marginBottom: 6 }}>Email</p>
-                <a href="mailto:nicole@whynotme.co.nz" style={{ fontSize: 14, color: 'var(--white-70)' }}>
+                <a href="mailto:nicole@whynotme.co.nz" style={{ fontSize: 14, color: 'var(--white-70)' }} onClick={() => trackSocialClick('email', 'sponsorship_contact')}>
                   nicole@whynotme.co.nz
                 </a>
               </div>
               <div>
                 <p className="section-label" style={{ marginBottom: 6 }}>Donate</p>
-                <a href="https://nogoingback.nz/nicole-white" target="_blank" rel="noopener noreferrer" style={{ fontSize: 14, color: 'var(--gold)' }}>
+                <a href="https://nogoingback.nz/nicole-white" target="_blank" rel="noopener noreferrer" style={{ fontSize: 14, color: 'var(--gold)' }} onClick={() => trackDonateClick('sponsorship_contact')}>
                   Open Nicole's Raisely page
                 </a>
               </div>
               <div>
                 <p className="section-label" style={{ marginBottom: 6 }}>Socials</p>
                 <p style={{ fontSize: 14, color: 'var(--white-70)' }}>
-                  <a href="https://www.facebook.com/nicole.white.why.not.me/" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--white-70)' }}>Facebook</a><br />
-                  <a href="https://www.tiktok.com/@nicole_white_why_not_me" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--white-70)' }}>TikTok</a><br />
-                  <a href="https://www.youtube.com/@WhyNotMeNicoleWhite" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--white-70)' }}>YouTube</a><br />
+                  <a href="https://www.facebook.com/nicole.white.why.not.me/" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--white-70)' }} onClick={() => trackSocialClick('facebook', 'sponsorship_contact')}>Facebook</a><br />
+                  <a href="https://www.tiktok.com/@nicole_white_why_not_me" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--white-70)' }} onClick={() => trackSocialClick('tiktok', 'sponsorship_contact')}>TikTok</a><br />
+                  <a href="https://www.youtube.com/@WhyNotMeNicoleWhite" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--white-70)' }} onClick={() => trackSocialClick('youtube', 'sponsorship_contact')}>YouTube</a><br />
                   #WhyNotMe
                 </p>
               </div>
@@ -332,8 +333,8 @@ export default function SponsorshipPage() {
                 <p className="section-label" style={{ marginBottom: 6 }}>Partners</p>
                 <p style={{ fontSize: 14, color: 'var(--white-70)' }}>
                   Brain Tumour Support NZ<br />
-                  <a href="https://braintumoursupport.org.nz" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--gold)' }}>braintumoursupport.org.nz</a><br />
-                  Photography: <a href="https://tnrprotography.co.nz" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--gold)' }}>TNR Protography</a>
+                  <a href="https://braintumoursupport.org.nz" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--gold)' }} onClick={() => trackExternalLink('https://braintumoursupport.org.nz', 'Brain Tumour Support NZ', 'sponsorship_partners')}>braintumoursupport.org.nz</a><br />
+                  Photography: <a href="https://tnrprotography.co.nz" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--gold)' }} onClick={() => trackExternalLink('https://tnrprotography.co.nz', 'TNR Protography', 'sponsorship_partners')}>TNR Protography</a>
                 </p>
               </div>
             </div>
