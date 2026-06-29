@@ -194,6 +194,28 @@ export default function NicolesStoryPage() {
         </Reveal>
       </section>
 
+      {/* ═══════ TERRY ═══════ */}
+      <section className="story-prose story-prose-narrow">
+        <Reveal>
+          <p className="story-accent">She named it Terry.</p>
+        </Reveal>
+        <Reveal delay={0.1}>
+          <p className="story-body-lg">
+            Terry the Tumour. That is what Nicole called it. Not a clinical label. Not something whispered about. A name.
+          </p>
+        </Reveal>
+        <Reveal delay={0.15}>
+          <p className="story-body">
+            Naming it was deliberate. It turned something terrifying and abstract into something she could talk about openly, with family, with friends, with anyone. It took the weight out of the room. Instead of awkward silences and careful language, people could just ask, "How's Terry?" And Nicole could answer honestly, without it feeling like the whole world was falling apart every time.
+          </p>
+        </Reveal>
+        <Reveal delay={0.2}>
+          <p className="story-body">
+            It made the conversations easier. It made the hard days a little lighter. Terry was unwelcome, stubborn, and kept showing up uninvited, but at least now he had a name and Nicole could talk about him on her own terms.
+          </p>
+        </Reveal>
+      </section>
+
       {/* ═══════ THE FIGHT ═══════ */}
       <Chapter title="The Fight" />
 
