@@ -13,13 +13,11 @@
  *   /api/quiz-booking (POST)       — book a quiz night team
  *
  * KV binding:      DEDICATIONS
- * Email binding:   SEND_EMAIL (Send Email, unrestricted)
  * Secret:          RAISELY_API_KEY
+ * Secret:          EMAIL_WORKER_SECRET (shared with quiz-wnm worker)
  * Asset binding:   ASSETS (static site)
  * ============================================================
  */
-
-import { EmailMessage } from 'cloudflare:email';
 
 const RAISELY_API_BASE = 'https://api.raisely.com/v3'
 const RAISELY_PROFILE_UUID = '5726f720-4406-11f1-b02c-c194de4f7b8f'
@@ -724,98 +722,32 @@ async function handlePostQuizBooking(request, env) {
   })
 }
 
+const QUIZ_EMAIL_WORKER_URL = 'https://quiz-wnm.thenamesrock.workers.dev'
+
 async function sendQuizConfirmationEmail(booking, env) {
-  if (!env.SEND_EMAIL) {
-    console.error('SEND_EMAIL binding not configured, skipping confirmation email')
+  if (!env.EMAIL_WORKER_SECRET) {
+    console.error('EMAIL_WORKER_SECRET not set, skipping confirmation email')
     return
   }
 
-  const teamLabel = booking.teamName || 'Your team'
-  const memberList = booking.members.map((m, i) => `${i + 1}. ${m}`).join('\n')
-  const totalCost = booking.memberCount * 10
-  const fromAddr = 'quiz@whynotme.co.nz'
-  const toAddr = booking.email
-  const subject = `You're in! Quiz Night - ${teamLabel}`
-  const boundary = `----=_boundary_${Date.now()}`
-
-  const textBody = `You're booked in - Quiz Night Confirmation
-
-Team: ${teamLabel}
-Date: Wednesday 7 October 2026
-Time: 6:00 PM
-Venue: Monteith's Brewery, Greymouth
-People: ${booking.memberCount}
-Cost: $${totalCost} (paid at the door)
-
-Your Team:
-${memberList}
-
-IMPORTANT: Each quiz round includes a question from the documentary. Watch it before quiz night.
-Watch here: https://whynotme.co.nz/documentary
-
-See you on the night. All proceeds go to Brain Tumour Support NZ.`
-
-  const htmlBody = `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 560px; margin: 0 auto; background: #0D0D0D; color: #F5F3EC; padding: 40px 32px;">
-  <div style="text-align: center; margin-bottom: 32px;">
-    <img src="https://whynotme.co.nz/images/logos/logo-white-transparent.png" alt="Why Not Me?" style="height: 60px; margin: 0 auto;" />
-  </div>
-  <h1 style="font-size: 28px; text-align: center; margin: 0 0 8px; color: #F5F3EC;">You're booked in.</h1>
-  <p style="text-align: center; color: #A88E5D; font-size: 13px; letter-spacing: 2px; text-transform: uppercase; margin: 0 0 32px;">Quiz Night Confirmation</p>
-  <div style="background: rgba(168,142,93,0.1); border: 1px solid rgba(168,142,93,0.25); padding: 24px; margin-bottom: 24px;">
-    <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
-      <tr><td style="padding: 8px 0; color: #A88E5D;">Team</td><td style="padding: 8px 0; text-align: right;">${teamLabel}</td></tr>
-      <tr><td style="padding: 8px 0; color: #A88E5D;">Date</td><td style="padding: 8px 0; text-align: right;">Wednesday 7 October 2026</td></tr>
-      <tr><td style="padding: 8px 0; color: #A88E5D;">Time</td><td style="padding: 8px 0; text-align: right;">6:00 PM</td></tr>
-      <tr><td style="padding: 8px 0; color: #A88E5D;">Venue</td><td style="padding: 8px 0; text-align: right;">Monteith's Brewery, Greymouth</td></tr>
-      <tr><td style="padding: 8px 0; color: #A88E5D;">People</td><td style="padding: 8px 0; text-align: right;">${booking.memberCount}</td></tr>
-      <tr><td style="padding: 8px 0; color: #A88E5D;">Cost</td><td style="padding: 8px 0; text-align: right;">$${totalCost} (paid at the door)</td></tr>
-    </table>
-  </div>
-  <div style="margin-bottom: 24px;">
-    <p style="color: #A88E5D; font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; margin: 0 0 8px;">Your Team</p>
-    <p style="margin: 0; line-height: 1.8; font-size: 14px;">${booking.members.join('<br />')}</p>
-  </div>
-  <div style="background: rgba(168,142,93,0.08); border: 1px solid rgba(168,142,93,0.2); padding: 20px; text-align: center; margin-bottom: 24px;">
-    <p style="color: #A88E5D; font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; margin: 0 0 8px;">Important</p>
-    <p style="margin: 0; font-size: 14px; line-height: 1.7;">Each quiz round includes a question from the documentary. Watch it before quiz night or you will cost your team points.</p>
-    <a href="https://whynotme.co.nz/documentary" style="display: inline-block; margin-top: 16px; padding: 12px 28px; background: #A88E5D; color: #0D0D0D; text-decoration: none; font-size: 12px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;">Watch the Documentary</a>
-  </div>
-  <p style="font-size: 13px; color: rgba(245,243,236,0.4); text-align: center; line-height: 1.6;">
-    See you on the night. All proceeds go to Brain Tumour Support NZ.
-  </p>
-</div>`
-
-  // Build raw MIME message
-  const mimeMessage = [
-    `From: "Why Not Me?" <${fromAddr}>`,
-    `To: <${toAddr}>`,
-    `Subject: =?UTF-8?B?${btoa(unescape(encodeURIComponent(subject)))}?=`,
-    'MIME-Version: 1.0',
-    `Content-Type: multipart/alternative; boundary="${boundary}"`,
-    '',
-    `--${boundary}`,
-    'Content-Type: text/plain; charset=UTF-8',
-    'Content-Transfer-Encoding: quoted-printable',
-    '',
-    textBody,
-    '',
-    `--${boundary}`,
-    'Content-Type: text/html; charset=UTF-8',
-    'Content-Transfer-Encoding: quoted-printable',
-    '',
-    htmlBody,
-    '',
-    `--${boundary}--`,
-  ].join('\r\n')
-
-  const message = new EmailMessage(fromAddr, toAddr, new ReadableStream({
-    start(controller) {
-      controller.enqueue(new TextEncoder().encode(mimeMessage))
-      controller.close()
+  const res = await fetch(QUIZ_EMAIL_WORKER_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${env.EMAIL_WORKER_SECRET}`,
     },
-  }))
+    body: JSON.stringify({
+      teamName: booking.teamName,
+      members: booking.members,
+      email: booking.email,
+      memberCount: booking.memberCount,
+    }),
+  })
 
-  await env.SEND_EMAIL.send(message)
+  if (!res.ok) {
+    const errText = await res.text()
+    throw new Error(`Email worker error: ${res.status} ${errText}`)
+  }
 }
 
 // ── Main router ──────────────────────────────────────────────
