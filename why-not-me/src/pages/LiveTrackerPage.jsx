@@ -817,6 +817,8 @@ export default function LiveTrackerPage() {
     const sessionStart = raceProgress.startTimeMs
     let cumKm = 0
     let nextIdx = 0
+    let prevSplitKm = 0
+    let prevSplitTime = sessionStart
     for (let i = 1; i < routePts.length && nextIdx < SPLIT_MARKERS_KM.length; i++) {
       const a = routePts[i - 1]
       const b = routePts[i]
@@ -827,8 +829,8 @@ export default function LiveTrackerPage() {
         const shortLabel = splitKm === 21.1 ? 'Half' : splitKm === 42.2 ? 'F' : `${splitKm}`
         const t = splitTimes[splitKm]
 
-        // Build popup content with elapsed time from session start
-        let popupHtml = `<div style="font-family:Montserrat,sans-serif;font-size:12px;line-height:1.6;min-width:150px">`
+        // Build popup content with elapsed time and pace
+        let popupHtml = `<div style="font-family:Montserrat,sans-serif;font-size:12px;line-height:1.7;min-width:170px">`
         popupHtml += `<strong style="color:#A88E5D;font-size:14px">${label} km</strong><br/>`
         if (t) {
           const clockTime = new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
@@ -842,8 +844,23 @@ export default function LiveTrackerPage() {
             const elapsed = elapsedH > 0
               ? `${elapsedH}h ${String(elapsedM).padStart(2, '0')}m ${String(elapsedS).padStart(2, '0')}s`
               : `${elapsedM}m ${String(elapsedS).padStart(2, '0')}s`
-            popupHtml += `<span style="color:#A88E5D">Elapsed: ${elapsed}</span>`
+            popupHtml += `Elapsed: ${elapsed}<br/>`
+
+            // Average pace & speed for this split segment
+            const segKm = splitKm - prevSplitKm
+            const segMs = prevSplitTime ? t - prevSplitTime : null
+            if (segMs && segMs > 0 && segKm > 0) {
+              const segHours = segMs / 3600000
+              const avgSpeedKmh = segKm / segHours
+              const minPerKm = 60 / avgSpeedKmh
+              const paceMin = Math.floor(minPerKm)
+              const paceSec = Math.round((minPerKm - paceMin) * 60)
+              popupHtml += `<span style="color:#A88E5D">Avg pace: ${paceMin}:${String(paceSec >= 60 ? 0 : paceSec).padStart(2, '0')} /km</span><br/>`
+              popupHtml += `<span style="color:#A88E5D">Avg speed: ${avgSpeedKmh.toFixed(1)} km/h</span>`
+            }
           }
+          prevSplitKm = splitKm
+          prevSplitTime = t
         } else {
           popupHtml += `<span style="opacity:0.5">Pending</span>`
         }
@@ -853,7 +870,7 @@ export default function LiveTrackerPage() {
           icon: createCourseMarkerIcon(L, shortLabel, splitKm === 42.2 ? 'finish' : 'split'),
           zIndexOffset: 650,
         })
-        marker.bindPopup(popupHtml, { className: 'tracker-popup', closeButton: false })
+        marker.bindPopup(popupHtml, { className: 'tracker-popup', closeButton: false, autoPan: false })
         marker.bindTooltip(
           t ? `${shortLabel} km · tap for details` : `${shortLabel} km · pending`,
           { direction: 'top', offset: [0, -14], className: 'course-tooltip' }
@@ -862,7 +879,7 @@ export default function LiveTrackerPage() {
         nextIdx += 1
       }
     }
-  }, [mapReady, kmlTrackPath, splitTimes, raceProgress.startTimeMs, now])
+  }, [mapReady, kmlTrackPath, splitTimes, raceProgress.startTimeMs])
 
   useEffect(() => {
     if (!mapReady || !window.L || !spectatorLayerRef.current) return
@@ -1442,6 +1459,11 @@ export default function LiveTrackerPage() {
             <span className="tracker-stat-label">Distance</span>
           </div>
         </motion.div>
+
+        {/* Disclaimer */}
+        <div className="tracker-disclaimer">
+          These times are not official times. Actual times and speeds may differ from those displayed here.
+        </div>
 
         {/* Map - always renders */}
         <motion.div
