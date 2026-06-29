@@ -212,7 +212,7 @@ function DetailedDonationTracker({ middleSlot = null }) {
             </p>
             <div className="donation-detail__actions">
               <a href="https://nogoingback.nz/nicole-white" className="btn-primary" target="_blank" rel="noopener noreferrer" onClick={() => trackDonateClick('donation_detail')}>Donate now</a>
-              <Link to="/dedicate" className="btn-outline" onClick={() => trackCtaClick('Dedicate a Km - Free', 'donation_detail', '/dedicate')}>Dedicate a Km - Free</Link>
+              <Link to="/dedicate" className="btn-outline" onClick={() => trackCtaClick('Dedicate a Km', 'donation_detail', '/dedicate')}>Dedicate a Km</Link>
               <a href="#all-donations" className="btn-outline" onClick={() => trackCtaClick('See all donations', 'donation_detail', '#all-donations')}>See all donations</a>
             </div>
           </div>

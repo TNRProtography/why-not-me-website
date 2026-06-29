@@ -114,7 +114,7 @@ export default function MarathonPage() {
       <section className="marathon-dedicate-prompt" style={{ maxWidth: 980, margin: '0 auto', padding: '34px 40px 10px', textAlign: 'center' }}>
         <RevealOnScroll>
           <div style={{ padding: '30px 28px', border: '1px solid var(--gold-20)', background: 'rgba(168, 142, 93, 0.06)' }}>
-            <p className="section-label">Free Race-Day Dedication</p>
+            <p className="section-label">Race-Day Dedication</p>
             <p className="section-body" style={{ maxWidth: 640, margin: '0 auto 22px', textAlign: 'center' }}>
               Donate to Nicole's No Going Back campaign and pick a kilometre of her Queenstown Marathon to dedicate to a person, whānau, team, or cause. Every donation gives Nicole another name to carry toward the finish line.
             </p>

@@ -276,6 +276,7 @@ export default function DedicateKmPage() {
   const [shareCanvas, setShareCanvas] = useState(null)
   const [emailCredits, setEmailCredits] = useState(null) // { verified, donationCount, usedCredits, remainingCredits }
   const [checkingEmail, setCheckingEmail] = useState(false)
+  const [agreedToTerms, setAgreedToTerms] = useState(false)
   const svgWrapRef = useRef(null)
   const lastFieldRef = useRef(null)
 
@@ -311,6 +312,7 @@ export default function DedicateKmPage() {
       setError('')
       setDonateUrl(null)
       setEmailCredits(null)
+      setAgreedToTerms(false)
     }
   }
 
@@ -331,6 +333,7 @@ export default function DedicateKmPage() {
     setDonateUrl(null)
     setEmailCredits(null)
     setCheckingEmail(false)
+    setAgreedToTerms(false)
   }
 
   const handleCheckEmail = async (e) => {
@@ -687,7 +690,7 @@ export default function DedicateKmPage() {
           <h2>The road is full - but the love is not.</h2>
           <p>Donated via No Going Back? Leave Nicole a message below and we’ll add it to the wall of support she carries with her.</p>
           <p style={{ fontSize: '0.8rem', opacity: 0.45, marginTop: '-12px', marginBottom: '20px' }}>Each donation lets you leave one message.</p>
-          <button className="btn-primary" onClick={() => { setOpenMessageForm(true); setFormData({ name: '', email: '', dedicatedTo: 'Nicole', message: '' }); setError(''); setEmailCredits(null); setDonateUrl(null); trackSupportMessageFormOpen() }}>Leave a Message</button>
+          <button className="btn-primary" onClick={() => { setOpenMessageForm(true); setFormData({ name: '', email: '', dedicatedTo: 'Nicole', message: '' }); setError(''); setEmailCredits(null); setDonateUrl(null); setAgreedToTerms(false); trackSupportMessageFormOpen() }}>Leave a Message</button>
           {genericMessages.length > 0 && (
             <div className="dedicate-message-wall">
               {genericMessages.slice(0, 6).map((item) => (
@@ -781,7 +784,7 @@ export default function DedicateKmPage() {
                       value={formData.dedicatedTo} onChange={(e) => setFormData({ ...formData, dedicatedTo: e.target.value })}
                       onFocus={() => { lastFieldRef.current = 'dedicatedTo'; trackDedicationFieldFocus('dedicatedTo', selectedKm) }}
                       required />
-                    <div className="dedicate-field-hint">Tip: You can include multiple names in one dedication — e.g. "Mum, Dad &amp; the kids"</div>
+                    <div className="dedicate-field-hint">Tip: You can include multiple names in one dedication, e.g. "Mum, Dad &amp; the kids"</div>
                   </div>
                   <div className="dedicate-field">
                     <label htmlFor="dedicate-message">Message (optional)</label>
@@ -790,7 +793,12 @@ export default function DedicateKmPage() {
                       onFocus={() => { lastFieldRef.current = 'message'; trackDedicationFieldFocus('message', selectedKm) }} />
                     <div className="dedicate-field-hint">{formData.message.length}/150</div>
                   </div>
-                  <button type="submit" className="btn-primary dedicate-submit" disabled={submitting}>
+                  <label className="dedicate-terms-check" style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer', fontSize: '0.8rem', color: 'rgba(245,243,236,0.5)', lineHeight: '1.5', userSelect: 'none' }}>
+                    <input type="checkbox" checked={agreedToTerms} onChange={(e) => setAgreedToTerms(e.target.checked)}
+                      style={{ marginTop: '3px', accentColor: '#A88E5D', flexShrink: 0 }} />
+                    <span>I understand that inappropriate language or abuse of any kind will not be tolerated and my dedication may be removed without notice.</span>
+                  </label>
+                  <button type="submit" className="btn-primary dedicate-submit" disabled={submitting || !agreedToTerms}>
                     {submitting ? 'Verifying…' : 'Dedicate This Kilometre'}
                   </button>
                   {error && <p className="dedicate-error">{error}</p>}
@@ -886,14 +894,19 @@ export default function DedicateKmPage() {
                   <div className="dedicate-field">
                     <label htmlFor="generic-for">Message For</label>
                     <input id="generic-for" type="text" placeholder="Nicole, the team, or a loved one" maxLength={80} value={formData.dedicatedTo} onChange={(e) => setFormData({ ...formData, dedicatedTo: e.target.value })} required />
-                    <div className="dedicate-field-hint">Tip: You can include multiple names — e.g. "Nicole, the team &amp; all supporters"</div>
+                    <div className="dedicate-field-hint">Tip: You can include multiple names, e.g. "Nicole, the team &amp; all supporters"</div>
                   </div>
                   <div className="dedicate-field">
                     <label htmlFor="generic-message">Message</label>
                     <textarea id="generic-message" placeholder="A short message for Nicole to carry with her" maxLength={150} value={formData.message} onChange={(e) => setFormData({ ...formData, message: e.target.value })} required />
                     <div className="dedicate-field-hint">{formData.message.length}/150</div>
                   </div>
-                  <button type="submit" className="btn-primary dedicate-submit" disabled={submitting}>{submitting ? 'Sending…' : 'Send Message'}</button>
+                  <label className="dedicate-terms-check" style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer', fontSize: '0.8rem', color: 'rgba(245,243,236,0.5)', lineHeight: '1.5', userSelect: 'none' }}>
+                    <input type="checkbox" checked={agreedToTerms} onChange={(e) => setAgreedToTerms(e.target.checked)}
+                      style={{ marginTop: '3px', accentColor: '#A88E5D', flexShrink: 0 }} />
+                    <span>I understand that inappropriate language or abuse of any kind will not be tolerated and my message may be removed without notice.</span>
+                  </label>
+                  <button type="submit" className="btn-primary dedicate-submit" disabled={submitting || !agreedToTerms}>{submitting ? 'Sending…' : 'Send Message'}</button>
                   {error && <p className="dedicate-error">{error}</p>}
                   {donateUrl && (
                     <a href={donateUrl} target="_blank" rel="noopener noreferrer" className="btn-primary" style={{ marginTop: '0.5rem', display: 'inline-block', textAlign: 'center', width: '100%' }} onClick={() => trackDonateClick('message_modal_fallback')}>
