@@ -274,6 +274,8 @@ export default function DedicateKmPage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [shareCanvas, setShareCanvas] = useState(null)
+  const [emailCredits, setEmailCredits] = useState(null) // { verified, donationCount, usedCredits, remainingCredits }
+  const [checkingEmail, setCheckingEmail] = useState(false)
   const svgWrapRef = useRef(null)
   const lastFieldRef = useRef(null)
 
@@ -308,6 +310,7 @@ export default function DedicateKmPage() {
       setFormData({ name: '', email: '', dedicatedTo: '', message: '' })
       setError('')
       setDonateUrl(null)
+      setEmailCredits(null)
     }
   }
 
@@ -326,7 +329,51 @@ export default function DedicateKmPage() {
     setShareCanvas(null)
     setError('')
     setDonateUrl(null)
+    setEmailCredits(null)
+    setCheckingEmail(false)
   }
+
+  const handleCheckEmail = async (e) => {
+    e.preventDefault()
+    const email = formData.email.trim()
+    if (!email) { setError('Please enter your donation email.'); return }
+    setCheckingEmail(true)
+    setError('')
+    setDonateUrl(null)
+    try {
+      const res = await fetch('/api/dedications/check-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error || 'Unable to verify. Please try again.')
+        setCheckingEmail(false)
+        return
+      }
+      if (!data.verified) {
+        setError("We couldn't find a donation matching that email.")
+        setDonateUrl(RAISELY_DONATION_URL)
+        setCheckingEmail(false)
+        return
+      }
+      if (data.remainingCredits <= 0) {
+        setError(`You've used all ${data.donationCount} dedication${data.donationCount === 1 ? '' : 's'} from your donation${data.donationCount === 1 ? '' : 's'}. Donate again to dedicate another!`)
+        setDonateUrl(RAISELY_DONATION_URL)
+        setEmailCredits(data)
+        setCheckingEmail(false)
+        return
+      }
+      setEmailCredits(data)
+      setCheckingEmail(false)
+    } catch {
+      setError('Could not connect. Please try again.')
+      setCheckingEmail(false)
+    }
+  }
+
+  const RAISELY_DONATION_URL = 'https://nogoingback.nz/nicole-white'
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -346,6 +393,7 @@ export default function DedicateKmPage() {
       setDedications(data.dedications || {})
       setSelectedKm(null)
       setSubmitting(false)
+      setEmailCredits(null)
       trackDedicationSuccess(claimedKm)
 
       // Celebration
@@ -375,15 +423,16 @@ export default function DedicateKmPage() {
       const res = await fetch('/api/dedications/message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: formData.name, dedicatedTo: formData.dedicatedTo, message: formData.message }),
+        body: JSON.stringify({ name: formData.name, email: formData.email, dedicatedTo: formData.dedicatedTo, message: formData.message }),
       })
       const data = await res.json()
-      if (!res.ok) { setError(data.error || 'Something went wrong.'); setSubmitting(false); return }
+      if (!res.ok) { setError(data.error || 'Something went wrong.'); setDonateUrl(data.donateUrl || null); setSubmitting(false); return }
       setGenericMessages(data.messages || [])
       setFormData({ name: '', email: '', dedicatedTo: '', message: '' })
       setSubmitting(false)
       setOpenMessageForm(false)
       setMessageSuccess(true)
+      setEmailCredits(null)
       spawnConfetti()
     } catch {
       setError('Could not connect. Please try again.')
@@ -430,7 +479,7 @@ export default function DedicateKmPage() {
           <p className="section-label">Queenstown Marathon</p>
           <h1>Dedicate a Kilometre.</h1>
           <p className="dedicate-hero-subtitle">
-            Nicole is running 42.2 km for Brain Tumour Support NZ. Donate to her No Going Back campaign, dedicate a kilometre to someone who matters to you, and she will carry every name along the road with her.
+            Nicole is running 42.2 km for Brain Tumour Support NZ. Every donation to her No Going Back campaign earns you a kilometre to dedicate to someone who matters. She’ll carry every name along the road with her.
           </p>
         </div>
       </section>
@@ -636,8 +685,9 @@ export default function DedicateKmPage() {
         <section className="dedicate-full-section">
           <p className="section-label">All Kilometres Claimed</p>
           <h2>The road is full - but the love is not.</h2>
-          <p>Leave Nicole a message below and we’ll add it to the wall of support she carries with her.</p>
-          <button className="btn-primary" onClick={() => { setOpenMessageForm(true); setFormData({ name: '', email: '', dedicatedTo: 'Nicole', message: '' }); setError(''); trackSupportMessageFormOpen() }}>Leave a Message</button>
+          <p>Donated via No Going Back? Leave Nicole a message below and we’ll add it to the wall of support she carries with her.</p>
+          <p style={{ fontSize: '0.8rem', opacity: 0.45, marginTop: '-12px', marginBottom: '20px' }}>Each donation lets you leave one message.</p>
+          <button className="btn-primary" onClick={() => { setOpenMessageForm(true); setFormData({ name: '', email: '', dedicatedTo: 'Nicole', message: '' }); setError(''); setEmailCredits(null); setDonateUrl(null); trackSupportMessageFormOpen() }}>Leave a Message</button>
           {genericMessages.length > 0 && (
             <div className="dedicate-message-wall">
               {genericMessages.slice(0, 6).map((item) => (
@@ -657,7 +707,7 @@ export default function DedicateKmPage() {
         <RevealOnScroll>
           <p className="section-label">Every Kilometre Counts</p>
           <p className="section-body">
-            Every donation claims a kilometre of Nicole's marathon. Dedicate it to someone you love and she'll carry their name with her. All support goes to Brain Tumour Support NZ.
+            Every donation earns you a kilometre of Nicole's marathon to dedicate. Donate multiple times to claim multiple kilometres. You can include several names in a single dedication too. All support goes to Brain Tumour Support NZ.
           </p>
           <div className="dedicate-cta-buttons">
             <a href="https://nogoingback.nz/nicole-white" target="_blank" rel="noopener noreferrer" className="btn-primary" onClick={() => trackDonateClick('dedicate_bottom_cta')}>Donate &amp; Dedicate a Km</a>
@@ -673,49 +723,85 @@ export default function DedicateKmPage() {
             <button className="dedicate-modal-close" onClick={handleClose} aria-label="Close">&times;</button>
             <div className="dedicate-modal-km">Km {selectedKm}</div>
             <div className="dedicate-modal-heading">Dedicate This Kilometre</div>
-            <p className="dedicate-modal-subtext" style={{ fontSize: '0.85rem', opacity: 0.6, margin: '-0.25rem 0 1rem', textAlign: 'center' }}>
-              Donated via <a href="https://nogoingback.nz/nicole-white" target="_blank" rel="noopener noreferrer" style={{ color: '#A88E5D' }} onClick={() => trackExternalLink('https://nogoingback.nz/nicole-white', 'No Going Back', 'dedicate_form')}>No Going Back</a>? Enter your details below to dedicate this km.
-            </p>
-            <form className="dedicate-form" onSubmit={handleSubmit}>
-              <div className="dedicate-field">
-                <label htmlFor="dedicate-name">Your Name</label>
-                <input id="dedicate-name" type="text" placeholder="Your name" maxLength={80}
-                  value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  onFocus={() => { lastFieldRef.current = 'name'; trackDedicationFieldFocus('name', selectedKm) }}
-                  autoFocus required />
-              </div>
-              <div className="dedicate-field">
-                <label htmlFor="dedicate-email">Donation Email</label>
-                <input id="dedicate-email" type="email" placeholder="The email you donated with"
-                  value={formData.email} onChange={(e) => { setFormData({ ...formData, email: e.target.value }); setDonateUrl(null); setError('') }}
-                  onFocus={() => { lastFieldRef.current = 'email'; trackDedicationFieldFocus('email', selectedKm) }}
-                  required />
-                <div className="dedicate-field-hint">The email address you used when donating via No Going Back</div>
-              </div>
-              <div className="dedicate-field">
-                <label htmlFor="dedicate-for">Dedicating This Km To</label>
-                <input id="dedicate-for" type="text" placeholder="A person, a group, or a cause" maxLength={80}
-                  value={formData.dedicatedTo} onChange={(e) => setFormData({ ...formData, dedicatedTo: e.target.value })}
-                  onFocus={() => { lastFieldRef.current = 'dedicatedTo'; trackDedicationFieldFocus('dedicatedTo', selectedKm) }}
-                  required />
-              </div>
-              <div className="dedicate-field">
-                <label htmlFor="dedicate-message">Message (optional)</label>
-                <textarea id="dedicate-message" placeholder="A short message for Nicole to carry with her" maxLength={150}
-                  value={formData.message} onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                  onFocus={() => { lastFieldRef.current = 'message'; trackDedicationFieldFocus('message', selectedKm) }} />
-                <div className="dedicate-field-hint">{formData.message.length}/150</div>
-              </div>
-              <button type="submit" className="btn-primary dedicate-submit" disabled={submitting}>
-                {submitting ? 'Verifying…' : 'Dedicate This Kilometre'}
-              </button>
-              {error && <p className="dedicate-error">{error}</p>}
-              {donateUrl && (
-                <a href={donateUrl} target="_blank" rel="noopener noreferrer" className="btn-primary" style={{ marginTop: '0.5rem', display: 'inline-block', textAlign: 'center', width: '100%' }} onClick={() => trackDonateClick('dedication_modal_fallback')}>
-                  Donate via No Going Back
-                </a>
-              )}
-            </form>
+
+            {/* Step 1: Email verification */}
+            {!emailCredits || emailCredits.remainingCredits <= 0 ? (
+              <>
+                <p className="dedicate-modal-subtext" style={{ fontSize: '0.85rem', opacity: 0.6, margin: '-0.25rem 0 1rem', textAlign: 'center' }}>
+                  Enter the email you donated with via <a href="https://nogoingback.nz/nicole-white" target="_blank" rel="noopener noreferrer" style={{ color: '#A88E5D' }} onClick={() => trackExternalLink('https://nogoingback.nz/nicole-white', 'No Going Back', 'dedicate_form')}>No Going Back</a> to dedicate this km.
+                </p>
+                <p className="dedicate-modal-subtext" style={{ fontSize: '0.8rem', opacity: 0.45, margin: '-0.5rem 0 1rem', textAlign: 'center' }}>
+                  Each donation lets you dedicate one kilometre.
+                </p>
+                <form className="dedicate-form" onSubmit={handleCheckEmail}>
+                  <div className="dedicate-field">
+                    <label htmlFor="dedicate-email">Donation Email</label>
+                    <input id="dedicate-email" type="email" placeholder="The email you donated with"
+                      value={formData.email} onChange={(e) => { setFormData({ ...formData, email: e.target.value }); setDonateUrl(null); setError('') }}
+                      onFocus={() => { lastFieldRef.current = 'email'; trackDedicationFieldFocus('email', selectedKm) }}
+                      autoFocus required />
+                    <div className="dedicate-field-hint">The email address you used when donating via No Going Back</div>
+                  </div>
+                  <button type="submit" className="btn-primary dedicate-submit" disabled={checkingEmail}>
+                    {checkingEmail ? 'Checking…' : 'Check My Donations'}
+                  </button>
+                  {error && <p className="dedicate-error">{error}</p>}
+                  {donateUrl && (
+                    <a href={donateUrl} target="_blank" rel="noopener noreferrer" className="btn-primary" style={{ marginTop: '0.5rem', display: 'inline-block', textAlign: 'center', width: '100%' }} onClick={() => trackDonateClick('dedication_modal_fallback')}>
+                      Donate via No Going Back
+                    </a>
+                  )}
+                </form>
+              </>
+            ) : (
+              /* Step 2: Full form after email verified */
+              <>
+                <div className="dedicate-credits-bar" style={{ background: 'rgba(168,142,93,0.1)', border: '1px solid rgba(168,142,93,0.25)', padding: '12px 16px', marginBottom: '20px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '0.8rem', color: 'rgba(245,243,236,0.5)', marginBottom: '4px' }}>
+                    {formData.email}
+                  </div>
+                  <div style={{ fontSize: '0.95rem', color: '#A88E5D', fontWeight: '700' }}>
+                    {emailCredits.remainingCredits} dedication{emailCredits.remainingCredits === 1 ? '' : 's'} remaining
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: 'rgba(245,243,236,0.35)', marginTop: '2px' }}>
+                    from {emailCredits.donationCount} donation{emailCredits.donationCount === 1 ? '' : 's'} · {emailCredits.usedCredits} used
+                  </div>
+                </div>
+                <form className="dedicate-form" onSubmit={handleSubmit}>
+                  <div className="dedicate-field">
+                    <label htmlFor="dedicate-name">Your Name</label>
+                    <input id="dedicate-name" type="text" placeholder="Your name" maxLength={80}
+                      value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      onFocus={() => { lastFieldRef.current = 'name'; trackDedicationFieldFocus('name', selectedKm) }}
+                      autoFocus required />
+                  </div>
+                  <div className="dedicate-field">
+                    <label htmlFor="dedicate-for">Dedicating This Km To</label>
+                    <input id="dedicate-for" type="text" placeholder="A person, a group, or a cause" maxLength={80}
+                      value={formData.dedicatedTo} onChange={(e) => setFormData({ ...formData, dedicatedTo: e.target.value })}
+                      onFocus={() => { lastFieldRef.current = 'dedicatedTo'; trackDedicationFieldFocus('dedicatedTo', selectedKm) }}
+                      required />
+                    <div className="dedicate-field-hint">Tip: You can include multiple names in one dedication — e.g. "Mum, Dad &amp; the kids"</div>
+                  </div>
+                  <div className="dedicate-field">
+                    <label htmlFor="dedicate-message">Message (optional)</label>
+                    <textarea id="dedicate-message" placeholder="A short message for Nicole to carry with her" maxLength={150}
+                      value={formData.message} onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                      onFocus={() => { lastFieldRef.current = 'message'; trackDedicationFieldFocus('message', selectedKm) }} />
+                    <div className="dedicate-field-hint">{formData.message.length}/150</div>
+                  </div>
+                  <button type="submit" className="btn-primary dedicate-submit" disabled={submitting}>
+                    {submitting ? 'Verifying…' : 'Dedicate This Kilometre'}
+                  </button>
+                  {error && <p className="dedicate-error">{error}</p>}
+                  {donateUrl && (
+                    <a href={donateUrl} target="_blank" rel="noopener noreferrer" className="btn-primary" style={{ marginTop: '0.5rem', display: 'inline-block', textAlign: 'center', width: '100%' }} onClick={() => trackDonateClick('dedication_modal_fallback')}>
+                      Donate via No Going Back
+                    </a>
+                  )}
+                </form>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -749,23 +835,74 @@ export default function DedicateKmPage() {
             <button className="dedicate-modal-close" onClick={handleClose} aria-label="Close">&times;</button>
             <div className="dedicate-modal-km">Message</div>
             <div className="dedicate-modal-heading">Leave Support For Nicole</div>
-            <form className="dedicate-form" onSubmit={handleGenericMessageSubmit}>
-              <div className="dedicate-field">
-                <label htmlFor="generic-name">Your Name</label>
-                <input id="generic-name" type="text" placeholder="Your name" maxLength={80} value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} autoFocus required />
-              </div>
-              <div className="dedicate-field">
-                <label htmlFor="generic-for">Message For</label>
-                <input id="generic-for" type="text" placeholder="Nicole, the team, or a loved one" maxLength={80} value={formData.dedicatedTo} onChange={(e) => setFormData({ ...formData, dedicatedTo: e.target.value })} required />
-              </div>
-              <div className="dedicate-field">
-                <label htmlFor="generic-message">Message</label>
-                <textarea id="generic-message" placeholder="A short message for Nicole to carry with her" maxLength={150} value={formData.message} onChange={(e) => setFormData({ ...formData, message: e.target.value })} required />
-                <div className="dedicate-field-hint">{formData.message.length}/150</div>
-              </div>
-              <button type="submit" className="btn-primary dedicate-submit" disabled={submitting}>{submitting ? 'Sending…' : 'Send Message'}</button>
-              {error && <p className="dedicate-error">{error}</p>}
-            </form>
+
+            {/* Step 1: Email verification */}
+            {!emailCredits || emailCredits.remainingCredits <= 0 ? (
+              <>
+                <p className="dedicate-modal-subtext" style={{ fontSize: '0.85rem', opacity: 0.6, margin: '-0.25rem 0 1rem', textAlign: 'center' }}>
+                  Enter the email you donated with to leave a message.
+                </p>
+                <p className="dedicate-modal-subtext" style={{ fontSize: '0.8rem', opacity: 0.45, margin: '-0.5rem 0 1rem', textAlign: 'center' }}>
+                  Each donation lets you leave one message.
+                </p>
+                <form className="dedicate-form" onSubmit={handleCheckEmail}>
+                  <div className="dedicate-field">
+                    <label htmlFor="msg-email">Donation Email</label>
+                    <input id="msg-email" type="email" placeholder="The email you donated with"
+                      value={formData.email} onChange={(e) => { setFormData({ ...formData, email: e.target.value }); setDonateUrl(null); setError('') }}
+                      autoFocus required />
+                    <div className="dedicate-field-hint">The email address you used when donating via No Going Back</div>
+                  </div>
+                  <button type="submit" className="btn-primary dedicate-submit" disabled={checkingEmail}>
+                    {checkingEmail ? 'Checking…' : 'Check My Donations'}
+                  </button>
+                  {error && <p className="dedicate-error">{error}</p>}
+                  {donateUrl && (
+                    <a href={donateUrl} target="_blank" rel="noopener noreferrer" className="btn-primary" style={{ marginTop: '0.5rem', display: 'inline-block', textAlign: 'center', width: '100%' }} onClick={() => trackDonateClick('message_modal_fallback')}>
+                      Donate via No Going Back
+                    </a>
+                  )}
+                </form>
+              </>
+            ) : (
+              /* Step 2: Full form after email verified */
+              <>
+                <div className="dedicate-credits-bar" style={{ background: 'rgba(168,142,93,0.1)', border: '1px solid rgba(168,142,93,0.25)', padding: '12px 16px', marginBottom: '20px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '0.8rem', color: 'rgba(245,243,236,0.5)', marginBottom: '4px' }}>
+                    {formData.email}
+                  </div>
+                  <div style={{ fontSize: '0.95rem', color: '#A88E5D', fontWeight: '700' }}>
+                    {emailCredits.remainingCredits} message{emailCredits.remainingCredits === 1 ? '' : 's'} remaining
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: 'rgba(245,243,236,0.35)', marginTop: '2px' }}>
+                    from {emailCredits.donationCount} donation{emailCredits.donationCount === 1 ? '' : 's'} · {emailCredits.usedCredits} used
+                  </div>
+                </div>
+                <form className="dedicate-form" onSubmit={handleGenericMessageSubmit}>
+                  <div className="dedicate-field">
+                    <label htmlFor="generic-name">Your Name</label>
+                    <input id="generic-name" type="text" placeholder="Your name" maxLength={80} value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} autoFocus required />
+                  </div>
+                  <div className="dedicate-field">
+                    <label htmlFor="generic-for">Message For</label>
+                    <input id="generic-for" type="text" placeholder="Nicole, the team, or a loved one" maxLength={80} value={formData.dedicatedTo} onChange={(e) => setFormData({ ...formData, dedicatedTo: e.target.value })} required />
+                    <div className="dedicate-field-hint">Tip: You can include multiple names — e.g. "Nicole, the team &amp; all supporters"</div>
+                  </div>
+                  <div className="dedicate-field">
+                    <label htmlFor="generic-message">Message</label>
+                    <textarea id="generic-message" placeholder="A short message for Nicole to carry with her" maxLength={150} value={formData.message} onChange={(e) => setFormData({ ...formData, message: e.target.value })} required />
+                    <div className="dedicate-field-hint">{formData.message.length}/150</div>
+                  </div>
+                  <button type="submit" className="btn-primary dedicate-submit" disabled={submitting}>{submitting ? 'Sending…' : 'Send Message'}</button>
+                  {error && <p className="dedicate-error">{error}</p>}
+                  {donateUrl && (
+                    <a href={donateUrl} target="_blank" rel="noopener noreferrer" className="btn-primary" style={{ marginTop: '0.5rem', display: 'inline-block', textAlign: 'center', width: '100%' }} onClick={() => trackDonateClick('message_modal_fallback')}>
+                      Donate via No Going Back
+                    </a>
+                  )}
+                </form>
+              </>
+            )}
           </div>
         </div>
       )}

@@ -7,7 +7,8 @@
  *   /api/donate             — redirect to Raisely donation page
  *   /api/dedications (GET)  — list all claimed km dedications
  *   /api/dedications (POST) — claim a km (requires verified donation)
- *   /api/dedications/message (POST) — leave a support message
+ *   /api/dedications/check-email (POST) — check donation credits for email
+ *   /api/dedications/message (POST) — leave a support message (requires donation)
  *
  * KV binding:   DEDICATIONS
  * Secret:       RAISELY_API_KEY
@@ -302,54 +303,113 @@ async function getDedicationMessages(env) {
 async function handleGetDedications(env) {
   const dedications = await getDedications(env)
   const messages = await getDedicationMessages(env)
+
+  // Strip emails before sending public response
+  const publicDedications = {}
+  for (const [k, v] of Object.entries(dedications)) {
+    const { email: _, ...rest } = v
+    publicDedications[k] = rest
+  }
+
+  const publicMessages = messages.map(({ email: _, ...rest }) => rest)
+
   return dedicationResponse({
-    dedications,
-    messages,
+    dedications: publicDedications,
+    messages: publicMessages,
     totalKilometres: TOTAL_KILOMETRES,
     claimed: Object.keys(dedications).length,
     remaining: TOTAL_KILOMETRES - Object.keys(dedications).length,
   })
 }
 
-// ── Raisely Donation Verification ────────────────────────────
+// ── Raisely Donation Verification & Counting ────────────────
 
-async function verifyDonation(email, env) {
-  if (!email) return { verified: false }
+async function verifyAndCountDonations(email, env) {
+  if (!email) return { verified: false, donationCount: 0 }
   if (!env.RAISELY_API_KEY) {
     console.error('RAISELY_API_KEY secret is not set')
-    return { verified: false, error: 'Donation verification is not configured.' }
+    return { verified: false, donationCount: 0, error: 'Donation verification is not configured.' }
   }
 
-  const url = new URL(`${RAISELY_API_BASE}/donations`)
-  url.searchParams.set('campaign', RAISELY_CAMPAIGN_UUID)
-  url.searchParams.set('private', 'true')
-  url.searchParams.set('q', email.trim().toLowerCase())
-  url.searchParams.set('status', 'OK')
-  url.searchParams.set('limit', '5')
+  const normalised = email.trim().toLowerCase()
+  const allMatches = []
+  let offset = 0
+  const PAGE = 100
 
-  const res = await fetch(url.toString(), {
-    headers: {
-      Authorization: `Bearer ${env.RAISELY_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-  })
+  // Paginate through all donations matching the email
+  while (offset < MAX_DONATIONS) {
+    const url = new URL(`${RAISELY_API_BASE}/donations`)
+    url.searchParams.set('campaign', RAISELY_CAMPAIGN_UUID)
+    url.searchParams.set('private', 'true')
+    url.searchParams.set('q', normalised)
+    url.searchParams.set('status', 'OK')
+    url.searchParams.set('limit', String(PAGE))
+    url.searchParams.set('offset', String(offset))
 
-  if (!res.ok) {
-    console.error(`Raisely verification failed: ${res.status} ${res.statusText}`)
-    return { verified: false, error: 'Could not verify donation status.' }
+    const res = await fetch(url.toString(), {
+      headers: {
+        Authorization: `Bearer ${env.RAISELY_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+    })
+
+    if (!res.ok) {
+      console.error(`Raisely verification failed: ${res.status} ${res.statusText}`)
+      return { verified: false, donationCount: 0, error: 'Could not verify donation status.' }
+    }
+
+    const data = await res.json()
+    const page = data.data || []
+    if (page.length === 0) break
+
+    // The q param is fuzzy — only count exact email matches
+    for (const d of page) {
+      if (d.email?.toLowerCase() === normalised) {
+        allMatches.push(d)
+      }
+    }
+
+    if (page.length < PAGE) break
+    offset += PAGE
   }
 
-  const data = await res.json()
-  const donations = data.data || []
+  return {
+    verified: allMatches.length > 0,
+    donationCount: allMatches.length,
+  }
+}
 
-  if (donations.length === 0) return { verified: false }
+// Count how many dedications + messages this email has already used
+async function countUsedCredits(email, env) {
+  const normalised = email.trim().toLowerCase()
+  let used = 0
 
-  // The q param is fuzzy — double-check exact email match
-  const match = donations.find(
-    (d) => d.email?.toLowerCase() === email.trim().toLowerCase()
-  )
+  // Count km dedications by this email
+  await Promise.all(Array.from({ length: TOTAL_KILOMETRES }, async (_, index) => {
+    const km = String(index + 1)
+    const raw = await env.DEDICATIONS.get(dedicationKey(km))
+    if (raw) {
+      const dedication = JSON.parse(raw)
+      if (dedication.email?.toLowerCase() === normalised) used++
+    }
+  }))
 
-  return match ? { verified: true } : { verified: false }
+  // Also check legacy dedications
+  const legacyRaw = await env.DEDICATIONS.get(LEGACY_DEDICATIONS_KEY)
+  if (legacyRaw) {
+    const legacy = JSON.parse(legacyRaw)
+    for (const dedication of Object.values(legacy)) {
+      if (dedication.email?.toLowerCase() === normalised) used++
+    }
+  }
+
+  // Count messages by this email
+  const messages = await getDedicationMessages(env)
+  for (const msg of messages) {
+    if (msg.email?.toLowerCase() === normalised) used++
+  }
+
+  return used
 }
 
 // ── Post Dedication (with verification) ──────────────────────
@@ -382,8 +442,8 @@ async function handlePostDedication(request, env) {
     return dedicationResponse({ error: 'Please enter the email you donated with.' }, 400)
   }
 
-  // ── Verify donation via Raisely ──
-  const verification = await verifyDonation(email, env)
+  // ── Verify donation via Raisely & count donations ──
+  const verification = await verifyAndCountDonations(email, env)
 
   if (verification.error) {
     return dedicationResponse({
@@ -398,7 +458,18 @@ async function handlePostDedication(request, env) {
     }, 403)
   }
 
-  // ── Donation verified — proceed with claiming ──
+  // ── Check remaining credits (1 donation = 1 dedication or message) ──
+  const usedCredits = await countUsedCredits(email, env)
+  const remaining = verification.donationCount - usedCredits
+
+  if (remaining <= 0) {
+    return dedicationResponse({
+      error: `You've used all ${verification.donationCount} dedication${verification.donationCount === 1 ? '' : 's'} from your donation${verification.donationCount === 1 ? '' : 's'}. Donate again to dedicate another km!`,
+      donateUrl: RAISELY_DONATION_URL,
+    }, 403)
+  }
+
+  // ── Credits available — proceed with claiming ──
   const dedications = await getDedications(env)
 
   if (dedications[String(km)]) {
@@ -409,18 +480,27 @@ async function handlePostDedication(request, env) {
     name,
     dedicatedTo,
     message,
+    email,
     createdAt: new Date().toISOString(),
   }
 
   await env.DEDICATIONS.put(dedicationKey(km), JSON.stringify(dedications[String(km)]))
 
+  // Strip emails before sending response
+  const publicDedications = {}
+  for (const [k, v] of Object.entries(dedications)) {
+    const { email: _, ...rest } = v
+    publicDedications[k] = rest
+  }
+
   return dedicationResponse({
     success: true,
     km,
-    dedications,
+    dedications: publicDedications,
     totalKilometres: TOTAL_KILOMETRES,
     claimed: Object.keys(dedications).length,
     remaining: TOTAL_KILOMETRES - Object.keys(dedications).length,
+    creditsRemaining: remaining - 1,
   })
 }
 
@@ -433,11 +513,15 @@ async function handlePostDedicationMessage(request, env) {
   }
 
   const name = (body.name || '').trim().slice(0, 80)
+  const email = (body.email || '').trim().toLowerCase()
   const dedicatedTo = (body.dedicatedTo || '').trim().slice(0, 80)
   const message = (body.message || '').trim().slice(0, 150)
 
   if (!name) {
     return dedicationResponse({ error: 'Name is required.' }, 400)
+  }
+  if (!email) {
+    return dedicationResponse({ error: 'Please enter the email you donated with.' }, 400)
   }
   if (!dedicatedTo) {
     return dedicationResponse({ error: 'Please say who this message is for.' }, 400)
@@ -446,10 +530,38 @@ async function handlePostDedicationMessage(request, env) {
     return dedicationResponse({ error: 'Please add a message.' }, 400)
   }
 
+  // ── Verify donation via Raisely & count donations ──
+  const verification = await verifyAndCountDonations(email, env)
+
+  if (verification.error) {
+    return dedicationResponse({
+      error: 'Unable to verify your donation right now. Please try again shortly.',
+    }, 503)
+  }
+
+  if (!verification.verified) {
+    return dedicationResponse({
+      error: "We couldn't find a donation matching that email. Donate via No Going Back to leave a message!",
+      donateUrl: RAISELY_DONATION_URL,
+    }, 403)
+  }
+
+  // ── Check remaining credits ──
+  const usedCredits = await countUsedCredits(email, env)
+  const remaining = verification.donationCount - usedCredits
+
+  if (remaining <= 0) {
+    return dedicationResponse({
+      error: `You've used all ${verification.donationCount} dedication${verification.donationCount === 1 ? '' : 's'} from your donation${verification.donationCount === 1 ? '' : 's'}. Donate again to leave another message!`,
+      donateUrl: RAISELY_DONATION_URL,
+    }, 403)
+  }
+
   const messages = await getDedicationMessages(env)
   const nextMessage = {
     id: crypto.randomUUID(),
     name,
+    email,
     dedicatedTo,
     message,
     createdAt: new Date().toISOString(),
@@ -458,10 +570,57 @@ async function handlePostDedicationMessage(request, env) {
 
   await env.DEDICATIONS.put(DEDICATION_MESSAGES_KEY, JSON.stringify(nextMessages))
 
+  // Strip emails from public response
+  const publicMessages = nextMessages.map(({ email: _, ...rest }) => rest)
+
   return dedicationResponse({
     success: true,
-    message: nextMessage,
-    messages: nextMessages,
+    message: { ...nextMessage, email: undefined },
+    messages: publicMessages,
+    creditsRemaining: remaining - 1,
+  })
+}
+
+// ── Check email credits ──────────────────────────────────────
+
+async function handleCheckEmail(request, env) {
+  let body
+  try {
+    body = await request.json()
+  } catch {
+    return dedicationResponse({ error: 'Invalid JSON.' }, 400)
+  }
+
+  const email = (body.email || '').trim().toLowerCase()
+  if (!email) {
+    return dedicationResponse({ error: 'Email is required.' }, 400)
+  }
+
+  const verification = await verifyAndCountDonations(email, env)
+
+  if (verification.error) {
+    return dedicationResponse({
+      error: 'Unable to verify your donation right now. Please try again shortly.',
+    }, 503)
+  }
+
+  if (!verification.verified) {
+    return dedicationResponse({
+      verified: false,
+      donationCount: 0,
+      usedCredits: 0,
+      remainingCredits: 0,
+    })
+  }
+
+  const usedCredits = await countUsedCredits(email, env)
+  const remainingCredits = Math.max(0, verification.donationCount - usedCredits)
+
+  return dedicationResponse({
+    verified: true,
+    donationCount: verification.donationCount,
+    usedCredits,
+    remainingCredits,
   })
 }
 
@@ -485,6 +644,14 @@ export default {
 
     if (url.pathname === '/api/donate') {
       return Response.redirect(RAISELY_DONATION_URL, 302)
+    }
+
+    if (url.pathname === '/api/dedications/check-email' && request.method === 'POST') {
+      try {
+        return await handleCheckEmail(request, env)
+      } catch (error) {
+        return dedicationResponse({ error: 'Unable to check donation status.' }, 500)
+      }
     }
 
     if (url.pathname === '/api/dedications/message' && request.method === 'POST') {
