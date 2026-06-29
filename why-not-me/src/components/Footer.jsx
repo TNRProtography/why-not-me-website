@@ -44,9 +44,18 @@ export default function Footer() {
       <div className="footer-sponsors">
         <span className="footer-sponsors-label">Sponsors</span>
         <div className="footer-sponsors-logos">
-          <img src="/images/sponsors/primary-logo-inverse.svg" alt="Sponsor" className="footer-sponsor-logo" />
-          <img src="/images/sponsors/brightprint.png" alt="Bright Print & Packaging" className="footer-sponsor-logo" />
-          <img src="/images/sponsors/mortgagelink.png" alt="Mortgage Link" className="footer-sponsor-logo" />
+          <a href="https://www.westpower.co.nz" target="_blank" rel="noopener noreferrer">
+            <img src="/images/sponsors/primary-logo-inverse.svg" alt="Westpower" className="footer-sponsor-logo" />
+          </a>
+          <a href="https://brightprint.co.nz/" target="_blank" rel="noopener noreferrer">
+            <img src="/images/sponsors/brightprint.png" alt="Bright Print & Packaging" className="footer-sponsor-logo" />
+          </a>
+          <a href="https://mortgagelink.co.nz/find-an-adviser/mortgage-link-christchurch/jules-keillor/" target="_blank" rel="noopener noreferrer">
+            <img src="/images/sponsors/mortgagelink.png" alt="Mortgage Link" className="footer-sponsor-logo" />
+          </a>
+          <a href="https://www.badboygraphix.co.nz/" target="_blank" rel="noopener noreferrer">
+            <img src="/images/sponsors/badboy-graphix.png" alt="Badboy Graphix" className="footer-sponsor-logo" />
+          </a>
         </div>
       </div>
 
