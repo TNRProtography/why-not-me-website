@@ -45,7 +45,6 @@ const SPECTATOR_ZONES = [
   { id: 'zone-3', label: 'Spectator Zone 3', lat: -45.030639, lng: 168.659472 },
   { id: 'zone-4', label: 'Spectator Zone 4', lat: -45.029111, lng: 168.66 },
 ]
-const START_DETECTION_RADIUS_KM = 0.12
 
 function formatAge(seconds) {
   if (seconds == null) return ''
@@ -386,26 +385,19 @@ export default function LiveTrackerPage() {
   const sortedHistory = useMemo(() => sortHistory(history), [history])
   const raceProgress = useMemo(() => {
     const points = sortedHistory.filter((p) => p?.location?.lat != null && p?.location?.lng != null)
-    if (points.length < 2 || kmlTrackPath.length < 2) return { started: false, startTimeMs: null, progressKm: 0, splitTimes: {} }
-    const start = kmlTrackPath[0]
-    const startIdx = points.findIndex((p) => (
-      haversineKm(
-        { lat: p.location.lat, lng: p.location.lng },
-        { lat: start.lat, lng: start.lng }
-      ) <= START_DETECTION_RADIUS_KM
-    ))
-    if (startIdx < 0 || startIdx >= points.length - 1) {
-      return { started: false, startTimeMs: null, progressKm: 0, splitTimes: {} }
-    }
+    if (points.length < 2) return { started: false, startTimeMs: null, progressKm: 0, splitTimes: {} }
 
-    const startedPoints = points.slice(startIdx)
+    const startTimeMs = getPointReceivedTimeMs(points[0])
     let cumKm = 0
     let nextIdx = 0
     const out = {}
-    for (let i = 1; i < startedPoints.length && nextIdx < SPLIT_MARKERS_KM.length; i++) {
-      const prev = startedPoints[i - 1]
-      const curr = startedPoints[i]
-      cumKm += haversineKm({ lat: prev.location.lat, lng: prev.location.lng }, { lat: curr.location.lat, lng: curr.location.lng })
+    for (let i = 1; i < points.length; i++) {
+      const prev = points[i - 1]
+      const curr = points[i]
+      const segKm = haversineKm({ lat: prev.location.lat, lng: prev.location.lng }, { lat: curr.location.lat, lng: curr.location.lng })
+      // Skip GPS spikes (impossible jumps)
+      if (segKm > 1) continue
+      cumKm += segKm
       while (nextIdx < SPLIT_MARKERS_KM.length && cumKm >= SPLIT_MARKERS_KM[nextIdx]) {
         out[SPLIT_MARKERS_KM[nextIdx]] = getPointReceivedTimeMs(curr)
         nextIdx += 1
@@ -413,11 +405,11 @@ export default function LiveTrackerPage() {
     }
     return {
       started: true,
-      startTimeMs: getPointReceivedTimeMs(startedPoints[0]),
+      startTimeMs,
       progressKm: Math.min(MARATHON_DISTANCE_KM, cumKm),
       splitTimes: out,
     }
-  }, [sortedHistory, kmlTrackPath])
+  }, [sortedHistory])
   const splitTimes = raceProgress.splitTimes
   const lastReceivedAt = useMemo(() => getLatestReceivedAt(data, sortedHistory), [data, sortedHistory])
   const lastReceivedAgeSeconds = lastReceivedAt
@@ -822,6 +814,7 @@ export default function LiveTrackerPage() {
     splitLayerRef.current.clearLayers()
     const routePts = kmlTrackPath
     if (routePts.length < 2) return
+    const sessionStart = raceProgress.startTimeMs
     let cumKm = 0
     let nextIdx = 0
     for (let i = 1; i < routePts.length && nextIdx < SPLIT_MARKERS_KM.length; i++) {
@@ -830,19 +823,46 @@ export default function LiveTrackerPage() {
       cumKm += haversineKm(a, b)
       while (nextIdx < SPLIT_MARKERS_KM.length && cumKm >= SPLIT_MARKERS_KM[nextIdx]) {
         const splitKm = SPLIT_MARKERS_KM[nextIdx]
-        const label = splitKm === 21.1 ? 'Half' : splitKm === 42.2 ? 'F' : `${splitKm}`
+        const label = splitKm === 21.1 ? 'Half' : splitKm === 42.2 ? 'Finish' : `${splitKm}`
+        const shortLabel = splitKm === 21.1 ? 'Half' : splitKm === 42.2 ? 'F' : `${splitKm}`
         const t = splitTimes[splitKm]
-        L.marker([b.lat, b.lng], {
-          icon: createCourseMarkerIcon(L, label, splitKm === 42.2 ? 'finish' : 'split'),
+
+        // Build popup content with elapsed time from session start
+        let popupHtml = `<div style="font-family:Montserrat,sans-serif;font-size:12px;line-height:1.6;min-width:150px">`
+        popupHtml += `<strong style="color:#A88E5D;font-size:14px">${label} km</strong><br/>`
+        if (t) {
+          const clockTime = new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+          popupHtml += `Reached: ${clockTime}<br/>`
+          if (sessionStart) {
+            const elapsedMs = t - sessionStart
+            const elapsedMin = Math.floor(elapsedMs / 60000)
+            const elapsedH = Math.floor(elapsedMin / 60)
+            const elapsedM = elapsedMin % 60
+            const elapsedS = Math.floor((elapsedMs % 60000) / 1000)
+            const elapsed = elapsedH > 0
+              ? `${elapsedH}h ${String(elapsedM).padStart(2, '0')}m ${String(elapsedS).padStart(2, '0')}s`
+              : `${elapsedM}m ${String(elapsedS).padStart(2, '0')}s`
+            popupHtml += `<span style="color:#A88E5D">Elapsed: ${elapsed}</span>`
+          }
+        } else {
+          popupHtml += `<span style="opacity:0.5">Pending</span>`
+        }
+        popupHtml += `</div>`
+
+        const marker = L.marker([b.lat, b.lng], {
+          icon: createCourseMarkerIcon(L, shortLabel, splitKm === 42.2 ? 'finish' : 'split'),
           zIndexOffset: 650,
-        }).bindTooltip(
-          t ? `${label} km · ${new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : `${label} km · pending`,
+        })
+        marker.bindPopup(popupHtml, { className: 'tracker-popup', closeButton: false })
+        marker.bindTooltip(
+          t ? `${shortLabel} km · tap for details` : `${shortLabel} km · pending`,
           { direction: 'top', offset: [0, -14], className: 'course-tooltip' }
-        ).addTo(splitLayerRef.current)
+        )
+        marker.addTo(splitLayerRef.current)
         nextIdx += 1
       }
     }
-  }, [mapReady, kmlTrackPath, splitTimes, now])
+  }, [mapReady, kmlTrackPath, splitTimes, raceProgress.startTimeMs, now])
 
   useEffect(() => {
     if (!mapReady || !window.L || !spectatorLayerRef.current) return
@@ -1518,7 +1538,6 @@ export default function LiveTrackerPage() {
                 <div style={{ marginTop: 10 }}>
                   <div style={{ color: 'var(--white-70)', fontSize: 11, marginBottom: 0, letterSpacing: 0.6 }}>
                     Progress: {progressPct.toFixed(1)}% · {progressKm.toFixed(2)} km covered · {(MARATHON_DISTANCE_KM - progressKm).toFixed(2)} km remaining
-                    {!raceProgress.started ? ' · Waiting for start line pass' : ''}
                   </div>
                 </div>
               </div>
