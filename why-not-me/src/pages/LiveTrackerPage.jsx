@@ -38,7 +38,7 @@ const BASEMAPS = {
 const BASEMAP = BASEMAPS.dark
 
 const MARATHON_DISTANCE_KM = 42.2
-const SPLIT_MARKERS_KM = [1, 5, 10, 15, 20, 21.1, 25, 30, 35, 40, 42.2]
+const SPLIT_MARKERS_KM = [1, 5, 10, 15, 20, 21.1, 25, 30, 35, 40]
 const SPECTATOR_ZONES = [
   { id: 'zone-1', label: 'Spectator Zone 1', lat: -44.988056, lng: 168.811444 },
   { id: 'zone-2', label: 'Spectator Zone 2', lat: -44.997111, lng: 168.756722 },
@@ -372,7 +372,7 @@ export default function LiveTrackerPage() {
   const [mapReady, setMapReady] = useState(false)
   const [error, setError] = useState(null)
   const [apiStatus, setApiStatus] = useState('loading') // 'loading' | 'live' | 'waiting' | 'error'
-  const [showStartEnd, setShowStartEnd] = useState(true)
+  const [showMarkers, setShowMarkers] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [now, setNow] = useState(Date.now())
   const [elevHoverIdx, setElevHoverIdx] = useState(null)
@@ -789,7 +789,7 @@ export default function LiveTrackerPage() {
       className: 'marathon-course-line',
     }).addTo(routeLayerRef.current)
 
-    if (showStartEnd) {
+    if (showMarkers) {
       const startPoint = routeLatLngs[0]
       const endPoint = routeLatLngs[routeLatLngs.length - 1]
       L.marker(startPoint, {
@@ -806,12 +806,13 @@ export default function LiveTrackerPage() {
     if (!data?.location && sortedHistory.length < 2) {
       map.fitBounds(coursePath.getBounds(), { padding: [36, 36], maxZoom: 13 })
     }
-  }, [mapReady, routeLatLngs, showStartEnd, data?.location, sortedHistory.length])
+  }, [mapReady, routeLatLngs, showMarkers, data?.location, sortedHistory.length])
 
   useEffect(() => {
     if (!mapReady || !window.L || !splitLayerRef.current || !routeLatLngs.length) return
     const L = window.L
     splitLayerRef.current.clearLayers()
+    if (!showMarkers) return
     const routePts = kmlTrackPath
     if (routePts.length < 2) return
     const sessionStart = raceProgress.startTimeMs
@@ -825,8 +826,8 @@ export default function LiveTrackerPage() {
       cumKm += haversineKm(a, b)
       while (nextIdx < SPLIT_MARKERS_KM.length && cumKm >= SPLIT_MARKERS_KM[nextIdx]) {
         const splitKm = SPLIT_MARKERS_KM[nextIdx]
-        const label = splitKm === 21.1 ? 'Half' : splitKm === 42.2 ? 'Finish' : `${splitKm}`
-        const shortLabel = splitKm === 21.1 ? 'Half' : splitKm === 42.2 ? 'F' : `${splitKm}`
+        const label = splitKm === 21.1 ? 'Half' : `${splitKm}`
+        const shortLabel = splitKm === 21.1 ? 'Half' : `${splitKm}`
         const t = splitTimes[splitKm]
 
         // Build popup content with elapsed time and pace
@@ -867,7 +868,7 @@ export default function LiveTrackerPage() {
         popupHtml += `</div>`
 
         const marker = L.marker([b.lat, b.lng], {
-          icon: createCourseMarkerIcon(L, shortLabel, splitKm === 42.2 ? 'finish' : 'split'),
+          icon: createCourseMarkerIcon(L, shortLabel, 'split'),
           zIndexOffset: 650,
         })
         marker.bindPopup(popupHtml, { className: 'tracker-popup', closeButton: false, autoPan: false })
@@ -879,12 +880,13 @@ export default function LiveTrackerPage() {
         nextIdx += 1
       }
     }
-  }, [mapReady, kmlTrackPath, splitTimes, raceProgress.startTimeMs])
+  }, [mapReady, kmlTrackPath, splitTimes, raceProgress.startTimeMs, showMarkers])
 
   useEffect(() => {
     if (!mapReady || !window.L || !spectatorLayerRef.current) return
     const L = window.L
     spectatorLayerRef.current.clearLayers()
+    if (!showMarkers) return
     SPECTATOR_ZONES.forEach((zone) => {
       L.marker([zone.lat, zone.lng], {
         icon: createCourseMarkerIcon(L, '👥', 'split'),
@@ -892,7 +894,7 @@ export default function LiveTrackerPage() {
       }).bindTooltip(zone.label, { direction: 'top', offset: [0, -14], className: 'course-tooltip' })
         .addTo(spectatorLayerRef.current)
     })
-  }, [mapReady])
+  }, [mapReady, showMarkers])
 
   // ---- Update marker + trail when data changes ----
   useEffect(() => {
@@ -1196,15 +1198,13 @@ export default function LiveTrackerPage() {
       ctx.fill()
 
       if (img) {
-        // Clip portrait into circle
+        // Clip portrait into circle, crop from upper portion to center face
         ctx.save()
         ctx.beginPath()
         ctx.arc(nx, ny, pinR, 0, Math.PI * 2)
         ctx.clip()
-        const aspect = img.width / img.height
-        const drawH = pinR * 2
-        const drawW = drawH * aspect
-        ctx.drawImage(img, nx - drawW / 2, ny - pinR, drawW, drawH)
+        const drawSize = pinR * 2.4
+        ctx.drawImage(img, nx - drawSize / 2, ny - drawSize * 0.4, drawSize, drawSize)
         ctx.restore()
       } else {
         // Fallback: gold circle with runner icon
@@ -1574,10 +1574,10 @@ export default function LiveTrackerPage() {
           <label className="route-toggle-bar">
             <input
               type="checkbox"
-              checked={showStartEnd}
-              onChange={(event) => { setShowStartEnd(event.target.checked); trackLiveTrackerMapInteraction(event.target.checked ? 'show_start_end' : 'hide_start_end') }}
+              checked={showMarkers}
+              onChange={(event) => { setShowMarkers(event.target.checked); trackLiveTrackerMapInteraction(event.target.checked ? 'show_markers' : 'hide_markers') }}
             />
-            <span>Show start &amp; finish</span>
+            <span>Show markers</span>
           </label>
         </div>
         <div className="tracker-info-strip">
