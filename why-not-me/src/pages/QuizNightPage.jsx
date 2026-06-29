@@ -22,10 +22,10 @@ const COST_PER_PERSON = 10
 export default function QuizNightPage() {
   const [loading, setLoading] = useState(true)
   const [spotsBooked, setSpotsBooked] = useState(0)
+  const [status, setStatus] = useState('open')
   const [teamName, setTeamName] = useState('')
   const [members, setMembers] = useState(['', '', '', '', '', ''])
   const [email, setEmail] = useState('')
-  const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(null)
@@ -33,11 +33,10 @@ export default function QuizNightPage() {
   const filledMembers = members.filter((m) => m.trim() !== '')
   const memberCount = filledMembers.length
   const totalCost = memberCount * COST_PER_PERSON
-  const spotsRemaining = MAX_CAPACITY - spotsBooked
-  const isSoldOut = spotsRemaining <= 0
+  const isSoldOut = status === 'sold_out'
+  const isFinalTeam = status === 'final'
   const teamTooSmall = memberCount < MIN_TEAM
   const teamTooBig = memberCount > MAX_TEAM
-  const wouldExceedCapacity = memberCount > spotsRemaining
 
   const fetchCapacity = useCallback(async () => {
     try {
@@ -45,6 +44,7 @@ export default function QuizNightPage() {
       if (res.ok) {
         const data = await res.json()
         setSpotsBooked(data.spotsBooked || 0)
+        setStatus(data.status || 'open')
       }
     } catch { /* silent */ }
     finally { setLoading(false) }
@@ -66,10 +66,6 @@ export default function QuizNightPage() {
       setError(`You need at least ${MIN_TEAM} team members.`)
       return
     }
-    if (wouldExceedCapacity) {
-      setError(`Only ${spotsRemaining} spot${spotsRemaining === 1 ? '' : 's'} left. Please reduce your team size.`)
-      return
-    }
 
     setSubmitting(true)
     try {
@@ -85,11 +81,13 @@ export default function QuizNightPage() {
       const data = await res.json()
       if (!res.ok) {
         setError(data.error || 'Something went wrong. Please try again.')
+        if (data.status) setStatus(data.status)
         setSubmitting(false)
         return
       }
 
       setSpotsBooked(data.spotsBooked || spotsBooked + memberCount)
+      if (data.status) setStatus(data.status)
       setSuccess({
         teamName: teamName.trim() || 'Your team',
         members: filledMembers.map((m) => m.trim()),
@@ -115,8 +113,6 @@ export default function QuizNightPage() {
   if (loading) {
     return <PageTransition><div className="quiz-loading">Loading...</div></PageTransition>
   }
-
-  const capacityPercent = Math.min(100, (spotsBooked / MAX_CAPACITY) * 100)
 
   return (
     <PageTransition>
@@ -157,17 +153,29 @@ export default function QuizNightPage() {
         </div>
       </div>
 
-      {/* Capacity bar */}
-      <div className="quiz-capacity-section">
-        <div className="quiz-capacity-track">
-          <div className="quiz-capacity-fill" style={{ width: `${capacityPercent}%` }} />
+      {/* Urgency messaging */}
+      {!isSoldOut && spotsBooked >= 5 && (
+        <div style={{ textAlign: 'center', padding: '20px 40px 0' }}>
+          <p style={{
+            display: 'inline-block',
+            background: isFinalTeam ? 'rgba(217,83,79,0.15)' : 'rgba(168,142,93,0.1)',
+            border: `1px solid ${isFinalTeam ? 'rgba(217,83,79,0.3)' : 'rgba(168,142,93,0.25)'}`,
+            padding: '12px 24px',
+            fontSize: '0.9rem',
+            fontWeight: 700,
+            color: isFinalTeam ? '#d9534f' : '#A88E5D',
+            letterSpacing: '0.5px',
+          }}>
+            {isFinalTeam
+              ? '🔥 Last chance! Only one more team can book before we sell out!'
+              : spotsBooked >= 80
+                ? '🔥 Limited spots left. Nearly sold out!'
+                : spotsBooked >= 40
+                  ? 'Selling out quick, get in so you don\'t miss out!'
+                  : 'Spots are filling quick, book fast!'}
+          </p>
         </div>
-        <p className="quiz-capacity-label">
-          <strong>{spotsBooked}</strong> of {MAX_CAPACITY} spots booked
-          {spotsRemaining > 0 && <> &middot; <strong>{spotsRemaining}</strong> remaining</>}
-          {isSoldOut && <> &middot; <strong>Sold out</strong></>}
-        </p>
-      </div>
+      )}
 
       {/* What to expect */}
       <section className="quiz-info-section">
@@ -289,21 +297,11 @@ export default function QuizNightPage() {
                 </div>
               )}
 
-              {/* Terms */}
-              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer', fontSize: '0.8rem', color: 'rgba(245,243,236,0.5)', lineHeight: '1.5', userSelect: 'none' }}>
-                <input
-                  type="checkbox"
-                  checked={agreedToTerms}
-                  onChange={(e) => setAgreedToTerms(e.target.checked)}
-                  style={{ marginTop: '3px', accentColor: '#A88E5D', flexShrink: 0 }}
-                />
-                <span>I understand that inappropriate language or abuse of any kind will not be tolerated and my booking may be cancelled without notice.</span>
-              </label>
-
+              {/* Submit */}
               <button
                 type="submit"
                 className="btn-primary"
-                disabled={submitting || !agreedToTerms || teamTooSmall || wouldExceedCapacity}
+                disabled={submitting || teamTooSmall || isSoldOut}
                 style={{ width: '100%', marginTop: '8px' }}
               >
                 {submitting ? 'Booking...' : `Book ${memberCount >= MIN_TEAM ? memberCount : ''} Spot${memberCount !== 1 ? 's' : ''}`}

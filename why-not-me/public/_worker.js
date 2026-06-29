@@ -634,7 +634,9 @@ async function handleCheckEmail(request, env) {
 // Metadata:    { memberCount }  (used for quick capacity counting)
 
 const QUIZ_KEY_PREFIX = 'quiz_'
+const QUIZ_STATUS_KEY = 'quiz_status'
 const QUIZ_MAX_CAPACITY = 120
+const QUIZ_FINAL_THRESHOLD = 110
 const QUIZ_MIN_TEAM = 4
 const QUIZ_MAX_TEAM = 6
 
@@ -659,13 +661,15 @@ async function getQuizSpotsBooked(env) {
   return spotsBooked
 }
 
+async function getQuizStatus(env) {
+  const raw = await env.DEDICATIONS.get(QUIZ_STATUS_KEY)
+  return raw || 'open'
+}
+
 async function handleGetQuizBookings(env) {
   const spotsBooked = await getQuizSpotsBooked(env)
-  return dedicationResponse({
-    spotsBooked,
-    spotsRemaining: Math.max(0, QUIZ_MAX_CAPACITY - spotsBooked),
-    totalCapacity: QUIZ_MAX_CAPACITY,
-  })
+  const status = await getQuizStatus(env)
+  return dedicationResponse({ spotsBooked, status })
 }
 
 async function handlePostQuizBooking(request, env) {
@@ -693,16 +697,23 @@ async function handlePostQuizBooking(request, env) {
     return dedicationResponse({ error: `Maximum ${QUIZ_MAX_TEAM} team members allowed.` }, 400)
   }
 
-  const spotsBooked = await getQuizSpotsBooked(env)
-  const spotsRemaining = QUIZ_MAX_CAPACITY - spotsBooked
+  const status = await getQuizStatus(env)
 
-  if (members.length > spotsRemaining) {
-    return dedicationResponse({
-      error: spotsRemaining <= 0
-        ? 'Sorry, the quiz night is fully booked.'
-        : `Only ${spotsRemaining} spot${spotsRemaining === 1 ? '' : 's'} remaining. Please reduce your team size.`,
-    }, 409)
+  // If already sold out, reject
+  if (status === 'sold_out') {
+    return dedicationResponse({ error: 'Sorry, the quiz night is fully booked.' }, 409)
   }
+
+  const spotsBooked = await getQuizSpotsBooked(env)
+
+  // Hard cap safety check
+  if (members.length > (QUIZ_MAX_CAPACITY - spotsBooked)) {
+    return dedicationResponse({ error: 'Sorry, the quiz night is fully booked.' }, 409)
+  }
+
+  // If status is 'final', this is the last team allowed
+  // After this booking, mark as sold out
+  const willSellOut = status === 'final'
 
   const id = crypto.randomUUID()
   const booking = {
@@ -719,20 +730,29 @@ async function handlePostQuizBooking(request, env) {
     metadata: { memberCount: members.length },
   })
 
-  // Send confirmation email (best-effort, don't block booking on failure)
+  const newSpotsBooked = spotsBooked + members.length
+
+  // Update status based on new total
+  if (willSellOut) {
+    await env.DEDICATIONS.put(QUIZ_STATUS_KEY, 'sold_out')
+  } else if (newSpotsBooked >= QUIZ_FINAL_THRESHOLD) {
+    await env.DEDICATIONS.put(QUIZ_STATUS_KEY, 'final')
+  }
+
+  const newStatus = willSellOut ? 'sold_out' : (newSpotsBooked >= QUIZ_FINAL_THRESHOLD ? 'final' : 'open')
+
+  // Send confirmation email (best-effort)
   try {
     await sendQuizConfirmationEmail(booking, env)
   } catch (emailError) {
     console.error('Quiz confirmation email failed:', emailError)
   }
 
-  const newSpotsBooked = spotsBooked + members.length
-
   return dedicationResponse({
     success: true,
     booking: { ...booking, email: undefined },
     spotsBooked: newSpotsBooked,
-    spotsRemaining: Math.max(0, QUIZ_MAX_CAPACITY - newSpotsBooked),
+    status: newStatus,
   })
 }
 
