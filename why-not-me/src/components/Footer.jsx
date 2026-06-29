@@ -41,6 +41,15 @@ export default function Footer() {
         </a>
       </div>
 
+      <div className="footer-sponsors">
+        <span className="footer-sponsors-label">Sponsors</span>
+        <div className="footer-sponsors-logos">
+          <img src="/images/sponsors/primary-logo-inverse.svg" alt="Sponsor" className="footer-sponsor-logo" />
+          <img src="/images/sponsors/brightprint.png" alt="Bright Print & Packaging" className="footer-sponsor-logo" />
+          <img src="/images/sponsors/mortgagelink.png" alt="Mortgage Link" className="footer-sponsor-logo" />
+        </div>
+      </div>
+
       <div className="footer-links">
         <a href="https://braintumoursupport.org.nz" target="_blank" rel="noopener noreferrer" onClick={() => trackExternalLink('https://braintumoursupport.org.nz', 'Brain Tumour Support NZ', 'footer')}>Brain Tumour Support NZ</a>
         <span className="footer-dot">&middot;</span>

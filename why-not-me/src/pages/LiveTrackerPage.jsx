@@ -1198,13 +1198,16 @@ export default function LiveTrackerPage() {
       ctx.fill()
 
       if (img) {
-        // Clip portrait into circle, crop from upper portion to center face
+        // Clip portrait into circle, crop from face area (right-of-center in landscape image)
         ctx.save()
         ctx.beginPath()
         ctx.arc(nx, ny, pinR, 0, Math.PI * 2)
         ctx.clip()
-        const drawSize = pinR * 2.4
-        ctx.drawImage(img, nx - drawSize / 2, ny - drawSize * 0.4, drawSize, drawSize)
+        // Source crop: face is at ~62% horizontal, ~28% vertical in the landscape image
+        const srcSize = Math.min(img.width, img.height) * 0.85
+        const sx = img.width * 0.62 - srcSize / 2
+        const sy = img.height * 0.28 - srcSize / 3
+        ctx.drawImage(img, sx, sy, srcSize, srcSize, nx - pinR, ny - pinR, pinR * 2, pinR * 2)
         ctx.restore()
       } else {
         // Fallback: gold circle with runner icon
