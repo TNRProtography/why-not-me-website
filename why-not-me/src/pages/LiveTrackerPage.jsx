@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import PageTransition from '../components/PageTransition'
-import { trackLiveTrackerView, trackLiveTrackerMapInteraction, trackSplitMarkerClick, trackElevationProfileInteraction, trackTrackerDataStatus } from '../utils/analytics'
+import { trackLiveTrackerView, trackLiveTrackerMapInteraction, trackSplitMarkerClick, trackElevationProfileInteraction, trackTrackerDataStatus, trackMapZoomChange } from '../utils/analytics'
 import './LiveTrackerPage.css'
 
 const API_BASE = 'https://marathon-tracking-proxy.why-not-me-nicole-white.workers.dev'
@@ -737,6 +737,15 @@ export default function LiveTrackerPage() {
       mapRef.current = map
       mapInitializedRef.current = true
       setMapReady(true)
+
+      // Track zoom changes (debounced to avoid spam during pinch-zoom)
+      let zoomTimeout = null
+      map.on('zoomend', () => {
+        clearTimeout(zoomTimeout)
+        zoomTimeout = setTimeout(() => {
+          trackMapZoomChange(map.getZoom(), 'zoom')
+        }, 500)
+      })
 
       setTimeout(() => { if (!cancelled) map.invalidateSize() }, 200)
       setTimeout(() => { if (!cancelled) map.invalidateSize() }, 800)

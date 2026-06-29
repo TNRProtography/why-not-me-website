@@ -11,7 +11,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import PageTransition from '../components/PageTransition'
 import RevealOnScroll from '../components/RevealOnScroll'
-import { trackKmClick, trackKmHover, trackDedicationFormOpen, trackDedicationFormSubmit, trackDedicationSuccess, trackDedicationError, trackDedicationShare, trackDedicationViewModal, trackSupportMessageFormOpen, trackSupportMessageSubmit, trackDonateClick, trackCtaClick } from '../utils/analytics'
+import { trackKmClick, trackKmHover, trackDedicationFormOpen, trackDedicationFormSubmit, trackDedicationSuccess, trackDedicationError, trackDedicationShare, trackDedicationViewModal, trackSupportMessageFormOpen, trackSupportMessageSubmit, trackDonateClick, trackCtaClick, trackDedicationFieldFocus, trackDedicationAbandon, trackExternalLink } from '../utils/analytics'
 import './DedicateKmPage.css'
 
 const TOTAL_KM = 42
@@ -275,6 +275,7 @@ export default function DedicateKmPage() {
   const [error, setError] = useState('')
   const [shareCanvas, setShareCanvas] = useState(null)
   const svgWrapRef = useRef(null)
+  const lastFieldRef = useRef(null)
 
   const claimed = Object.keys(dedications).length
   const remaining = TOTAL_KM - claimed
@@ -302,6 +303,7 @@ export default function DedicateKmPage() {
     } else {
       trackKmClick(km, 'open')
       trackDedicationFormOpen(km)
+      lastFieldRef.current = null
       setSelectedKm(km)
       setFormData({ name: '', email: '', dedicatedTo: '', message: '' })
       setError('')
@@ -310,6 +312,12 @@ export default function DedicateKmPage() {
   }
 
   const handleClose = () => {
+    // Track abandon if user was in the dedication form and didn't complete
+    if (selectedKm && !successKm) {
+      const hadData = !!(formData.name || formData.email || formData.dedicatedTo || formData.message)
+      trackDedicationAbandon(selectedKm, lastFieldRef.current || 'none', hadData)
+    }
+    lastFieldRef.current = null
     setSelectedKm(null)
     setViewingKm(null)
     setSuccessKm(null)
@@ -666,19 +674,21 @@ export default function DedicateKmPage() {
             <div className="dedicate-modal-km">Km {selectedKm}</div>
             <div className="dedicate-modal-heading">Dedicate This Kilometre</div>
             <p className="dedicate-modal-subtext" style={{ fontSize: '0.85rem', opacity: 0.6, margin: '-0.25rem 0 1rem', textAlign: 'center' }}>
-              Donated via <a href="https://nogoingback.nz/nicole-white" target="_blank" rel="noopener noreferrer" style={{ color: '#A88E5D' }}>No Going Back</a>? Enter your details below to dedicate this km.
+              Donated via <a href="https://nogoingback.nz/nicole-white" target="_blank" rel="noopener noreferrer" style={{ color: '#A88E5D' }} onClick={() => trackExternalLink('https://nogoingback.nz/nicole-white', 'No Going Back', 'dedicate_form')}>No Going Back</a>? Enter your details below to dedicate this km.
             </p>
             <form className="dedicate-form" onSubmit={handleSubmit}>
               <div className="dedicate-field">
                 <label htmlFor="dedicate-name">Your Name</label>
                 <input id="dedicate-name" type="text" placeholder="Your name" maxLength={80}
                   value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  onFocus={() => { lastFieldRef.current = 'name'; trackDedicationFieldFocus('name', selectedKm) }}
                   autoFocus required />
               </div>
               <div className="dedicate-field">
                 <label htmlFor="dedicate-email">Donation Email</label>
                 <input id="dedicate-email" type="email" placeholder="The email you donated with"
                   value={formData.email} onChange={(e) => { setFormData({ ...formData, email: e.target.value }); setDonateUrl(null); setError('') }}
+                  onFocus={() => { lastFieldRef.current = 'email'; trackDedicationFieldFocus('email', selectedKm) }}
                   required />
                 <div className="dedicate-field-hint">The email address you used when donating via No Going Back</div>
               </div>
@@ -686,12 +696,14 @@ export default function DedicateKmPage() {
                 <label htmlFor="dedicate-for">Dedicating This Km To</label>
                 <input id="dedicate-for" type="text" placeholder="A person, a group, or a cause" maxLength={80}
                   value={formData.dedicatedTo} onChange={(e) => setFormData({ ...formData, dedicatedTo: e.target.value })}
+                  onFocus={() => { lastFieldRef.current = 'dedicatedTo'; trackDedicationFieldFocus('dedicatedTo', selectedKm) }}
                   required />
               </div>
               <div className="dedicate-field">
                 <label htmlFor="dedicate-message">Message (optional)</label>
                 <textarea id="dedicate-message" placeholder="A short message for Nicole to carry with her" maxLength={150}
-                  value={formData.message} onChange={(e) => setFormData({ ...formData, message: e.target.value })} />
+                  value={formData.message} onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                  onFocus={() => { lastFieldRef.current = 'message'; trackDedicationFieldFocus('message', selectedKm) }} />
                 <div className="dedicate-field-hint">{formData.message.length}/150</div>
               </div>
               <button type="submit" className="btn-primary dedicate-submit" disabled={submitting}>

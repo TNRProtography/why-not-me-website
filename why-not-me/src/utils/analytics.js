@@ -148,6 +148,28 @@ export function trackSupportMessageFormOpen() {
   trackEvent('support_message_form_open')
 }
 
+export function trackDedicationFieldFocus(fieldName, km) {
+  trackEvent('dedication_field_focus', {
+    field_name: fieldName,
+    km_number: km,
+  })
+}
+
+export function trackDedicationAbandon(km, lastField, hadData) {
+  trackEvent('dedication_abandon', {
+    km_number: km,
+    last_field_touched: lastField,
+    had_partial_data: hadData,
+  })
+}
+
+export function trackMapZoomChange(zoomLevel, action) {
+  trackEvent('map_zoom_change', {
+    zoom_level: zoomLevel,
+    action: action,
+  })
+}
+
 // ── Media ────────────────────────────────────────────────────
 
 export function trackLightboxOpen(imageSrc) {
