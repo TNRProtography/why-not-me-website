@@ -193,7 +193,7 @@ export default function QuizNightPage() {
               <div className="quiz-info-card-icon">🎟️</div>
               <div className="quiz-info-card-title">Raffles &amp; Prizes</div>
               <p className="quiz-info-card-desc">
-                Spot prizes, raffle draws, and a winning team prize. Plenty of chances to take something home.
+                Raffle draws on the night and a winning team prize valued at $250. Bring your A game.
               </p>
             </div>
             <div className="quiz-info-card">
