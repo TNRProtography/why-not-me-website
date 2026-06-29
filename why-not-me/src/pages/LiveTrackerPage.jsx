@@ -363,6 +363,7 @@ export default function LiveTrackerPage() {
   const splitLayerRef = useRef(null)
   const spectatorLayerRef = useRef(null)
   const userLocationRef = useRef({ marker: null, accuracy: null })
+  const nicoleElevImgRef = useRef(null)
 
   const [data, setData] = useState(null)
   const [history, setHistory] = useState([])
@@ -474,6 +475,14 @@ export default function LiveTrackerPage() {
   }, [loadKmlFromText])
 
   // Keep relative received times honest while the page is open (1s cadence).
+  const [nicoleImgLoaded, setNicoleImgLoaded] = useState(false)
+
+  useEffect(() => {
+    const img = new Image()
+    img.src = '/images/lores/portrait-smile.jpg'
+    img.onload = () => { nicoleElevImgRef.current = img; setNicoleImgLoaded(true) }
+  }, [])
+
   useEffect(() => {
     const tick = () => {
       setNow(Date.now())
@@ -488,10 +497,10 @@ export default function LiveTrackerPage() {
       setTrackingStatus('waiting')
       return
     }
-    if (lastReceivedAgeSeconds > 600) {
-      setTrackingStatus('dead') // 10+ minutes
-    } else if (lastReceivedAgeSeconds > 60) {
-      setTrackingStatus('stale') // 1+ minute
+    if (lastReceivedAgeSeconds > 900) {
+      setTrackingStatus('dead') // 15+ minutes
+    } else if (lastReceivedAgeSeconds > 300) {
+      setTrackingStatus('stale') // 5+ minutes
     } else {
       setTrackingStatus('live')
     }
@@ -1033,7 +1042,7 @@ export default function LiveTrackerPage() {
   }
 
   // ---- Elevation canvas drawing ----
-  const drawElevation = useCallback((activeIdx) => {
+  const drawElevation = useCallback((activeIdx, nicoleIdx) => {
     const canvas = elevCanvasRef.current
     if (!canvas || !elevProfile) return
     const ctx = canvas.getContext('2d')
@@ -1063,14 +1072,15 @@ export default function LiveTrackerPage() {
     ctx.fillStyle = grad
     ctx.fill()
 
-    // Traversed fill
-    if (activeIdx != null && activeIdx > 0) {
+    // Traversed fill (use Nicole's progress index for the shaded portion)
+    const fillIdx = nicoleIdx ?? activeIdx
+    if (fillIdx != null && fillIdx > 0) {
       ctx.beginPath()
       ctx.moveTo(0, h - padBot)
-      for (let i = 0; i <= activeIdx && i < pts.length; i++) {
+      for (let i = 0; i <= fillIdx && i < pts.length; i++) {
         if (pts[i].elevation != null) ctx.lineTo(toX(pts[i].distanceKm), toY(pts[i].elevation))
       }
-      ctx.lineTo(toX(pts[Math.min(activeIdx, pts.length - 1)].distanceKm), h - padBot)
+      ctx.lineTo(toX(pts[Math.min(fillIdx, pts.length - 1)].distanceKm), h - padBot)
       ctx.closePath()
       const tGrad = ctx.createLinearGradient(0, padTop, 0, h - padBot)
       tGrad.addColorStop(0, 'rgba(168,142,93,0.4)')
@@ -1085,13 +1095,13 @@ export default function LiveTrackerPage() {
       const prev = pts[i - 1], curr = pts[i]
       if (prev.elevation == null || curr.elevation == null) continue
       const t = (curr.elevation - minE) / elevRange
-      const isActive = activeIdx != null && i <= activeIdx
+      const isActive = fillIdx != null && i <= fillIdx
       const r = Math.round(lerp(85, 245, t)), g = Math.round(lerp(120, 220, t)), b2 = Math.round(lerp(100, 140, t))
       ctx.beginPath()
       ctx.moveTo(toX(prev.distanceKm), toY(prev.elevation))
       ctx.lineTo(toX(curr.distanceKm), toY(curr.elevation))
       ctx.lineWidth = isActive ? 2.5 : 1.5
-      ctx.strokeStyle = isActive ? `rgb(${r},${g},${b2})` : `rgba(168,142,93,${activeIdx != null ? 0.2 : 0.5})`
+      ctx.strokeStyle = isActive ? `rgb(${r},${g},${b2})` : `rgba(168,142,93,${fillIdx != null ? 0.2 : 0.5})`
       ctx.lineCap = 'round'
       ctx.stroke()
     }
@@ -1107,7 +1117,7 @@ export default function LiveTrackerPage() {
       ctx.fillText(km === 42.2 ? '42.2' : `${km}`, x, h - padBot + 12)
     })
 
-    // Cursor
+    // Hover cursor (only when user is actively hovering)
     if (activeIdx != null && pts[activeIdx]?.elevation != null) {
       const pt = pts[activeIdx], x = toX(pt.distanceKm), y = toY(pt.elevation)
       ctx.beginPath(); ctx.moveTo(x, padTop); ctx.lineTo(x, h - padBot)
@@ -1116,6 +1126,61 @@ export default function LiveTrackerPage() {
       ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2)
       ctx.fillStyle = '#F5F3EC'; ctx.fill()
       ctx.lineWidth = 2; ctx.strokeStyle = '#A88E5D'; ctx.stroke()
+    }
+
+    // Nicole marker on elevation profile
+    if (nicoleIdx != null && pts[nicoleIdx]?.elevation != null) {
+      const pt = pts[nicoleIdx]
+      const nx = toX(pt.distanceKm)
+      const ny = toY(pt.elevation)
+      const img = nicoleElevImgRef.current
+      const pinR = 12
+
+      // Vertical drop-line from Nicole to baseline
+      ctx.beginPath()
+      ctx.moveTo(nx, ny + pinR + 2)
+      ctx.lineTo(nx, h - padBot)
+      ctx.strokeStyle = 'rgba(168,142,93,0.35)'
+      ctx.lineWidth = 1
+      ctx.setLineDash([2, 3])
+      ctx.stroke()
+      ctx.setLineDash([])
+
+      // Outer glow
+      ctx.beginPath()
+      ctx.arc(nx, ny, pinR + 4, 0, Math.PI * 2)
+      ctx.fillStyle = 'rgba(168,142,93,0.18)'
+      ctx.fill()
+
+      // Gold ring
+      ctx.beginPath()
+      ctx.arc(nx, ny, pinR + 1, 0, Math.PI * 2)
+      ctx.fillStyle = '#A88E5D'
+      ctx.fill()
+
+      if (img) {
+        // Clip portrait into circle
+        ctx.save()
+        ctx.beginPath()
+        ctx.arc(nx, ny, pinR, 0, Math.PI * 2)
+        ctx.clip()
+        const aspect = img.width / img.height
+        const drawH = pinR * 2
+        const drawW = drawH * aspect
+        ctx.drawImage(img, nx - drawW / 2, ny - pinR, drawW, drawH)
+        ctx.restore()
+      } else {
+        // Fallback: gold circle with runner icon
+        ctx.beginPath()
+        ctx.arc(nx, ny, pinR, 0, Math.PI * 2)
+        ctx.fillStyle = '#1a1a1a'
+        ctx.fill()
+        ctx.font = '12px sans-serif'
+        ctx.fillStyle = '#A88E5D'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText('🏃‍♀️', nx, ny)
+      }
     }
   }, [elevProfile])
 
@@ -1171,14 +1236,14 @@ export default function LiveTrackerPage() {
   }, [elevProfile, progressKm])
 
   // ---- Draw elevation on hover change ----
-  useEffect(() => { drawElevation(elevHoverIdx ?? elevProgressIdx) }, [elevHoverIdx, elevProgressIdx, drawElevation])
+  useEffect(() => { drawElevation(elevHoverIdx, elevProgressIdx) }, [elevHoverIdx, elevProgressIdx, drawElevation, nicoleImgLoaded])
 
   // ---- Resize redraw ----
   useEffect(() => {
-    const onResize = () => drawElevation(elevHoverIdx)
+    const onResize = () => drawElevation(elevHoverIdx, elevProgressIdx)
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
-  }, [drawElevation, elevHoverIdx])
+  }, [drawElevation, elevHoverIdx, elevProgressIdx])
 
   // ---- Derived display values ----
   const isWaiting = apiStatus === 'waiting' && !lastReceivedAt
@@ -1384,8 +1449,8 @@ export default function LiveTrackerPage() {
               <span className="tracking-alert-icon">{trackingStatus === 'dead' ? '⚠' : '⏳'}</span>
               <span className="tracking-alert-text">
                 {trackingStatus === 'dead'
-                  ? 'Tracking data may have failed or the race has finished - no location received for over 10 minutes'
-                  : 'No new GPS data for over 1 minute - signal may be weak'
+                  ? 'Tracking data may have failed or the race has finished - no location received for over 15 minutes'
+                  : 'No new GPS data for over 5 minutes - signal may be weak'
                 }
               </span>
             </div>
@@ -1532,9 +1597,6 @@ export default function LiveTrackerPage() {
 
         {/* Footer */}
         <div className="tracker-footer-spacer">
-          <p style={{ color: 'var(--white-30)', fontSize: 12, letterSpacing: 2, textTransform: 'uppercase', fontWeight: 700 }}>
-            Checks every {POLL_INTERVAL / 1000} seconds · Location requests bypass browser cache
-          </p>
           {error && (
             <p style={{ color: 'var(--warm)', fontSize: 12, marginTop: 8 }}>
               Connection issue: {error} - map remains open and will retry automatically.
