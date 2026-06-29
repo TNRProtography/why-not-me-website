@@ -1498,16 +1498,6 @@ export default function LiveTrackerPage() {
             </div>
           )}
 
-          {/* Route options */}
-          <label className="route-toggle">
-            <input
-              type="checkbox"
-              checked={showStartEnd}
-              onChange={(event) => { setShowStartEnd(event.target.checked); trackLiveTrackerMapInteraction(event.target.checked ? 'show_start_end' : 'hide_start_end') }}
-            />
-            <span>Show start &amp; finish</span>
-          </label>
-
           {/* Map controls */}
           <div className="map-controls-right">
             <button className="recenter-btn" onClick={handleRecenter} title="Refresh and recenter on Nicole">
@@ -1531,40 +1521,16 @@ export default function LiveTrackerPage() {
             </button>
           </div>
 
-          {/* Elevation overlay - bottom of map */}
+          {/* Elevation hover tooltip - stays on map */}
           {elevProfile && (
-            <>
-              <div className="elev-tooltip-overlay" style={{ opacity: elevHoverPoint ? 1 : 0 }}>
-                <span className="elev-tooltip-alt">
-                  {elevHoverPoint?.elevation != null ? `${Math.round(elevHoverPoint.elevation)} m` : ''}
-                </span>
-                <span className="elev-tooltip-dist">
-                  {elevHoverPoint ? `${elevHoverPoint.distanceKm.toFixed(1)} km` : ''}
-                </span>
-              </div>
-              <div className="elev-overlay">
-                <div
-                  ref={elevWrapRef}
-                  className="elev-canvas-wrap"
-                  onMouseMove={handleElevHover}
-                  onTouchMove={handleElevHover}
-                  onMouseLeave={handleElevLeave}
-                >
-                  <canvas ref={elevCanvasRef} className="elev-canvas" />
-                </div>
-                <div className="elev-legend-inline">
-                  <span>{Math.round(elevProfile.minE)} m</span>
-                  <div className="elev-legend-bar" />
-                  <span>{Math.round(elevProfile.maxE)} m</span>
-                </div>
-                <div style={{ marginTop: 10 }}>
-                  <div style={{ color: 'var(--white-70)', fontSize: 11, marginBottom: 0, letterSpacing: 0.6 }}>
-                    Progress: {progressPct.toFixed(1)}% · {progressKm.toFixed(2)} km covered · {(MARATHON_DISTANCE_KM - progressKm).toFixed(2)} km remaining
-                  </div>
-                </div>
-              </div>
-            </>
-
+            <div className="elev-tooltip-overlay" style={{ opacity: elevHoverPoint ? 1 : 0 }}>
+              <span className="elev-tooltip-alt">
+                {elevHoverPoint?.elevation != null ? `${Math.round(elevHoverPoint.elevation)} m` : ''}
+              </span>
+              <span className="elev-tooltip-dist">
+                {elevHoverPoint ? `${elevHoverPoint.distanceKm.toFixed(1)} km` : ''}
+              </span>
+            </div>
           )}
 
           {/* Waiting overlay on map */}
@@ -1578,7 +1544,42 @@ export default function LiveTrackerPage() {
           )}
         </motion.div>
 
-        {/* Info cards below map */}
+        {/* Elevation profile - own section below map */}
+        {elevProfile && (
+          <div className="elev-section">
+            <div
+              ref={elevWrapRef}
+              className="elev-canvas-wrap"
+              onMouseMove={handleElevHover}
+              onTouchMove={handleElevHover}
+              onMouseLeave={handleElevLeave}
+            >
+              <canvas ref={elevCanvasRef} className="elev-canvas" />
+            </div>
+            <div className="elev-section-footer">
+              <div className="elev-legend-inline">
+                <span>{Math.round(elevProfile.minE)} m</span>
+                <div className="elev-legend-bar" />
+                <span>{Math.round(elevProfile.maxE)} m</span>
+              </div>
+              <div className="elev-progress-text">
+                {progressPct.toFixed(1)}% · {progressKm.toFixed(2)} km covered · {(MARATHON_DISTANCE_KM - progressKm).toFixed(2)} km remaining
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Route options - below elevation */}
+        <div className="tracker-controls-bar">
+          <label className="route-toggle-bar">
+            <input
+              type="checkbox"
+              checked={showStartEnd}
+              onChange={(event) => { setShowStartEnd(event.target.checked); trackLiveTrackerMapInteraction(event.target.checked ? 'show_start_end' : 'hide_start_end') }}
+            />
+            <span>Show start &amp; finish</span>
+          </label>
+        </div>
         <div className="tracker-info-strip">
           <div className="tracker-info-card">
             <div className="tracker-info-card-label">Coordinates</div>

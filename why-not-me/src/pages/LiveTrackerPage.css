@@ -243,7 +243,7 @@
 /* ---- Recenter / controls ---- */
 .map-controls-right {
   position: absolute;
-  bottom: 24px;
+  bottom: 14px;
   right: 14px;
   z-index: 1000;
   display: flex;
@@ -658,39 +658,6 @@ body.is-mobile-view .map-waiting-heading {
   animation: spin 0.9s linear infinite;
 }
 
-/* ---- Route toggle ---- */
-.route-toggle {
-  position: absolute;
-  bottom: 24px;
-  left: 14px;
-  z-index: 1000;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
-  border-radius: 6px;
-  background: rgba(13,13,13,0.82);
-  border: 1px solid rgba(168,142,93,0.12);
-  color: var(--white-50);
-  backdrop-filter: blur(12px);
-  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  cursor: pointer;
-  user-select: none;
-}
-
-.route-toggle input {
-  accent-color: var(--gold);
-}
-
-.route-toggle:hover {
-  color: var(--white-70);
-  border-color: rgba(168,142,93,0.25);
-}
-
 /* ---- Course markers ---- */
 .marathon-course-line {
   filter: drop-shadow(0 0 8px rgba(168,142,93,0.22));
@@ -847,13 +814,6 @@ body.is-mobile-view .map-refresh-indicator {
   padding: 7px 10px;
 }
 
-body.is-mobile-view .route-toggle {
-  bottom: 14px;
-  left: 10px;
-  max-width: calc(100vw - 86px);
-  padding: 8px 10px;
-}
-
 body.is-mobile-view .elevation-panel {
   padding: 34px 20px 8px;
 }
@@ -872,8 +832,89 @@ body.is-mobile-view .elevation-chart {
   height: 160px;
 }
 
-/* ============ ELEVATION OVERLAY (inside main map) ============ */
+/* ============ ELEVATION SECTION (below map) ============ */
 
+.elev-section {
+  background: var(--black, #0a0a0a);
+  border-top: 1px solid rgba(168,142,93,0.1);
+  padding: 16px 0 0;
+}
+
+.elev-section .elev-canvas-wrap {
+  height: 120px;
+  cursor: col-resize;
+  touch-action: none;
+  padding: 0 16px;
+}
+
+.elev-section .elev-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.elev-section-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 20px 12px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.elev-progress-text {
+  font-size: 11px;
+  color: rgba(245,243,236,0.5);
+  letter-spacing: 0.5px;
+}
+
+.elev-legend-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: rgba(245,243,236,0.25);
+  font-family: 'Montserrat', sans-serif;
+}
+
+.elev-legend-bar {
+  width: 60px;
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, rgb(85,120,100), rgb(165,170,120), rgb(245,220,140));
+}
+
+/* Controls bar (below elevation) */
+.tracker-controls-bar {
+  padding: 10px 20px;
+  border-top: 1px solid rgba(255,255,255,0.04);
+  background: var(--black, #0a0a0a);
+}
+
+.route-toggle-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: rgba(245,243,236,0.45);
+  cursor: pointer;
+  user-select: none;
+}
+
+.route-toggle-bar input {
+  accent-color: var(--gold, #A88E5D);
+}
+
+.route-toggle-bar:hover {
+  color: rgba(245,243,236,0.65);
+}
+
+/* Elevation hover tooltip (stays on map) */
 .elev-tooltip-overlay {
   position: absolute;
   top: 14px;
@@ -905,50 +946,20 @@ body.is-mobile-view .elevation-chart {
   letter-spacing: 1px;
 }
 
-.elev-overlay {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 800;
-  background: linear-gradient(to top, rgba(13,13,13,0.88) 0%, rgba(13,13,13,0.65) 70%, transparent 100%);
-  padding: 0 0 4px;
-  pointer-events: none;
-}
-
-.elev-canvas-wrap {
-  height: 100px;
-  cursor: col-resize;
-  pointer-events: auto;
-  touch-action: none;
-  padding: 0 12px;
-}
-
-.elev-canvas {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-.elev-legend-inline {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 2px 0 4px;
-  font-size: 8px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  color: rgba(245,243,236,0.25);
-  pointer-events: none;
-  font-family: 'Montserrat', sans-serif;
-}
-
-.elev-legend-bar {
-  width: 60px;
-  height: 3px;
-  border-radius: 2px;
-  background: linear-gradient(90deg, rgb(85,120,100), rgb(165,170,120), rgb(245,220,140));
+@media (max-width: 820px) {
+  .elev-section .elev-canvas-wrap {
+    height: 90px;
+    padding: 0 10px;
+  }
+  .elev-section-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 6px 14px 10px;
+    gap: 4px;
+  }
+  .tracker-controls-bar {
+    padding: 8px 14px;
+  }
 }
 
 /* ============ TRACKING ALERT ============ */
