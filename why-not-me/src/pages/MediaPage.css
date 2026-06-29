@@ -1,0 +1,128 @@
+/*
+ * ============================================================
+ * MEDIA PAGE CSS
+ * Styles for the media toolkit / press kit page.
+ * ============================================================
+ */
+
+/* Two-column layout used across the media page */
+.media-two-col {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 80px;
+  align-items: center;
+}
+
+.media-col-text { /* text side */ }
+
+/* Quick stats row (10 / 4 / 26 / 2026) */
+.media-stats {
+  display: flex;
+  gap: 30px;
+  margin-top: 40px;
+  padding-top: 30px;
+  border-top: 1px solid var(--gold-20);
+  flex-wrap: wrap;
+}
+.media-stat-num {
+  display: block;
+  font-family: var(--font-heading);
+  font-size: 36px;
+  font-weight: 700;
+  color: var(--white);
+  line-height: 1;
+}
+.media-stat-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-top: 4px;
+}
+
+/* Timeline for media page (compact horizontal style) */
+.media-timeline {
+  margin-top: 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.media-tl-item {
+  display: flex;
+  gap: 20px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--white-15);
+  align-items: baseline;
+}
+.media-tl-year {
+  font-family: var(--font-heading);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--gold);
+  min-width: 50px;
+  letter-spacing: 1px;
+}
+.media-tl-text {
+  font-size: 14px;
+  color: var(--white-70);
+  line-height: 1.7;
+}
+
+/* Facts list */
+.media-facts {
+  margin-top: 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.media-fact {
+  font-size: 16px;
+  color: var(--white-70);
+  padding: 16px 20px;
+  border-left: 2px solid var(--gold);
+  background: var(--blue-40);
+  line-height: 1.6;
+}
+.media-fact strong {
+  color: var(--gold);
+  font-weight: 700;
+}
+
+/* Quotes */
+.media-quote {
+  font-size: clamp(16px, 1.6vw, 19px);
+  font-style: italic;
+  line-height: 1.85;
+  color: rgba(245,243,236,0.85);
+  border-left: 2px solid var(--gold);
+  padding-left: 24px;
+  margin: 30px 0 8px;
+}
+.media-cite {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  font-style: normal;
+  color: var(--gold);
+  padding-left: 24px;
+  letter-spacing: 1px;
+  margin-bottom: 20px;
+}
+
+/* Media access box (Google Drive link) */
+.media-access-box {
+  margin-top: 30px;
+  padding: 24px;
+  border-left: 3px solid var(--green);
+  background: rgba(85,96,77,0.1);
+}
+
+/* ============ RESPONSIVE ============ */
+@media (max-width: 900px) {
+  .media-two-col {
+    grid-template-columns: 1fr !important;
+    gap: 40px !important;
+  }
+}
