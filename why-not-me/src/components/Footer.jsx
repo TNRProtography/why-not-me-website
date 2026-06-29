@@ -54,7 +54,7 @@ export default function Footer() {
             <img src="/images/sponsors/mortgagelink.png" alt="Mortgage Link" className="footer-sponsor-logo" />
           </a>
           <a href="https://www.badboygraphix.co.nz/" target="_blank" rel="noopener noreferrer">
-            <img src="/images/sponsors/badboy-graphix.png" alt="Badboy Graphix" className="footer-sponsor-logo" />
+            <img src="/images/sponsors/badboy-graphix.png" alt="Badboy Graphix" className="footer-sponsor-logo footer-sponsor-logo--square" />
           </a>
         </div>
       </div>
