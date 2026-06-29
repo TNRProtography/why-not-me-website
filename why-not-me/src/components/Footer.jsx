@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import ScrollZoomFocus from './ScrollZoomFocus'
-import { trackSocialClick, trackExternalLink, trackCtaClick } from '../utils/analytics'
+import { trackSocialClick, trackExternalLink, trackCtaClick, trackSponsorClick } from '../utils/analytics'
 import './Footer.css'
 
 export default function Footer() {
@@ -44,16 +44,16 @@ export default function Footer() {
       <div className="footer-sponsors">
         <span className="footer-sponsors-label">Sponsors</span>
         <div className="footer-sponsors-logos">
-          <a href="https://www.westpower.co.nz" target="_blank" rel="noopener noreferrer">
+          <a href="https://www.westpower.co.nz" target="_blank" rel="noopener noreferrer" onClick={() => trackSponsorClick('Westpower', 'https://www.westpower.co.nz')}>
             <img src="/images/sponsors/primary-logo-inverse.svg" alt="Westpower" className="footer-sponsor-logo" />
           </a>
-          <a href="https://brightprint.co.nz/" target="_blank" rel="noopener noreferrer">
+          <a href="https://brightprint.co.nz/" target="_blank" rel="noopener noreferrer" onClick={() => trackSponsorClick('Bright Print', 'https://brightprint.co.nz/')}>
             <img src="/images/sponsors/brightprint.png" alt="Bright Print & Packaging" className="footer-sponsor-logo" />
           </a>
-          <a href="https://mortgagelink.co.nz/find-an-adviser/mortgage-link-christchurch/jules-keillor/" target="_blank" rel="noopener noreferrer">
+          <a href="https://mortgagelink.co.nz/find-an-adviser/mortgage-link-christchurch/jules-keillor/" target="_blank" rel="noopener noreferrer" onClick={() => trackSponsorClick('Mortgage Link', 'https://mortgagelink.co.nz/find-an-adviser/mortgage-link-christchurch/jules-keillor/')}>
             <img src="/images/sponsors/mortgagelink.png" alt="Mortgage Link" className="footer-sponsor-logo" />
           </a>
-          <a href="https://www.badboygraphix.co.nz/" target="_blank" rel="noopener noreferrer">
+          <a href="https://www.badboygraphix.co.nz/" target="_blank" rel="noopener noreferrer" onClick={() => trackSponsorClick('Badboy Graphix', 'https://www.badboygraphix.co.nz/')}>
             <img src="/images/sponsors/badboy-graphix.png" alt="Badboy Graphix" className="footer-sponsor-logo footer-sponsor-logo--square" />
           </a>
         </div>

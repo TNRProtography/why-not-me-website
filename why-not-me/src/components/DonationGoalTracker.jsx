@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { trackDonateClick, trackDonationSortChange, trackCtaClick } from '../utils/analytics'
+import { trackDonateClick, trackDonationSortChange, trackCtaClick, trackDonationTrackerView } from '../utils/analytics'
 import './DonationGoalTracker.css'
 
 const REFRESH_INTERVAL_MS = 60000
@@ -167,6 +167,7 @@ function NavDonationTracker() {
 function CompactDonationTracker() {
   const { loading, error, progress } = useDonationProgress()
   const supporterCount = progress.donorCount || progress.donationCount
+  useEffect(() => { trackDonationTrackerView('compact') }, [])
 
   return (
     <section className="donation-strip" aria-label="Live donation progress">
@@ -197,6 +198,7 @@ function DetailedDonationTracker({ middleSlot = null }) {
   const [sortBy, setSortBy] = useState('newest')
   const sortedDonations = useMemo(() => sortDonations(donations, sortBy), [donations, sortBy])
   const supporterCount = progress.donorCount || progress.donationCount
+  useEffect(() => { trackDonationTrackerView('detail') }, [])
 
   return (
     <section className="donation-detail" aria-label="Donation progress details">

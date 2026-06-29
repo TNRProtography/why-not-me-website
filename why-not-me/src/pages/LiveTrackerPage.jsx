@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import PageTransition from '../components/PageTransition'
-import { trackLiveTrackerView, trackLiveTrackerMapInteraction } from '../utils/analytics'
+import { trackLiveTrackerView, trackLiveTrackerMapInteraction, trackSplitMarkerClick, trackElevationProfileInteraction, trackTrackerDataStatus } from '../utils/analytics'
 import './LiveTrackerPage.css'
 
 const API_BASE = 'https://marathon-tracking-proxy.why-not-me-nicole-white.workers.dev'
@@ -498,6 +498,13 @@ export default function LiveTrackerPage() {
     }
   }, [apiStatus, lastReceivedAt, lastReceivedAgeSeconds])
 
+  // Track status changes for analytics
+  useEffect(() => {
+    if (trackingStatus === 'stale' || trackingStatus === 'dead') {
+      trackTrackerDataStatus(trackingStatus, lastReceivedAgeSeconds)
+    }
+  }, [trackingStatus])
+
   useEffect(() => {
     const interval = setInterval(() => setSummaryNow(Date.now()), 60000)
     return () => clearInterval(interval)
@@ -872,6 +879,7 @@ export default function LiveTrackerPage() {
           zIndexOffset: 650,
         })
         marker.bindPopup(popupHtml, { className: 'tracker-popup', closeButton: false, autoPan: false })
+        marker.on('click', () => trackSplitMarkerClick(splitKm, !!t))
         marker.bindTooltip(
           t ? `${shortLabel} km · tap for details` : `${shortLabel} km · pending`,
           { direction: 'top', offset: [0, -14], className: 'course-tooltip' }
@@ -1221,6 +1229,7 @@ export default function LiveTrackerPage() {
   }, [elevProfile])
 
   // ---- Elevation hover interaction ----
+  const elevHoverTrackedRef = useRef(false)
   const handleElevHover = useCallback((e) => {
     if (!elevProfile || !elevWrapRef.current) return
     const rect = elevWrapRef.current.getBoundingClientRect()
@@ -1233,6 +1242,12 @@ export default function LiveTrackerPage() {
       if (diff < closestDiff) { closestDiff = diff; closest = i }
     }
     setElevHoverIdx(closest)
+
+    // Track first hover per session
+    if (!elevHoverTrackedRef.current) {
+      elevHoverTrackedRef.current = true
+      trackElevationProfileInteraction('hover_start', targetKm)
+    }
 
     // Show marker on map
     if (mapRef.current && window.L) {
@@ -1251,6 +1266,7 @@ export default function LiveTrackerPage() {
   }, [elevProfile])
 
   const handleElevLeave = useCallback(() => {
+    elevHoverTrackedRef.current = false
     setElevHoverIdx(null)
     if (hoverMarkerRef.current && mapRef.current) {
       mapRef.current.removeLayer(hoverMarkerRef.current)

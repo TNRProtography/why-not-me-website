@@ -34,12 +34,26 @@ import ScrollZoomFocus from '../components/ScrollZoomFocus'
 import HeroPortalTitle from '../components/HeroPortalTitle'
 import Lightbox from '../components/Lightbox'
 import BrainTumourSupportSection from '../components/BrainTumourSupportSection'
-import { trackCtaClick, trackLightboxOpen, trackDonateClick, trackSocialClick, trackExternalLink } from '../utils/analytics'
+import { trackCtaClick, trackLightboxOpen, trackDonateClick, trackSocialClick, trackExternalLink, trackVideoSectionView, trackPhotoClick } from '../utils/analytics'
 import './HomePage.css'
 
 export default function HomePage() {
   const [lightbox, setLightbox] = useState(null)
   const heroRef = useRef(null)
+  const videoRef = useRef(null)
+
+  // Track when video section enters viewport
+  useEffect(() => {
+    if (!videoRef.current) return
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        trackVideoSectionView('jF1Y3IP9Rj4', 'homepage')
+        observer.disconnect()
+      }
+    }, { threshold: 0.3 })
+    observer.observe(videoRef.current)
+    return () => observer.disconnect()
+  }, [])
 
   /* Parallax effect on hero background image */
   const { scrollYProgress } = useScroll({
@@ -111,7 +125,7 @@ export default function HomePage() {
       </section>
 
       {/* ========== 2. FEATURE VIDEO ========== */}
-      <section className="home-video-section">
+      <section className="home-video-section" ref={videoRef}>
         <div className="home-video-grid">
           <RevealOnScroll direction="left" className="home-video-copy">
             <p className="section-label">Watch First</p>

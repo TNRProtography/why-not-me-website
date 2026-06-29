@@ -6,7 +6,7 @@ import RevealOnScroll from '../components/RevealOnScroll'
 import ScrollZoomFocus from '../components/ScrollZoomFocus'
 import HeroPortalTitle from '../components/HeroPortalTitle'
 import BrainTumourSupportSection from '../components/BrainTumourSupportSection'
-import { trackCtaClick, trackDonateClick } from '../utils/analytics'
+import { trackCtaClick, trackDonateClick, trackMarathonPhotoClick } from '../utils/analytics'
 import './MarathonPage.css'
 
 const historyItems = [
@@ -212,7 +212,7 @@ export default function MarathonPage() {
           <div className="marathon-dunedin-gallery" aria-label="Dunedin half marathon photo gallery">
             {dunedinMarathonPhotos.map((photo, index) => (
               <RevealOnScroll key={photo.src} delay={index * 0.08} className={`marathon-dunedin-photo marathon-dunedin-photo-${index + 1}`}>
-                <img src={photo.src} alt={photo.alt} />
+                <img src={photo.src} alt={photo.alt} onClick={() => trackMarathonPhotoClick(photo.src)} style={{ cursor: 'pointer' }} />
               </RevealOnScroll>
             ))}
           </div>

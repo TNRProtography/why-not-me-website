@@ -12,7 +12,7 @@ import { useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, useScroll, useTransform, useInView } from 'framer-motion'
 import PageTransition from '../components/PageTransition'
-import { trackCtaClick, trackDonateClick } from '../utils/analytics'
+import { trackCtaClick, trackDonateClick, trackPhotoClick } from '../utils/analytics'
 import './NicolesStoryPage.css'
 
 /* Scroll-triggered reveal */
@@ -274,9 +274,9 @@ export default function NicolesStoryPage() {
 
       {/* Surgery images */}
       <section className="story-image-strip">
-        <Reveal direction="fade" className="story-strip-img"><img src="/images/surgery/stitches.jpg" alt="Surgery" /></Reveal>
-        <Reveal direction="fade" delay={0.1} className="story-strip-img"><img src="/images/surgery/bandage.jpg" alt="Bandage" /></Reveal>
-        <Reveal direction="fade" delay={0.2} className="story-strip-img"><img src="/images/surgery/recovery.jpg" alt="Recovery" /></Reveal>
+        <Reveal direction="fade" className="story-strip-img"><img src="/images/surgery/stitches.jpg" alt="Surgery" onClick={() => trackPhotoClick("/images/surgery/stitches.jpg", "nicoles_story")} /></Reveal>
+        <Reveal direction="fade" delay={0.1} className="story-strip-img"><img src="/images/surgery/bandage.jpg" alt="Bandage" onClick={() => trackPhotoClick("/images/surgery/bandage.jpg", "nicoles_story")} /></Reveal>
+        <Reveal direction="fade" delay={0.2} className="story-strip-img"><img src="/images/surgery/recovery.jpg" alt="Recovery" onClick={() => trackPhotoClick("/images/surgery/recovery.jpg", "nicoles_story")} /></Reveal>
       </section>
 
       {/* ═══════ THE TREATMENT ═══════ */}
@@ -365,11 +365,11 @@ export default function NicolesStoryPage() {
 
       {/* Photo grid */}
       <section className="story-photos">
-        <Reveal direction="fade" className="story-photo span-2"><img src="/images/lores/running-front.jpg" alt="Running" /></Reveal>
-        <Reveal direction="fade" delay={0.05} className="story-photo"><img src="/images/lores/sunlight-run.jpg" alt="Sunlight" /></Reveal>
-        <Reveal direction="fade" delay={0.1} className="story-photo"><img src="/images/lores/coastal-run-2.jpg" alt="Coast" /></Reveal>
-        <Reveal direction="fade" delay={0.05} className="story-photo"><img src="/images/lores/forest-portrait.jpg" alt="Forest" /></Reveal>
-        <Reveal direction="fade" delay={0.1} className="story-photo span-2"><img src="/images/lores/jumping-path.jpg" alt="Jumping" /></Reveal>
+        <Reveal direction="fade" className="story-photo span-2"><img src="/images/lores/running-front.jpg" alt="Running" onClick={() => trackPhotoClick("/images/lores/running-front.jpg", "nicoles_story")} /></Reveal>
+        <Reveal direction="fade" delay={0.05} className="story-photo"><img src="/images/lores/sunlight-run.jpg" alt="Sunlight" onClick={() => trackPhotoClick("/images/lores/sunlight-run.jpg", "nicoles_story")} /></Reveal>
+        <Reveal direction="fade" delay={0.1} className="story-photo"><img src="/images/lores/coastal-run-2.jpg" alt="Coast" onClick={() => trackPhotoClick("/images/lores/coastal-run-2.jpg", "nicoles_story")} /></Reveal>
+        <Reveal direction="fade" delay={0.05} className="story-photo"><img src="/images/lores/forest-portrait.jpg" alt="Forest" onClick={() => trackPhotoClick("/images/lores/forest-portrait.jpg", "nicoles_story")} /></Reveal>
+        <Reveal direction="fade" delay={0.1} className="story-photo span-2"><img src="/images/lores/jumping-path.jpg" alt="Jumping" onClick={() => trackPhotoClick("/images/lores/jumping-path.jpg", "nicoles_story")} /></Reveal>
       </section>
 
       {/* ═══════ IN THEIR WORDS ═══════ */}

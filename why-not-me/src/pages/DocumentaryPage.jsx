@@ -15,14 +15,27 @@
  * ============================================================
  */
 import { Link } from 'react-router-dom'
-import { useRef } from 'react'
+import { useRef, useEffect } from 'react'
 import PageTransition from '../components/PageTransition'
 import RevealOnScroll from '../components/RevealOnScroll'
 import ScrollZoomFocus from '../components/ScrollZoomFocus'
 import HeroPortalTitle from '../components/HeroPortalTitle'
-import { trackSocialClick, trackDonateClick } from '../utils/analytics'
+import { trackSocialClick, trackDonateClick, trackVideoSectionView } from '../utils/analytics'
 
 export default function DocumentaryPage() {
+  const videoRef = useRef(null)
+
+  useEffect(() => {
+    if (!videoRef.current) return
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        trackVideoSectionView('pnLhzEzXKpc', 'documentary_page')
+        observer.disconnect()
+      }
+    }, { threshold: 0.3 })
+    observer.observe(videoRef.current)
+    return () => observer.disconnect()
+  }, [])
   const heroRef = useRef(null)
 
   return (
@@ -63,7 +76,7 @@ export default function DocumentaryPage() {
 
         {/* YouTube embed - responsive container */}
         <RevealOnScroll>
-          <div className="documentary-video-frame" style={{
+          <div ref={videoRef} className="documentary-video-frame" style={{
             position: 'relative', paddingBottom: '56.25%', height: 0,
             overflow: 'hidden', margin: '40px 0',
             border: '1px solid var(--gold-20)',

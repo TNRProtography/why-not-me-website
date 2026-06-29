@@ -12,10 +12,13 @@
  *   CTAs          — every button/link that leads to action
  *   Donations     — donate clicks, tracker interactions
  *   Dedications   — km selection, form steps, submission, share
- *   Media         — video section views, lightbox opens
+ *   Media         — video section views, lightbox opens, photo clicks
  *   Social        — outbound social link clicks
+ *   Sponsors      — sponsor logo clicks
  *   Scroll        — 25/50/75/100% depth milestones
- *   Engagement    — time on page buckets
+ *   Engagement    — time on page buckets (15s, 30s, 60s, 120s, 300s)
+ *   Live Tracker  — map interactions, split markers, elevation, data status
+ *   Visibility    — tab focus/blur for session quality
  * ============================================================
  */
 
@@ -89,7 +92,7 @@ export function trackDonationSortChange(sortBy) {
 export function trackKmClick(km, status) {
   trackEvent('km_click', {
     km_number: km,
-    km_status: status, // 'open', 'claimed', 'finish'
+    km_status: status,
   })
 }
 
@@ -127,7 +130,7 @@ export function trackDedicationError(km, errorMessage) {
 export function trackDedicationShare(km, method) {
   trackEvent('dedication_share', {
     km_number: km,
-    share_method: method, // 'native_share', 'download', 'facebook_fallback'
+    share_method: method,
   })
 }
 
@@ -160,12 +163,19 @@ export function trackVideoSectionView(videoId, location) {
   })
 }
 
+export function trackPhotoClick(imageSrc, location) {
+  trackEvent('photo_click', {
+    image_src: imageSrc,
+    click_location: location,
+  })
+}
+
 // ── Social & External Links ──────────────────────────────────
 
 export function trackSocialClick(platform, location) {
   trackEvent('social_click', {
-    platform: platform, // 'facebook', 'tiktok', 'youtube', 'email'
-    click_location: location, // 'footer', 'connect_section', 'documentary'
+    platform: platform,
+    click_location: location,
   })
 }
 
@@ -177,6 +187,15 @@ export function trackExternalLink(url, label, location) {
   })
 }
 
+// ── Sponsor Clicks ───────────────────────────────────────────
+
+export function trackSponsorClick(sponsorName, url) {
+  trackEvent('sponsor_click', {
+    sponsor_name: sponsorName,
+    link_url: url,
+  })
+}
+
 // ── Scroll Depth ─────────────────────────────────────────────
 
 const scrollMilestones = new Set()
@@ -184,7 +203,6 @@ const scrollMilestones = new Set()
 export function initScrollTracking() {
   if (typeof window === 'undefined') return
 
-  // Reset milestones on route change
   scrollMilestones.clear()
 
   const handler = () => {
@@ -210,6 +228,49 @@ export function initScrollTracking() {
   return () => window.removeEventListener('scroll', handler)
 }
 
+// ── Engagement Time ──────────────────────────────────────────
+
+let engagementTimers = []
+const engagementFired = new Set()
+
+export function initEngagementTracking() {
+  if (typeof window === 'undefined') return
+
+  // Clear previous timers and milestones on route change
+  engagementTimers.forEach(clearTimeout)
+  engagementTimers = []
+  engagementFired.clear()
+
+  const buckets = [15, 30, 60, 120, 300] // seconds
+
+  buckets.forEach((seconds) => {
+    const timer = setTimeout(() => {
+      if (!engagementFired.has(seconds)) {
+        engagementFired.add(seconds)
+        trackEvent('engagement_time', {
+          time_seconds: seconds,
+          page_path: window.location.pathname,
+        })
+      }
+    }, seconds * 1000)
+    engagementTimers.push(timer)
+  })
+
+  return () => {
+    engagementTimers.forEach(clearTimeout)
+    engagementTimers = []
+  }
+}
+
+// ── Visibility / Tab Focus ───────────────────────────────────
+
+export function trackVisibilityChange(isVisible) {
+  trackEvent('visibility_change', {
+    action: isVisible ? 'tab_focus' : 'tab_blur',
+    page_path: typeof window !== 'undefined' ? window.location.pathname : '',
+  })
+}
+
 // ── Live Tracker ─────────────────────────────────────────────
 
 export function trackLiveTrackerView() {
@@ -218,7 +279,28 @@ export function trackLiveTrackerView() {
 
 export function trackLiveTrackerMapInteraction(action) {
   trackEvent('live_tracker_interaction', {
-    action: action, // 'zoom', 'pan', 'recenter', 'basemap_change'
+    action: action,
+  })
+}
+
+export function trackSplitMarkerClick(km, hasTime) {
+  trackEvent('split_marker_click', {
+    km_marker: km,
+    has_time_data: hasTime,
+  })
+}
+
+export function trackElevationProfileInteraction(action, distanceKm) {
+  trackEvent('elevation_profile_interaction', {
+    action: action,
+    distance_km: distanceKm != null ? Number(distanceKm).toFixed(1) : null,
+  })
+}
+
+export function trackTrackerDataStatus(status, ageSeconds) {
+  trackEvent('tracker_data_status', {
+    status: status,
+    data_age_seconds: ageSeconds,
   })
 }
 

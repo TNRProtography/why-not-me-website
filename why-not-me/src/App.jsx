@@ -13,16 +13,27 @@ import DedicateKmPage from './pages/DedicateKmPage'
 import LiveTrackerPage from './pages/LiveTrackerPage'
 import NicolesStoryPage from './pages/NicolesStoryPage'
 import { isTrackerWindowOpen } from './config/trackerAvailability'
-import { trackPageView, initScrollTracking } from './utils/analytics'
+import { trackPageView, initScrollTracking, initEngagementTracking, trackVisibilityChange } from './utils/analytics'
 
 function PageViewTracker() {
   const location = useLocation()
 
   useEffect(() => {
     trackPageView(location.pathname, document.title)
-    const cleanup = initScrollTracking()
-    return cleanup
+    const cleanupScroll = initScrollTracking()
+    const cleanupEngagement = initEngagementTracking()
+    return () => {
+      if (cleanupScroll) cleanupScroll()
+      if (cleanupEngagement) cleanupEngagement()
+    }
   }, [location.pathname])
+
+  // Track tab visibility changes
+  useEffect(() => {
+    const handler = () => trackVisibilityChange(document.visibilityState === 'visible')
+    document.addEventListener('visibilitychange', handler)
+    return () => document.removeEventListener('visibilitychange', handler)
+  }, [])
 
   return null
 }
