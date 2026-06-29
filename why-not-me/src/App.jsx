@@ -10,6 +10,7 @@ import DocumentaryPage from './pages/DocumentaryPage'
 import DonationProgressPage from './pages/DonationProgressPage'
 import MarathonPage from './pages/MarathonPage'
 import DedicateKmPage from './pages/DedicateKmPage'
+import QuizNightPage from './pages/QuizNightPage'
 import LiveTrackerPage from './pages/LiveTrackerPage'
 import NicolesStoryPage from './pages/NicolesStoryPage'
 import { isTrackerWindowOpen } from './config/trackerAvailability'
@@ -46,6 +47,7 @@ function AnimatedRoutes({ trackerEnabled }) {
       <Route path="/nicoles-story" element={<NicolesStoryPage />} />
       <Route path="/queenstown-marathon" element={<MarathonPage />} />
       <Route path="/dedicate" element={<DedicateKmPage />} />
+      <Route path="/quiz-night" element={<QuizNightPage />} />
       <Route path="/donate" element={<DonationProgressPage />} />
       <Route path="/donation-progress" element={<DonationProgressPage />} />
       {trackerEnabled && <Route path="/live" element={<LiveTrackerPage />} />}

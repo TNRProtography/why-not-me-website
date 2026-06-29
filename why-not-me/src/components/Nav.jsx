@@ -9,6 +9,7 @@ const navItems = [
   { to: '/documentary', label: 'Documentary' },
   { to: '/queenstown-marathon', label: 'Marathon' },
   { to: '/dedicate', label: 'Dedicate a Km' },
+  { to: '/quiz-night', label: 'Quiz Night' },
 ]
 
 export default function Nav({ trackerEnabled = false, mobileDonationTracker = null }) {

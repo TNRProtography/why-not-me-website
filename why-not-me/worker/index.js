@@ -9,12 +9,17 @@
  *   /api/dedications (POST) — claim a km (requires verified donation)
  *   /api/dedications/check-email (POST) — check donation credits for email
  *   /api/dedications/message (POST) — leave a support message (requires donation)
+ *   /api/quiz-bookings (GET)       — quiz night capacity info
+ *   /api/quiz-booking (POST)       — book a quiz night team
  *
- * KV binding:   DEDICATIONS
- * Secret:       RAISELY_API_KEY
- * Asset binding: ASSETS (static site)
+ * KV binding:      DEDICATIONS
+ * Email binding:   SEND_EMAIL (Send Email, unrestricted)
+ * Secret:          RAISELY_API_KEY
+ * Asset binding:   ASSETS (static site)
  * ============================================================
  */
+
+import { EmailMessage } from 'cloudflare:email';
 
 const RAISELY_API_BASE = 'https://api.raisely.com/v3'
 const RAISELY_PROFILE_UUID = '5726f720-4406-11f1-b02c-c194de4f7b8f'
@@ -624,6 +629,195 @@ async function handleCheckEmail(request, env) {
   })
 }
 
+// ── Quiz Night Bookings ──────────────────────────────────────
+
+const QUIZ_BOOKINGS_KEY = 'quiz_bookings_v1'
+const QUIZ_MAX_CAPACITY = 120
+const QUIZ_MIN_TEAM = 4
+const QUIZ_MAX_TEAM = 6
+
+async function getQuizBookings(env) {
+  const raw = await env.DEDICATIONS.get(QUIZ_BOOKINGS_KEY)
+  if (!raw) return []
+  const bookings = JSON.parse(raw)
+  return Array.isArray(bookings) ? bookings : []
+}
+
+function getQuizSpotsBooked(bookings) {
+  return bookings.reduce((sum, b) => sum + (b.memberCount || 0), 0)
+}
+
+async function handleGetQuizBookings(env) {
+  const bookings = await getQuizBookings(env)
+  const spotsBooked = getQuizSpotsBooked(bookings)
+  return dedicationResponse({
+    spotsBooked,
+    spotsRemaining: Math.max(0, QUIZ_MAX_CAPACITY - spotsBooked),
+    totalCapacity: QUIZ_MAX_CAPACITY,
+    teamCount: bookings.length,
+  })
+}
+
+async function handlePostQuizBooking(request, env) {
+  let body
+  try {
+    body = await request.json()
+  } catch {
+    return dedicationResponse({ error: 'Invalid request.' }, 400)
+  }
+
+  const teamName = (body.teamName || '').trim().slice(0, 60)
+  const email = (body.email || '').trim().toLowerCase()
+  const rawMembers = Array.isArray(body.members) ? body.members : []
+  const members = rawMembers
+    .map((m) => (typeof m === 'string' ? m.trim().slice(0, 80) : ''))
+    .filter((m) => m !== '')
+
+  if (!email || !email.includes('@')) {
+    return dedicationResponse({ error: 'Please enter a valid email address.' }, 400)
+  }
+  if (members.length < QUIZ_MIN_TEAM) {
+    return dedicationResponse({ error: `You need at least ${QUIZ_MIN_TEAM} team members.` }, 400)
+  }
+  if (members.length > QUIZ_MAX_TEAM) {
+    return dedicationResponse({ error: `Maximum ${QUIZ_MAX_TEAM} team members allowed.` }, 400)
+  }
+
+  const bookings = await getQuizBookings(env)
+  const spotsBooked = getQuizSpotsBooked(bookings)
+  const spotsRemaining = QUIZ_MAX_CAPACITY - spotsBooked
+
+  if (members.length > spotsRemaining) {
+    return dedicationResponse({
+      error: spotsRemaining <= 0
+        ? 'Sorry, the quiz night is fully booked.'
+        : `Only ${spotsRemaining} spot${spotsRemaining === 1 ? '' : 's'} remaining. Please reduce your team size.`,
+    }, 409)
+  }
+
+  const booking = {
+    id: crypto.randomUUID(),
+    teamName: teamName || null,
+    members,
+    email,
+    memberCount: members.length,
+    createdAt: new Date().toISOString(),
+  }
+
+  const nextBookings = [...bookings, booking]
+  await env.DEDICATIONS.put(QUIZ_BOOKINGS_KEY, JSON.stringify(nextBookings))
+
+  // Send confirmation email (best-effort, don't block booking on failure)
+  try {
+    await sendQuizConfirmationEmail(booking, env)
+  } catch (emailError) {
+    console.error('Quiz confirmation email failed:', emailError)
+  }
+
+  const newSpotsBooked = getQuizSpotsBooked(nextBookings)
+
+  return dedicationResponse({
+    success: true,
+    booking: { ...booking, email: undefined },
+    spotsBooked: newSpotsBooked,
+    spotsRemaining: Math.max(0, QUIZ_MAX_CAPACITY - newSpotsBooked),
+  })
+}
+
+async function sendQuizConfirmationEmail(booking, env) {
+  if (!env.SEND_EMAIL) {
+    console.error('SEND_EMAIL binding not configured, skipping confirmation email')
+    return
+  }
+
+  const teamLabel = booking.teamName || 'Your team'
+  const memberList = booking.members.map((m, i) => `${i + 1}. ${m}`).join('\n')
+  const totalCost = booking.memberCount * 10
+  const fromAddr = 'quiz@whynotme.co.nz'
+  const toAddr = booking.email
+  const subject = `You're in! Quiz Night - ${teamLabel}`
+  const boundary = `----=_boundary_${Date.now()}`
+
+  const textBody = `You're booked in - Quiz Night Confirmation
+
+Team: ${teamLabel}
+Date: Wednesday 7 October 2026
+Time: 6:00 PM
+Venue: Monteith's Brewery, Greymouth
+People: ${booking.memberCount}
+Cost: $${totalCost} (paid at the door)
+
+Your Team:
+${memberList}
+
+IMPORTANT: Each quiz round includes a question from the documentary. Watch it before quiz night.
+Watch here: https://whynotme.co.nz/documentary
+
+See you on the night. All proceeds go to Brain Tumour Support NZ.`
+
+  const htmlBody = `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 560px; margin: 0 auto; background: #0D0D0D; color: #F5F3EC; padding: 40px 32px;">
+  <div style="text-align: center; margin-bottom: 32px;">
+    <img src="https://whynotme.co.nz/images/logos/logo-white-transparent.png" alt="Why Not Me?" style="height: 60px; margin: 0 auto;" />
+  </div>
+  <h1 style="font-size: 28px; text-align: center; margin: 0 0 8px; color: #F5F3EC;">You're booked in.</h1>
+  <p style="text-align: center; color: #A88E5D; font-size: 13px; letter-spacing: 2px; text-transform: uppercase; margin: 0 0 32px;">Quiz Night Confirmation</p>
+  <div style="background: rgba(168,142,93,0.1); border: 1px solid rgba(168,142,93,0.25); padding: 24px; margin-bottom: 24px;">
+    <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+      <tr><td style="padding: 8px 0; color: #A88E5D;">Team</td><td style="padding: 8px 0; text-align: right;">${teamLabel}</td></tr>
+      <tr><td style="padding: 8px 0; color: #A88E5D;">Date</td><td style="padding: 8px 0; text-align: right;">Wednesday 7 October 2026</td></tr>
+      <tr><td style="padding: 8px 0; color: #A88E5D;">Time</td><td style="padding: 8px 0; text-align: right;">6:00 PM</td></tr>
+      <tr><td style="padding: 8px 0; color: #A88E5D;">Venue</td><td style="padding: 8px 0; text-align: right;">Monteith's Brewery, Greymouth</td></tr>
+      <tr><td style="padding: 8px 0; color: #A88E5D;">People</td><td style="padding: 8px 0; text-align: right;">${booking.memberCount}</td></tr>
+      <tr><td style="padding: 8px 0; color: #A88E5D;">Cost</td><td style="padding: 8px 0; text-align: right;">$${totalCost} (paid at the door)</td></tr>
+    </table>
+  </div>
+  <div style="margin-bottom: 24px;">
+    <p style="color: #A88E5D; font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; margin: 0 0 8px;">Your Team</p>
+    <p style="margin: 0; line-height: 1.8; font-size: 14px;">${booking.members.join('<br />')}</p>
+  </div>
+  <div style="background: rgba(168,142,93,0.08); border: 1px solid rgba(168,142,93,0.2); padding: 20px; text-align: center; margin-bottom: 24px;">
+    <p style="color: #A88E5D; font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; margin: 0 0 8px;">Important</p>
+    <p style="margin: 0; font-size: 14px; line-height: 1.7;">Each quiz round includes a question from the documentary. Watch it before quiz night or you will cost your team points.</p>
+    <a href="https://whynotme.co.nz/documentary" style="display: inline-block; margin-top: 16px; padding: 12px 28px; background: #A88E5D; color: #0D0D0D; text-decoration: none; font-size: 12px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;">Watch the Documentary</a>
+  </div>
+  <p style="font-size: 13px; color: rgba(245,243,236,0.4); text-align: center; line-height: 1.6;">
+    See you on the night. All proceeds go to Brain Tumour Support NZ.
+  </p>
+</div>`
+
+  // Build raw MIME message
+  const mimeMessage = [
+    `From: "Why Not Me?" <${fromAddr}>`,
+    `To: <${toAddr}>`,
+    `Subject: =?UTF-8?B?${btoa(unescape(encodeURIComponent(subject)))}?=`,
+    'MIME-Version: 1.0',
+    `Content-Type: multipart/alternative; boundary="${boundary}"`,
+    '',
+    `--${boundary}`,
+    'Content-Type: text/plain; charset=UTF-8',
+    'Content-Transfer-Encoding: quoted-printable',
+    '',
+    textBody,
+    '',
+    `--${boundary}`,
+    'Content-Type: text/html; charset=UTF-8',
+    'Content-Transfer-Encoding: quoted-printable',
+    '',
+    htmlBody,
+    '',
+    `--${boundary}--`,
+  ].join('\r\n')
+
+  const message = new EmailMessage(fromAddr, toAddr, new ReadableStream({
+    start(controller) {
+      controller.enqueue(new TextEncoder().encode(mimeMessage))
+      controller.close()
+    },
+  }))
+
+  await env.SEND_EMAIL.send(message)
+}
+
 // ── Main router ──────────────────────────────────────────────
 
 export default {
@@ -676,6 +870,22 @@ export default {
         } catch (error) {
           return dedicationResponse({ error: 'Unable to save dedication.' }, 500)
         }
+      }
+    }
+
+    if (url.pathname === '/api/quiz-bookings' && request.method === 'GET') {
+      try {
+        return await handleGetQuizBookings(env)
+      } catch (error) {
+        return dedicationResponse({ error: 'Unable to load quiz bookings.' }, 500)
+      }
+    }
+
+    if (url.pathname === '/api/quiz-booking' && request.method === 'POST') {
+      try {
+        return await handlePostQuizBooking(request, env)
+      } catch (error) {
+        return dedicationResponse({ error: 'Unable to process booking.' }, 500)
       }
     }
 
