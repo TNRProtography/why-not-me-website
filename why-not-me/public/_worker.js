@@ -628,31 +628,43 @@ async function handleCheckEmail(request, env) {
 }
 
 // ── Quiz Night Bookings ──────────────────────────────────────
+// Each booking is its own KV entry so you can browse and delete
+// them individually in the Cloudflare dashboard.
+// Key format:  quiz_TeamName_abc123  (or quiz_email_abc123 if no team name)
+// Metadata:    { memberCount }  (used for quick capacity counting)
 
-const QUIZ_BOOKINGS_KEY = 'quiz_bookings_v1'
+const QUIZ_KEY_PREFIX = 'quiz_'
 const QUIZ_MAX_CAPACITY = 120
 const QUIZ_MIN_TEAM = 4
 const QUIZ_MAX_TEAM = 6
 
-async function getQuizBookings(env) {
-  const raw = await env.DEDICATIONS.get(QUIZ_BOOKINGS_KEY)
-  if (!raw) return []
-  const bookings = JSON.parse(raw)
-  return Array.isArray(bookings) ? bookings : []
+function quizKey(teamName, email, id) {
+  const label = (teamName || email || 'team').replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-').slice(0, 40)
+  const short = id.split('-')[0]
+  return `${QUIZ_KEY_PREFIX}${label}_${short}`
 }
 
-function getQuizSpotsBooked(bookings) {
-  return bookings.reduce((sum, b) => sum + (b.memberCount || 0), 0)
+async function getQuizSpotsBooked(env) {
+  let spotsBooked = 0
+  let cursor = null
+
+  do {
+    const result = await env.DEDICATIONS.list({ prefix: QUIZ_KEY_PREFIX, cursor })
+    for (const key of result.keys) {
+      spotsBooked += key.metadata?.memberCount || 0
+    }
+    cursor = result.list_complete ? null : result.cursor
+  } while (cursor)
+
+  return spotsBooked
 }
 
 async function handleGetQuizBookings(env) {
-  const bookings = await getQuizBookings(env)
-  const spotsBooked = getQuizSpotsBooked(bookings)
+  const spotsBooked = await getQuizSpotsBooked(env)
   return dedicationResponse({
     spotsBooked,
     spotsRemaining: Math.max(0, QUIZ_MAX_CAPACITY - spotsBooked),
     totalCapacity: QUIZ_MAX_CAPACITY,
-    teamCount: bookings.length,
   })
 }
 
@@ -681,8 +693,7 @@ async function handlePostQuizBooking(request, env) {
     return dedicationResponse({ error: `Maximum ${QUIZ_MAX_TEAM} team members allowed.` }, 400)
   }
 
-  const bookings = await getQuizBookings(env)
-  const spotsBooked = getQuizSpotsBooked(bookings)
+  const spotsBooked = await getQuizSpotsBooked(env)
   const spotsRemaining = QUIZ_MAX_CAPACITY - spotsBooked
 
   if (members.length > spotsRemaining) {
@@ -693,8 +704,9 @@ async function handlePostQuizBooking(request, env) {
     }, 409)
   }
 
+  const id = crypto.randomUUID()
   const booking = {
-    id: crypto.randomUUID(),
+    id,
     teamName: teamName || null,
     members,
     email,
@@ -702,8 +714,10 @@ async function handlePostQuizBooking(request, env) {
     createdAt: new Date().toISOString(),
   }
 
-  const nextBookings = [...bookings, booking]
-  await env.DEDICATIONS.put(QUIZ_BOOKINGS_KEY, JSON.stringify(nextBookings))
+  const key = quizKey(teamName, email, id)
+  await env.DEDICATIONS.put(key, JSON.stringify(booking), {
+    metadata: { memberCount: members.length },
+  })
 
   // Send confirmation email (best-effort, don't block booking on failure)
   try {
@@ -712,7 +726,7 @@ async function handlePostQuizBooking(request, env) {
     console.error('Quiz confirmation email failed:', emailError)
   }
 
-  const newSpotsBooked = getQuizSpotsBooked(nextBookings)
+  const newSpotsBooked = spotsBooked + members.length
 
   return dedicationResponse({
     success: true,
