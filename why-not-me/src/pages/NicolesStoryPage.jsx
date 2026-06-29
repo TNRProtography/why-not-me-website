@@ -232,7 +232,7 @@ export default function NicolesStoryPage() {
         <Reveal className="story-tl-item">
           <div className="story-tl-dot" />
           <div className="story-tl-year">2018</div>
-          <p className="story-tl-text">Gap year started. Still being told she was all clear. Then in November, found out the tumour had grown back again.</p>
+          <p className="story-tl-text">Gap year started. Still being told she was all clear. Then in November, found out Terry had grown back again.</p>
         </Reveal>
 
         <Reveal className="story-tl-item" delay={0.05}>
@@ -244,13 +244,13 @@ export default function NicolesStoryPage() {
         <Reveal className="story-tl-item" delay={0.05}>
           <div className="story-tl-dot" />
           <div className="story-tl-year">2020</div>
-          <p className="story-tl-text">Started nursing in February. Six months post-op, the tumour was back again. Started on Dabrafenib, an oral chemotherapy drug.</p>
+          <p className="story-tl-text">Started nursing in February. Six months post-op, Terry was back again. Started on Dabrafenib, an oral chemotherapy drug.</p>
         </Reveal>
 
         <Reveal className="story-tl-item" delay={0.05}>
           <div className="story-tl-dot" />
           <div className="story-tl-year">2021</div>
-          <p className="story-tl-text">Tumour officially stable. Felt miserable on Dabrafenib but it meant she could keep studying. She pushed through.</p>
+          <p className="story-tl-text">Terry officially stable. Felt miserable on Dabrafenib but it meant she could keep studying. She pushed through.</p>
         </Reveal>
 
         <Reveal className="story-tl-item" delay={0.05}>
@@ -262,7 +262,7 @@ export default function NicolesStoryPage() {
         <Reveal className="story-tl-item" delay={0.05}>
           <div className="story-tl-dot" />
           <div className="story-tl-year">2023</div>
-          <p className="story-tl-text">Started her new grad nursing job in Greymouth. Met Dean. Ran the Queenstown Marathon while on chemo. By the end of the year, the tumour showed changes and she was taken off Dabrafenib.</p>
+          <p className="story-tl-text">Started her new grad nursing job in Greymouth. Met Dean. Ran the Queenstown Marathon while on chemo. By the end of the year, Terry showed changes and she was taken off Dabrafenib.</p>
         </Reveal>
       </section>
 
@@ -272,14 +272,14 @@ export default function NicolesStoryPage() {
       <Cinema src="/images/surgery/bed.jpg" alt="Nicole in hospital" darken={0.75} className="story-cinema-dark">
         <Reveal>
           <p className="story-cinema-year story-cinema-year-danger">2024</p>
-          <h2 className="story-cinema-headline">The tumour changed its spots.</h2>
+          <h2 className="story-cinema-headline">Terry changed his spots.</h2>
         </Reveal>
       </Cinema>
 
       <section className="story-prose">
         <Reveal>
           <p className="story-body-lg">
-            Changes to the tumour raised concern. Nicole had surgery in June. The tumour grew back, so she had surgery again in November. Her fourth.
+            Changes to Terry raised concern. Nicole had surgery in June. Terry grew back, so she had surgery again in November. Her fourth.
           </p>
         </Reveal>
         <Reveal delay={0.1}>
@@ -352,7 +352,7 @@ export default function NicolesStoryPage() {
       <Cinema src="/images/lores/arms-ocean.jpg" alt="Arms spread at the ocean" darken={0.3}>
         <Reveal>
           <p className="story-body-lg" style={{ textAlign: 'center', maxWidth: 650, margin: '0 auto', textShadow: '0 2px 20px rgba(0,0,0,0.6)' }}>
-            Back at work. Training for a marathon. Living with the knowledge that it could return, but choosing to live fully anyway.
+            Back at work. Training for a marathon. Living with the knowledge that Terry could return, but choosing to live fully anyway.
           </p>
         </Reveal>
       </Cinema>
@@ -400,7 +400,7 @@ export default function NicolesStoryPage() {
       <section className="story-quotes-section">
         <Reveal className="story-quote-card">
           <blockquote>"Anything that we felt must have been magnified a hundred times for Nicole."</blockquote>
-          <cite>Deborah &middot; On living with the tumour</cite>
+          <cite>Deborah &middot; On living with Terry</cite>
         </Reveal>
         <Reveal className="story-quote-card" delay={0.1}>
           <blockquote>"That was independence. That was the ability to go and do her own thing."</blockquote>
