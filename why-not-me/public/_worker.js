@@ -786,26 +786,7 @@ async function sendQuizConfirmationEmail(booking, env) {
   }
 }
 
-// ── Quiz Booking Cancellation ────────────────────────────────
-
-function cancelPageHtml(booking, token, message) {
-  const teamLabel = booking ? (booking.teamName || 'Your team') : ''
-  const isConfirmed = !!message
-
-  return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>${isConfirmed ? 'Booking Cancelled' : 'Cancel Booking'} - Why Not Me?</title></head>
-<body style="margin:0;padding:0;background:#0D0D0D;color:#F5F3EC;font-family:Arial,Helvetica,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" style="padding:60px 20px;">
-<table width="520" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;width:100%;background:#151515;border:1px solid #2A2A2A;">
-<tr><td style="padding:40px 32px;text-align:center;">
-<p style="margin:0 0 24px;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#A88E5D;">Quiz Night</p>
-<h1 style="margin:0 0 16px;font-size:24px;font-family:Georgia,serif;color:#F5F3EC;">${isConfirmed ? 'Booking Cancelled' : 'Cancel Your Booking?'}</h1>
-${isConfirmed
-  ? '<p style="margin:0 0 24px;font-size:14px;line-height:1.7;color:#888;">' + message + '</p><a href="https://whynotme.co.nz/quiz-night" style="display:inline-block;padding:14px 32px;background:#A88E5D;color:#0D0D0D;text-decoration:none;font-size:12px;font-weight:bold;letter-spacing:2px;text-transform:uppercase;">Back to Quiz Night</a>'
-  : '<p style="margin:0 0 8px;font-size:14px;color:#888;">Team: <strong style="color:#F5F3EC;">' + teamLabel + '</strong></p><p style="margin:0 0 8px;font-size:14px;color:#888;">People: <strong style="color:#F5F3EC;">' + booking.memberCount + '</strong></p><p style="margin:0 0 24px;font-size:14px;color:#888;">Email: <strong style="color:#F5F3EC;">' + booking.email + '</strong></p><p style="margin:0 0 24px;font-size:13px;line-height:1.6;color:#666;">This will remove your booking and free up your spots. You will receive a confirmation email. This cannot be undone.</p><form method="POST" action="/api/quiz-booking/cancel?token=' + token + '"><button type="submit" style="padding:14px 32px;background:#d9534f;color:#fff;border:none;cursor:pointer;font-size:12px;font-weight:bold;letter-spacing:2px;text-transform:uppercase;">Yes, Cancel My Booking</button></form><p style="margin:16px 0 0;font-size:12px;color:#555;"><a href="https://whynotme.co.nz/quiz-night" style="color:#A88E5D;text-decoration:underline;">No, keep my booking</a></p>'
-}
-</td></tr></table>
-</td></tr></table></body></html>`
-}
+// ── Quiz Booking Management ──────────────────────────────────
 
 async function findBookingByToken(token, env) {
   let cursor = null
@@ -823,35 +804,243 @@ async function findBookingByToken(token, env) {
   return null
 }
 
-async function handleCancelPage(url, env) {
+async function notifyEmailWorker(type, booking, env) {
+  if (!env.EMAIL_WORKER_SECRET) return
+  try {
+    await fetch(QUIZ_EMAIL_WORKER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + env.EMAIL_WORKER_SECRET },
+      body: JSON.stringify({ type, id: booking.id, teamName: booking.teamName, members: booking.members, email: booking.email, memberCount: booking.memberCount }),
+    })
+  } catch { /* best effort */ }
+}
+
+function managePage(booking, token, flash) {
+  const teamLabel = booking ? (booking.teamName || 'No team name') : ''
+  const totalCost = booking ? booking.memberCount * 10 : 0
+
+  const memberRows = booking ? booking.members.map(function(m, i) {
+    return '<div class="member-row" data-index="' + i + '">' +
+      '<span class="member-num">' + (i + 1) + '</span>' +
+      '<span class="member-name" id="name-display-' + i + '">' + m + '</span>' +
+      '<input type="text" class="member-input" id="name-input-' + i + '" value="' + m.replace(/"/g, '&quot;') + '" maxlength="80" style="display:none" />' +
+      '<button class="btn-edit" onclick="editName(' + i + ')" id="btn-edit-' + i + '">Edit</button>' +
+      '<button class="btn-save-name" onclick="saveName(' + i + ')" id="btn-save-' + i + '" style="display:none">Save</button>' +
+      (booking.members.length > QUIZ_MIN_TEAM ? '<button class="btn-remove" onclick="removeMember(' + i + ')">Remove</button>' : '') +
+      '</div>'
+  }).join('') : ''
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Manage Booking - Why Not Me?</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0D0D0D;color:#F5F3EC;font-family:Arial,Helvetica,sans-serif;min-height:100vh}
+.wrap{max-width:560px;margin:0 auto;padding:40px 20px 60px}
+.logo{text-align:center;margin-bottom:32px}
+.logo img{height:50px}
+.card{background:#151515;border:1px solid #2A2A2A;padding:32px 28px;margin-bottom:20px}
+.label{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#A88E5D;margin-bottom:6px}
+h1{font-size:24px;font-family:Georgia,serif;margin-bottom:20px;text-align:center}
+.flash{padding:14px 20px;margin-bottom:20px;text-align:center;font-size:14px;line-height:1.5}
+.flash-success{background:#1a2e1a;border:1px solid #2d4a2d;color:#7bc67b}
+.flash-error{background:#2e1a1a;border:1px solid #4a2d2d;color:#d9534f}
+.detail-grid{display:grid;grid-template-columns:auto 1fr;gap:8px 16px;font-size:14px;margin-bottom:20px}
+.detail-label{color:#A88E5D}
+.detail-value{color:#F5F3EC;text-align:right}
+.detail-value.bold{font-weight:700}
+.divider{border-top:1px solid #2A2A2A;margin:20px 0}
+.member-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #1f1f1f}
+.member-row:last-child{border-bottom:none}
+.member-num{width:24px;font-size:13px;font-weight:700;color:#A88E5D;flex-shrink:0}
+.member-name{flex:1;font-size:14px}
+.member-input{flex:1;background:#0D0D0D;border:1px solid #A88E5D;color:#F5F3EC;font-family:inherit;font-size:14px;padding:8px 12px}
+.btn-edit,.btn-save-name,.btn-remove{font-size:11px;letter-spacing:1px;text-transform:uppercase;border:none;cursor:pointer;padding:6px 12px;font-family:inherit;font-weight:600}
+.btn-edit{background:transparent;color:#A88E5D;border:1px solid #3D3424}
+.btn-save-name{background:#A88E5D;color:#0D0D0D}
+.btn-remove{background:transparent;color:#888;border:1px solid #333}
+.btn-remove:hover{color:#d9534f;border-color:#d9534f}
+.event-details{background:#1A1A1A;border:1px solid #3D3424;padding:20px;margin-bottom:20px}
+.section-title{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#A88E5D;margin-bottom:12px}
+.btn-primary{display:block;width:100%;padding:16px;background:#A88E5D;color:#0D0D0D;border:none;cursor:pointer;font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;font-family:inherit;text-align:center;text-decoration:none;margin-bottom:12px}
+.btn-cancel{display:block;width:100%;padding:16px;background:transparent;color:#d9534f;border:2px solid #d9534f;cursor:pointer;font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;font-family:inherit;text-align:center}
+.btn-cancel:hover{background:#d9534f;color:#fff}
+.cancel-confirm{display:none;background:#1a1010;border:1px solid #4a2d2d;padding:20px;margin-top:12px;text-align:center}
+.cancel-confirm p{font-size:14px;color:#ccc;line-height:1.6;margin-bottom:16px}
+.back-link{display:block;text-align:center;margin-top:16px;font-size:13px;color:#A88E5D;text-decoration:underline}
+.footer{text-align:center;margin-top:32px;font-size:12px;color:#555}
+.footer a{color:#A88E5D;text-decoration:underline}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo"><a href="https://whynotme.co.nz"><img src="https://whynotme.co.nz/images/logos/logo-white-transparent.png" alt="Why Not Me?" /></a></div>
+
+  <h1>Manage Your Booking</h1>
+
+  ${flash ? '<div class="flash ' + (flash.type === 'error' ? 'flash-error' : 'flash-success') + '">' + flash.message + '</div>' : ''}
+
+  ${booking ? `
+  <div class="card">
+    <div class="event-details">
+      <div class="detail-grid">
+        <span class="detail-label">Event</span><span class="detail-value">Quiz Night Fundraiser</span>
+        <span class="detail-label">Date</span><span class="detail-value">Wednesday 7 October 2026</span>
+        <span class="detail-label">Time</span><span class="detail-value">6:00 PM</span>
+        <span class="detail-label">Venue</span><span class="detail-value">Monteith's Brewery, Greymouth</span>
+      </div>
+    </div>
+
+    <div class="detail-grid">
+      <span class="detail-label">Team</span><span class="detail-value">${teamLabel}</span>
+      <span class="detail-label">Email</span><span class="detail-value">${booking.email}</span>
+      <span class="detail-label">People</span><span class="detail-value">${booking.memberCount}</span>
+      <span class="detail-label bold">Total Cost</span><span class="detail-value bold">$${totalCost}</span>
+    </div>
+    <p style="font-size:12px;color:#666;margin-top:-12px">Paid at the door on the night (cash or card)</p>
+  </div>
+
+  <div class="card">
+    <p class="section-title">Team Members</p>
+    <p style="font-size:12px;color:#666;margin-bottom:16px">Edit names if someone has changed, or remove a member who can no longer make it (minimum 4 required).</p>
+    <div id="members-list">
+      ${memberRows}
+    </div>
+  </div>
+
+  <div class="card" style="text-align:center">
+    <p class="section-title">Cancel Booking</p>
+    <p style="font-size:13px;color:#888;line-height:1.6;margin-bottom:16px">If your whole team can no longer make it, you can cancel your booking below. Your spots will be released for others.</p>
+    <button class="btn-cancel" onclick="showCancelConfirm()">Cancel Entire Booking</button>
+    <div class="cancel-confirm" id="cancel-confirm">
+      <p>Are you sure? This will cancel the booking for all ${booking.memberCount} team members and cannot be undone.</p>
+      <form method="POST" action="/api/quiz-booking/cancel?token=${token}">
+        <button type="submit" class="btn-cancel" style="background:#d9534f;color:#fff;border-color:#d9534f;margin-bottom:8px">Yes, Cancel My Booking</button>
+      </form>
+      <button onclick="hideCancelConfirm()" style="background:none;border:none;color:#A88E5D;cursor:pointer;font-size:13px;text-decoration:underline;font-family:inherit">No, keep my booking</button>
+    </div>
+  </div>
+
+  <a href="https://whynotme.co.nz/quiz-night" class="back-link">Back to Quiz Night</a>
+  ` : ''}
+
+  <div class="footer"><a href="https://whynotme.co.nz">whynotme.co.nz</a></div>
+</div>
+
+<script>
+function editName(i) {
+  document.getElementById('name-display-'+i).style.display='none';
+  document.getElementById('name-input-'+i).style.display='';
+  document.getElementById('btn-edit-'+i).style.display='none';
+  document.getElementById('btn-save-'+i).style.display='';
+  document.getElementById('name-input-'+i).focus();
+}
+
+function saveName(i) {
+  var input = document.getElementById('name-input-'+i);
+  var val = input.value.trim();
+  if (!val) { alert('Name cannot be empty.'); return; }
+  var form = document.createElement('form');
+  form.method = 'POST';
+  form.action = '/api/quiz-booking/modify?token=${token || ''}';
+  var hi = document.createElement('input'); hi.type='hidden'; hi.name='index'; hi.value=i;
+  var hn = document.createElement('input'); hn.type='hidden'; hn.name='newName'; hn.value=val;
+  var ha = document.createElement('input'); ha.type='hidden'; ha.name='action'; ha.value='rename';
+  form.appendChild(hi); form.appendChild(hn); form.appendChild(ha);
+  document.body.appendChild(form);
+  form.submit();
+}
+
+function removeMember(i) {
+  if (!confirm('Remove this team member?')) return;
+  var form = document.createElement('form');
+  form.method = 'POST';
+  form.action = '/api/quiz-booking/modify?token=${token || ''}';
+  var hi = document.createElement('input'); hi.type='hidden'; hi.name='index'; hi.value=i;
+  var ha = document.createElement('input'); ha.type='hidden'; ha.name='action'; ha.value='remove';
+  form.appendChild(hi); form.appendChild(ha);
+  document.body.appendChild(form);
+  form.submit();
+}
+
+function showCancelConfirm() { document.getElementById('cancel-confirm').style.display='block'; }
+function hideCancelConfirm() { document.getElementById('cancel-confirm').style.display='none'; }
+</script>
+</body>
+</html>`
+}
+
+function resultPage(title, message) {
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>${title} - Why Not Me?</title>
+<style>*{box-sizing:border-box;margin:0;padding:0}body{background:#0D0D0D;color:#F5F3EC;font-family:Arial,Helvetica,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center}.card{max-width:520px;width:100%;margin:40px 20px;background:#151515;border:1px solid #2A2A2A;padding:40px 32px;text-align:center}.logo{margin-bottom:24px}.logo img{height:50px}h1{font-size:24px;font-family:Georgia,serif;margin-bottom:16px}.msg{font-size:14px;line-height:1.7;color:#888;margin-bottom:28px}.btn{display:inline-block;padding:14px 32px;background:#A88E5D;color:#0D0D0D;text-decoration:none;font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase}</style></head>
+<body><div class="card">
+<div class="logo"><a href="https://whynotme.co.nz"><img src="https://whynotme.co.nz/images/logos/logo-white-transparent.png" alt="Why Not Me?" /></a></div>
+<h1>${title}</h1>
+<p class="msg">${message}</p>
+<a href="https://whynotme.co.nz/quiz-night" class="btn">Back to Quiz Night</a>
+</div></body></html>`
+}
+
+async function handleManagePage(url, env) {
   const token = url.searchParams.get('token')
-  if (!token) {
-    return new Response(cancelPageHtml(null, null, 'Invalid cancellation link.'), { status: 400, headers: { 'Content-Type': 'text/html' } })
-  }
+  if (!token) return new Response(resultPage('Invalid Link', 'This link is not valid. Check your confirmation email for the correct link.'), { status: 400, headers: { 'Content-Type': 'text/html' } })
 
   const result = await findBookingByToken(token, env)
-  if (!result) {
-    return new Response(cancelPageHtml(null, null, 'This booking has already been cancelled or could not be found.'), { status: 404, headers: { 'Content-Type': 'text/html' } })
+  if (!result) return new Response(resultPage('Booking Not Found', 'This booking has already been cancelled or could not be found.'), { status: 404, headers: { 'Content-Type': 'text/html' } })
+
+  return new Response(managePage(result.booking, token, null), { status: 200, headers: { 'Content-Type': 'text/html' } })
+}
+
+async function handleModifyBooking(request, url, env) {
+  const token = url.searchParams.get('token')
+  if (!token) return new Response(resultPage('Invalid Link', 'This link is not valid.'), { status: 400, headers: { 'Content-Type': 'text/html' } })
+
+  const result = await findBookingByToken(token, env)
+  if (!result) return new Response(resultPage('Booking Not Found', 'This booking has already been cancelled or could not be found.'), { status: 404, headers: { 'Content-Type': 'text/html' } })
+
+  const formData = await request.formData()
+  const action = formData.get('action')
+  const index = parseInt(formData.get('index'), 10)
+  const booking = result.booking
+  let flash = null
+
+  if (action === 'rename') {
+    const newName = (formData.get('newName') || '').trim().slice(0, 80)
+    if (!newName) {
+      flash = { type: 'error', message: 'Name cannot be empty.' }
+    } else if (index >= 0 && index < booking.members.length) {
+      const oldName = booking.members[index]
+      booking.members[index] = newName
+      await env.DEDICATIONS.put(result.key, JSON.stringify(booking), { metadata: { memberCount: booking.memberCount } })
+      flash = { type: 'success', message: 'Updated: ' + oldName + ' changed to ' + newName }
+      await notifyEmailWorker('modification_admin', booking, env)
+    }
+  } else if (action === 'remove') {
+    if (booking.members.length <= QUIZ_MIN_TEAM) {
+      flash = { type: 'error', message: 'You need at least ' + QUIZ_MIN_TEAM + ' team members. Cancel the booking instead if your whole team cannot make it.' }
+    } else if (index >= 0 && index < booking.members.length) {
+      const removed = booking.members.splice(index, 1)[0]
+      booking.memberCount = booking.members.length
+      await env.DEDICATIONS.put(result.key, JSON.stringify(booking), { metadata: { memberCount: booking.memberCount } })
+      flash = { type: 'success', message: removed + ' has been removed from the team.' }
+      await notifyEmailWorker('modification_admin', booking, env)
+    }
   }
 
-  return new Response(cancelPageHtml(result.booking, token, null), { status: 200, headers: { 'Content-Type': 'text/html' } })
+  return new Response(managePage(booking, token, flash), { status: 200, headers: { 'Content-Type': 'text/html' } })
 }
 
 async function handleCancelBooking(request, url, env) {
   const token = url.searchParams.get('token')
-  if (!token) {
-    return new Response(cancelPageHtml(null, null, 'Invalid cancellation link.'), { status: 400, headers: { 'Content-Type': 'text/html' } })
-  }
+  if (!token) return new Response(resultPage('Invalid Link', 'This link is not valid.'), { status: 400, headers: { 'Content-Type': 'text/html' } })
 
   const result = await findBookingByToken(token, env)
-  if (!result) {
-    return new Response(cancelPageHtml(null, null, 'This booking has already been cancelled or could not be found.'), { status: 404, headers: { 'Content-Type': 'text/html' } })
-  }
+  if (!result) return new Response(resultPage('Booking Not Found', 'This booking has already been cancelled or could not be found.'), { status: 404, headers: { 'Content-Type': 'text/html' } })
 
-  // Delete the booking from KV
   await env.DEDICATIONS.delete(result.key)
 
-  // Recalculate spots and update status
   const spotsBooked = await getQuizSpotsBooked(env)
   if (spotsBooked < QUIZ_FINAL_THRESHOLD) {
     await env.DEDICATIONS.put(QUIZ_STATUS_KEY, 'open')
@@ -859,29 +1048,13 @@ async function handleCancelBooking(request, url, env) {
     await env.DEDICATIONS.put(QUIZ_STATUS_KEY, 'final')
   }
 
-  // Send cancellation confirmation email
-  try {
-    if (env.EMAIL_WORKER_SECRET) {
-      await fetch(QUIZ_EMAIL_WORKER_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: 'Bearer ' + env.EMAIL_WORKER_SECRET,
-        },
-        body: JSON.stringify({
-          type: 'cancellation',
-          teamName: result.booking.teamName,
-          members: result.booking.members,
-          email: result.booking.email,
-          memberCount: result.booking.memberCount,
-        }),
-      })
-    }
-  } catch { /* best effort */ }
+  // Notify the booker and admin
+  await notifyEmailWorker('cancellation', result.booking, env)
+  await notifyEmailWorker('cancellation_admin', result.booking, env)
 
   const teamLabel = result.booking.teamName || 'Your team'
   return new Response(
-    cancelPageHtml(null, null, 'Your booking for <strong style="color:#F5F3EC;">' + teamLabel + '</strong> (' + result.booking.memberCount + ' people) has been cancelled. A confirmation has been sent to <strong style="color:#A88E5D;">' + result.booking.email + '</strong>.'),
+    resultPage('Booking Cancelled', 'Your booking for <strong style="color:#F5F3EC;">' + teamLabel + '</strong> (' + result.booking.memberCount + ' people) has been cancelled. A confirmation has been sent to <strong style="color:#A88E5D;">' + result.booking.email + '</strong>.'),
     { status: 200, headers: { 'Content-Type': 'text/html' } }
   )
 }
@@ -957,12 +1130,27 @@ export default {
       }
     }
 
-    if (url.pathname === '/api/quiz-booking/cancel') {
+    if (url.pathname === '/api/quiz-booking/manage' && request.method === 'GET') {
       try {
-        if (request.method === 'GET') return await handleCancelPage(url, env)
-        if (request.method === 'POST') return await handleCancelBooking(request, url, env)
+        return await handleManagePage(url, env)
       } catch (error) {
-        return new Response('Something went wrong. Please try again.', { status: 500, headers: { 'Content-Type': 'text/plain' } })
+        return new Response('Something went wrong.', { status: 500, headers: { 'Content-Type': 'text/plain' } })
+      }
+    }
+
+    if (url.pathname === '/api/quiz-booking/modify' && request.method === 'POST') {
+      try {
+        return await handleModifyBooking(request, url, env)
+      } catch (error) {
+        return new Response('Something went wrong.', { status: 500, headers: { 'Content-Type': 'text/plain' } })
+      }
+    }
+
+    if (url.pathname === '/api/quiz-booking/cancel' && request.method === 'POST') {
+      try {
+        return await handleCancelBooking(request, url, env)
+      } catch (error) {
+        return new Response('Something went wrong.', { status: 500, headers: { 'Content-Type': 'text/plain' } })
       }
     }
 
