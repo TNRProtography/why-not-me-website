@@ -12,6 +12,7 @@ import { Link } from 'react-router-dom'
 import PageTransition from '../components/PageTransition'
 import RevealOnScroll from '../components/RevealOnScroll'
 import ScrollZoomFocus from '../components/ScrollZoomFocus'
+import { trackQuizPageView, trackQuizFieldFocus, trackQuizMemberFilled, trackQuizFormSubmit, trackQuizBookingSuccess, trackQuizBookingError, trackQuizSoldOutView, trackQuizUrgencyView, trackQuizDocumentaryClick, trackQuizDonateClick, trackDonateClick, trackExternalLink } from '../utils/analytics'
 import './QuizNightPage.css'
 
 const MAX_CAPACITY = 120
@@ -45,6 +46,12 @@ export default function QuizNightPage() {
         const data = await res.json()
         setSpotsBooked(data.spotsBooked || 0)
         setStatus(data.status || 'open')
+        trackQuizPageView(data.spotsBooked || 0, data.status || 'open')
+        if (data.status === 'sold_out') trackQuizSoldOutView()
+        else if (data.status === 'final') trackQuizUrgencyView('final')
+        else if ((data.spotsBooked || 0) >= 80) trackQuizUrgencyView('nearly_sold_out')
+        else if ((data.spotsBooked || 0) >= 40) trackQuizUrgencyView('selling_fast')
+        else if ((data.spotsBooked || 0) >= 5) trackQuizUrgencyView('filling_quick')
       }
     } catch { /* silent */ }
     finally { setLoading(false) }
@@ -68,6 +75,7 @@ export default function QuizNightPage() {
     }
 
     setSubmitting(true)
+    trackQuizFormSubmit(memberCount)
     try {
       const res = await fetch('/api/quiz-booking', {
         method: 'POST',
@@ -81,6 +89,7 @@ export default function QuizNightPage() {
       const data = await res.json()
       if (!res.ok) {
         setError(data.error || 'Something went wrong. Please try again.')
+        trackQuizBookingError(data.error || 'unknown', memberCount)
         if (data.status) setStatus(data.status)
         setSubmitting(false)
         return
@@ -88,6 +97,7 @@ export default function QuizNightPage() {
 
       setSpotsBooked(data.spotsBooked || spotsBooked + memberCount)
       if (data.status) setStatus(data.status)
+      trackQuizBookingSuccess(memberCount, teamName.trim())
       setSuccess({
         teamName: teamName.trim() || 'Your team',
         members: filledMembers.map((m) => m.trim()),
@@ -217,8 +227,8 @@ export default function QuizNightPage() {
               The quiz night is fully booked. Thank you to everyone who grabbed a spot. If you still want to support Nicole and Brain Tumour Support NZ, you can donate directly.
             </p>
             <div style={{ marginTop: '28px', display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
-              <a href="https://nogoingback.nz/nicole-white" target="_blank" rel="noopener noreferrer" className="btn-primary">Donate Now</a>
-              <Link to="/documentary" className="btn-outline">Watch the Documentary</Link>
+              <a href="https://nogoingback.nz/nicole-white" target="_blank" rel="noopener noreferrer" className="btn-primary" onClick={() => trackQuizDonateClick('sold_out')}>Donate Now</a>
+              <Link to="/documentary" className="btn-outline" onClick={() => trackQuizDocumentaryClick('sold_out')}>Watch the Documentary</Link>
             </div>
           </RevealOnScroll>
         </section>
@@ -245,6 +255,7 @@ export default function QuizNightPage() {
                   maxLength={60}
                   value={teamName}
                   onChange={(e) => setTeamName(e.target.value)}
+                  onFocus={() => trackQuizFieldFocus('team_name')}
                 />
                 <div className="quiz-field-hint">Leave blank and you can decide on the night</div>
               </div>
@@ -264,6 +275,8 @@ export default function QuizNightPage() {
                         maxLength={80}
                         value={name}
                         onChange={(e) => updateMember(i, e.target.value)}
+                        onFocus={() => trackQuizFieldFocus('member_' + (i + 1))}
+                        onBlur={(e) => { if (e.target.value.trim()) trackQuizMemberFilled(i + 1, members.filter(m => m.trim()).length) }}
                         required={i < MIN_TEAM}
                       />
                     </div>
@@ -283,6 +296,7 @@ export default function QuizNightPage() {
                   placeholder="Where we'll send your confirmation"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  onFocus={() => trackQuizFieldFocus('email')}
                   required
                 />
                 <div className="quiz-field-hint">You will receive a confirmation email with the event details and a link to the documentary</div>
@@ -320,7 +334,7 @@ export default function QuizNightPage() {
           <p className="section-body" style={{ maxWidth: '100%', textAlign: 'center', marginBottom: '24px' }}>
             One question per round comes from the documentary. Watch it before quiz night or risk losing points for your team. No excuses.
           </p>
-          <Link to="/documentary" className="btn-outline">Watch "A Little Bit of Vengeance"</Link>
+          <Link to="/documentary" className="btn-outline" onClick={() => trackQuizDocumentaryClick('bottom_cta')}>Watch "A Little Bit of Vengeance"</Link>
         </RevealOnScroll>
       </section>
 

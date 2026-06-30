@@ -1,20 +1,23 @@
 import { useState, useEffect } from 'react'
-import { NavLink, Link } from 'react-router-dom'
+import { NavLink, Link, useLocation } from 'react-router-dom'
 import { trackNavClick, trackMobileMenuToggle, trackDonateClick, trackExternalLink } from '../utils/analytics'
 import './Nav.css'
 
 const navItems = [
   { to: '/', label: 'Home', end: true },
   { to: '/nicoles-story', label: "Nicole's Story" },
+  { to: '/live', label: 'Live Tracker', trackerOnly: true },
+  { to: '/quiz-night', label: 'Quiz Night' },
+  { to: '/dedicate', label: 'Dedicate a Km' },
+  { to: '/donate', label: 'Donate', isDonate: true },
   { to: '/documentary', label: 'Documentary' },
   { to: '/queenstown-marathon', label: 'Marathon' },
-  { to: '/dedicate', label: 'Dedicate a Km' },
-  { to: '/quiz-night', label: 'Quiz Night' },
 ]
 
 export default function Nav({ trackerEnabled = false, mobileDonationTracker = null }) {
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const location = useLocation()
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 70)
@@ -31,9 +34,14 @@ export default function Nav({ trackerEnabled = false, mobileDonationTracker = nu
   }, [mobileOpen])
 
   const closeMobile = () => setMobileOpen(false)
-  const visibleNavItems = trackerEnabled
-    ? [...navItems, { to: '/live', label: 'Live Tracker' }]
-    : navItems
+
+  const currentPath = location.pathname
+  const visibleItems = navItems
+    .filter((item) => !item.trackerOnly || trackerEnabled)
+    .filter((item) => {
+      if (item.end) return currentPath !== item.to
+      return !currentPath.startsWith(item.to)
+    })
 
   return (
     <>
@@ -53,18 +61,17 @@ export default function Nav({ trackerEnabled = false, mobileDonationTracker = nu
         )}
 
         <div className="nav-links">
-          {visibleNavItems.map((item) => (
+          {visibleItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
               end={item.end}
-              className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}
+              className={item.isDonate ? 'nav-donate-btn' : 'nav-link'}
               onClick={() => trackNavClick(item.label, item.to)}
             >
               {item.label}
             </NavLink>
           ))}
-          <NavLink to="/donate" className="nav-donate-btn" onClick={() => trackNavClick('Donate', '/donate')}>Donate</NavLink>
         </div>
 
         <button
@@ -81,7 +88,7 @@ export default function Nav({ trackerEnabled = false, mobileDonationTracker = nu
         <div className="mobile-menu">
           <div className="mobile-menu-bg" aria-hidden="true" />
           <div className="mobile-menu-inner">
-            {[...visibleNavItems, { to: '/donate', label: 'Donate' }].map((item) => (
+            {visibleItems.map((item) => (
               <div key={item.to}>
                 <NavLink to={item.to} end={item.end} onClick={() => { closeMobile(); trackNavClick(item.label, item.to) }}>{item.label}</NavLink>
               </div>

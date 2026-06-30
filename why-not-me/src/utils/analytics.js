@@ -341,3 +341,67 @@ export function trackElevationExplorerInteraction(action) {
     action: action,
   })
 }
+
+// ── Quiz Night ──────────────────────────────────────────────
+
+export function trackQuizPageView(spotsBooked, status) {
+  trackEvent('quiz_page_view', {
+    spots_booked: spotsBooked,
+    booking_status: status,
+  })
+}
+
+export function trackQuizFieldFocus(fieldName) {
+  trackEvent('quiz_field_focus', {
+    field_name: fieldName,
+  })
+}
+
+export function trackQuizMemberFilled(memberIndex, totalFilled) {
+  trackEvent('quiz_member_filled', {
+    member_index: memberIndex,
+    total_filled: totalFilled,
+  })
+}
+
+export function trackQuizFormSubmit(teamSize) {
+  trackEvent('quiz_form_submit', {
+    team_size: teamSize,
+  })
+}
+
+export function trackQuizBookingSuccess(teamSize, teamName) {
+  trackEvent('quiz_booking_success', {
+    team_size: teamSize,
+    has_team_name: !!teamName,
+  })
+}
+
+export function trackQuizBookingError(errorMessage, teamSize) {
+  trackEvent('quiz_booking_error', {
+    error_message: errorMessage,
+    team_size: teamSize,
+  })
+}
+
+export function trackQuizSoldOutView() {
+  trackEvent('quiz_sold_out_view')
+}
+
+export function trackQuizUrgencyView(tier) {
+  trackEvent('quiz_urgency_view', {
+    urgency_tier: tier,
+  })
+}
+
+export function trackQuizDocumentaryClick(location) {
+  trackEvent('quiz_documentary_click', {
+    click_location: location,
+  })
+}
+
+export function trackQuizDonateClick(location) {
+  trackEvent('quiz_donate_click', {
+    click_location: location,
+  })
+}
