@@ -2,7 +2,7 @@
  * ============================================================
  * DOCUMENTARY PAGE - /documentary
  * ============================================================
- * Shows the "A Little Bit of Vengeance" documentary.
+ * Shows the "A Bit of Vengeance" documentary.
  * 
  * KEY ELEMENTS:
  *   - Hero with autumn-dance photo background
@@ -83,7 +83,7 @@ export default function DocumentaryPage() {
           }}>
             <iframe
               src="https://www.youtube.com/embed/pnLhzEzXKpc"
-              title="A Little Bit of Vengeance - Why Not Me Documentary"
+              title="A Bit of Vengeance - Why Not Me Documentary"
               frameBorder="0"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               allowFullScreen

@@ -87,6 +87,7 @@ export default function Nav({ trackerEnabled = false, mobileDonationTracker = nu
       {mobileOpen && (
         <div className="mobile-menu">
           <div className="mobile-menu-bg" aria-hidden="true" />
+          <button className="mobile-menu-close" onClick={() => { setMobileOpen(false); trackMobileMenuToggle(false) }} aria-label="Close menu">&times;</button>
           <div className="mobile-menu-inner">
             {visibleItems.map((item) => (
               <div key={item.to}>

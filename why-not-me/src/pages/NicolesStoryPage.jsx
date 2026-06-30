@@ -375,7 +375,7 @@ export default function NicolesStoryPage() {
         </Reveal>
         <Reveal delay={0.1}>
           <p className="story-body">
-            This return is different. It is about the history behind the running, the disappointment she still carries from 2023, and the chance to see how far remission, training, and a little bit of vengeance can take her.
+            This return is different. It is about the history behind the running, the disappointment she still carries from 2023, and the chance to see how far remission, training, and a bit of vengeance can take her.
           </p>
         </Reveal>
         <Reveal delay={0.15}>

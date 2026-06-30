@@ -297,7 +297,7 @@ export default function HomePage() {
             <br />
             <p>Queenstown matters because this is not Nicole's first time lining up for something hard. She has already run a half marathon while on chemo, raised $4,500 for Brain Tumour Support NZ, and pushed herself through a full marathon when treatment was still part of daily life.</p>
             <br />
-            <p>This return is different. It is about the history behind the running, the disappointment she still carries from 2023, and the chance to see how far remission, training, and a little bit of vengeance can take her.</p>
+            <p>This return is different. It is about the history behind the running, the disappointment she still carries from 2023, and the chance to see how far remission, training, and a bit of vengeance can take her.</p>
           </div>
           <div style={{ marginTop: 50 }}>
             <div className="marathon-stat">16km</div>
@@ -317,7 +317,7 @@ export default function HomePage() {
       <section style={{ padding: '120px 40px', textAlign: 'center' }}>
         <RevealOnScroll>
           <p className="section-label">The Documentary</p>
-          <ScrollZoomFocus><h2 className="section-title">A Little Bit of Vengeance.</h2></ScrollZoomFocus>
+          <ScrollZoomFocus><h2 className="section-title">A Bit of Vengeance.</h2></ScrollZoomFocus>
           <div className="gold-line" style={{ margin: '20px auto' }} />
           <p className="section-body" style={{ maxWidth: 600, margin: '0 auto 40px' }}>
             The full story, told by Nicole and the people closest to her. From diagnosis to remission, from the waiting rooms to the finish line. Released May 22, 2026.

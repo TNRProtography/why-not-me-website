@@ -123,6 +123,25 @@
   background: var(--black);
 }
 
+.mobile-menu-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 10;
+  background: none;
+  border: none;
+  color: var(--white-50);
+  font-size: 36px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 8px;
+  transition: color 0.2s;
+}
+
+.mobile-menu-close:hover {
+  color: var(--gold);
+}
+
 .mobile-menu-inner {
   position: relative;
   z-index: 2;

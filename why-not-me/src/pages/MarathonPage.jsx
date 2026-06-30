@@ -222,7 +222,7 @@ export default function MarathonPage() {
       <section className="marathon-vengeance-section">
         <div className="marathon-vengeance-bg" />
         <RevealOnScroll className="marathon-vengeance-card">
-          <p className="section-label">A Little Bit of Vengeance</p>
+          <p className="section-label">A Bit of Vengeance</p>
           <ScrollZoomFocus><h2 className="section-title">This time, it is personal.</h2></ScrollZoomFocus>
           <div className="gold-line" style={{ margin: '24px auto' }} />
           <div className="section-body" style={{ maxWidth: 780, textAlign: 'center', margin: '0 auto' }}>

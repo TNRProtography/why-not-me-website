@@ -211,7 +211,7 @@ export default function MediaPage() {
               <div>
                 <p className="section-label" style={{ marginBottom: 6 }}>Documentary</p>
                 <p style={{ fontSize: 14, color: 'var(--white-70)' }}>
-                  "A Little Bit of Vengeance"<br />
+                  "A Bit of Vengeance"<br />
                   Released May 22, 2026<br />
                   <a href="https://www.youtube.com/watch?v=pnLhzEzXKpc" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--gold)' }} onClick={() => trackExternalLink('https://www.youtube.com/watch?v=pnLhzEzXKpc', 'Watch on YouTube', 'media_documentary')}>Watch on YouTube</a>
                 </p>

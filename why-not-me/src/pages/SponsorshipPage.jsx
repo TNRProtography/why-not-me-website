@@ -163,7 +163,7 @@ export default function SponsorshipPage() {
             <div style={{ display: 'flex', gap: 40, marginTop: 40 }}>
               <div>
                 <p className="section-label" style={{ marginBottom: 6 }}>Documentary</p>
-                <p style={{ fontSize: 14, color: 'var(--white-70)' }}>A Little Bit of Vengeance<br />Released May 2026</p>
+                <p style={{ fontSize: 14, color: 'var(--white-70)' }}>A Bit of Vengeance<br />Released May 2026</p>
               </div>
               <div>
                 <p className="section-label" style={{ marginBottom: 6 }}>Photography</p>
