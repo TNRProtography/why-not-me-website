@@ -771,6 +771,8 @@ async function sendQuizConfirmationEmail(booking, env) {
       Authorization: `Bearer ${env.EMAIL_WORKER_SECRET}`,
     },
     body: JSON.stringify({
+      type: 'booking',
+      id: booking.id,
       teamName: booking.teamName,
       members: booking.members,
       email: booking.email,
@@ -782,6 +784,106 @@ async function sendQuizConfirmationEmail(booking, env) {
     const errText = await res.text()
     throw new Error(`Email worker error: ${res.status} ${errText}`)
   }
+}
+
+// ── Quiz Booking Cancellation ────────────────────────────────
+
+function cancelPageHtml(booking, token, message) {
+  const teamLabel = booking ? (booking.teamName || 'Your team') : ''
+  const isConfirmed = !!message
+
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>${isConfirmed ? 'Booking Cancelled' : 'Cancel Booking'} - Why Not Me?</title></head>
+<body style="margin:0;padding:0;background:#0D0D0D;color:#F5F3EC;font-family:Arial,Helvetica,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" style="padding:60px 20px;">
+<table width="520" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;width:100%;background:#151515;border:1px solid #2A2A2A;">
+<tr><td style="padding:40px 32px;text-align:center;">
+<p style="margin:0 0 24px;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#A88E5D;">Quiz Night</p>
+<h1 style="margin:0 0 16px;font-size:24px;font-family:Georgia,serif;color:#F5F3EC;">${isConfirmed ? 'Booking Cancelled' : 'Cancel Your Booking?'}</h1>
+${isConfirmed
+  ? '<p style="margin:0 0 24px;font-size:14px;line-height:1.7;color:#888;">' + message + '</p><a href="https://whynotme.co.nz/quiz-night" style="display:inline-block;padding:14px 32px;background:#A88E5D;color:#0D0D0D;text-decoration:none;font-size:12px;font-weight:bold;letter-spacing:2px;text-transform:uppercase;">Back to Quiz Night</a>'
+  : '<p style="margin:0 0 8px;font-size:14px;color:#888;">Team: <strong style="color:#F5F3EC;">' + teamLabel + '</strong></p><p style="margin:0 0 8px;font-size:14px;color:#888;">People: <strong style="color:#F5F3EC;">' + booking.memberCount + '</strong></p><p style="margin:0 0 24px;font-size:14px;color:#888;">Email: <strong style="color:#F5F3EC;">' + booking.email + '</strong></p><p style="margin:0 0 24px;font-size:13px;line-height:1.6;color:#666;">This will remove your booking and free up your spots. You will receive a confirmation email. This cannot be undone.</p><form method="POST" action="/api/quiz-booking/cancel?token=' + token + '"><button type="submit" style="padding:14px 32px;background:#d9534f;color:#fff;border:none;cursor:pointer;font-size:12px;font-weight:bold;letter-spacing:2px;text-transform:uppercase;">Yes, Cancel My Booking</button></form><p style="margin:16px 0 0;font-size:12px;color:#555;"><a href="https://whynotme.co.nz/quiz-night" style="color:#A88E5D;text-decoration:underline;">No, keep my booking</a></p>'
+}
+</td></tr></table>
+</td></tr></table></body></html>`
+}
+
+async function findBookingByToken(token, env) {
+  let cursor = null
+  do {
+    const result = await env.DEDICATIONS.list({ prefix: QUIZ_KEY_PREFIX, cursor })
+    for (const key of result.keys) {
+      const raw = await env.DEDICATIONS.get(key.name)
+      if (raw) {
+        const booking = JSON.parse(raw)
+        if (booking.id === token) return { key: key.name, booking }
+      }
+    }
+    cursor = result.list_complete ? null : result.cursor
+  } while (cursor)
+  return null
+}
+
+async function handleCancelPage(url, env) {
+  const token = url.searchParams.get('token')
+  if (!token) {
+    return new Response(cancelPageHtml(null, null, 'Invalid cancellation link.'), { status: 400, headers: { 'Content-Type': 'text/html' } })
+  }
+
+  const result = await findBookingByToken(token, env)
+  if (!result) {
+    return new Response(cancelPageHtml(null, null, 'This booking has already been cancelled or could not be found.'), { status: 404, headers: { 'Content-Type': 'text/html' } })
+  }
+
+  return new Response(cancelPageHtml(result.booking, token, null), { status: 200, headers: { 'Content-Type': 'text/html' } })
+}
+
+async function handleCancelBooking(request, url, env) {
+  const token = url.searchParams.get('token')
+  if (!token) {
+    return new Response(cancelPageHtml(null, null, 'Invalid cancellation link.'), { status: 400, headers: { 'Content-Type': 'text/html' } })
+  }
+
+  const result = await findBookingByToken(token, env)
+  if (!result) {
+    return new Response(cancelPageHtml(null, null, 'This booking has already been cancelled or could not be found.'), { status: 404, headers: { 'Content-Type': 'text/html' } })
+  }
+
+  // Delete the booking from KV
+  await env.DEDICATIONS.delete(result.key)
+
+  // Recalculate spots and update status
+  const spotsBooked = await getQuizSpotsBooked(env)
+  if (spotsBooked < QUIZ_FINAL_THRESHOLD) {
+    await env.DEDICATIONS.put(QUIZ_STATUS_KEY, 'open')
+  } else {
+    await env.DEDICATIONS.put(QUIZ_STATUS_KEY, 'final')
+  }
+
+  // Send cancellation confirmation email
+  try {
+    if (env.EMAIL_WORKER_SECRET) {
+      await fetch(QUIZ_EMAIL_WORKER_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + env.EMAIL_WORKER_SECRET,
+        },
+        body: JSON.stringify({
+          type: 'cancellation',
+          teamName: result.booking.teamName,
+          members: result.booking.members,
+          email: result.booking.email,
+          memberCount: result.booking.memberCount,
+        }),
+      })
+    }
+  } catch { /* best effort */ }
+
+  const teamLabel = result.booking.teamName || 'Your team'
+  return new Response(
+    cancelPageHtml(null, null, 'Your booking for <strong style="color:#F5F3EC;">' + teamLabel + '</strong> (' + result.booking.memberCount + ' people) has been cancelled. A confirmation has been sent to <strong style="color:#A88E5D;">' + result.booking.email + '</strong>.'),
+    { status: 200, headers: { 'Content-Type': 'text/html' } }
+  )
 }
 
 // ── Main router ──────────────────────────────────────────────
@@ -852,6 +954,15 @@ export default {
         return await handlePostQuizBooking(request, env)
       } catch (error) {
         return dedicationResponse({ error: 'Unable to process booking.' }, 500)
+      }
+    }
+
+    if (url.pathname === '/api/quiz-booking/cancel') {
+      try {
+        if (request.method === 'GET') return await handleCancelPage(url, env)
+        if (request.method === 'POST') return await handleCancelBooking(request, url, env)
+      } catch (error) {
+        return new Response('Something went wrong. Please try again.', { status: 500, headers: { 'Content-Type': 'text/plain' } })
       }
     }
 

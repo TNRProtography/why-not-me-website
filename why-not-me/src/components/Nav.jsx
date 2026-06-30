@@ -64,7 +64,6 @@ export default function Nav({ trackerEnabled = false, mobileDonationTracker = nu
               {item.label}
             </NavLink>
           ))}
-          <a href="https://braintumoursupport.org.nz" target="_blank" rel="noopener noreferrer" className="nav-link" onClick={() => trackExternalLink('https://braintumoursupport.org.nz', 'Support', 'nav')}>Support</a>
           <NavLink to="/donate" className="nav-donate-btn" onClick={() => trackNavClick('Donate', '/donate')}>Donate</NavLink>
         </div>
 
@@ -87,9 +86,6 @@ export default function Nav({ trackerEnabled = false, mobileDonationTracker = nu
                 <NavLink to={item.to} end={item.end} onClick={() => { closeMobile(); trackNavClick(item.label, item.to) }}>{item.label}</NavLink>
               </div>
             ))}
-            <div>
-              <a href="https://braintumoursupport.org.nz" target="_blank" rel="noopener noreferrer" onClick={() => { closeMobile(); trackExternalLink('https://braintumoursupport.org.nz', 'Support', 'mobile_menu') }}>Support</a>
-            </div>
           </div>
         </div>
       )}
