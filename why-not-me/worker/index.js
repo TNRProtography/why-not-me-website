@@ -841,15 +841,18 @@ function managePage(booking, token, flash) {
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Manage Booking - Why Not Me?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Damion&family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:#0D0D0D;color:#F5F3EC;font-family:Arial,Helvetica,sans-serif;min-height:100vh}
+body{background:#0D0D0D;color:#F5F3EC;font-family:'Montserrat',Arial,Helvetica,sans-serif;min-height:100vh}
 .wrap{max-width:560px;margin:0 auto;padding:40px 20px 60px}
 .logo{text-align:center;margin-bottom:32px}
 .logo img{height:50px}
 .card{background:#151515;border:1px solid #2A2A2A;padding:32px 28px;margin-bottom:20px}
 .label{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#A88E5D;margin-bottom:6px}
-h1{font-size:24px;font-family:Georgia,serif;margin-bottom:20px;text-align:center}
+h1{font-size:24px;font-family:'Damion',cursive;margin-bottom:20px;text-align:center}
 .flash{padding:14px 20px;margin-bottom:20px;text-align:center;font-size:14px;line-height:1.5}
 .flash-success{background:#1a2e1a;border:1px solid #2d4a2d;color:#7bc67b}
 .flash-error{background:#2e1a1a;border:1px solid #4a2d2d;color:#d9534f}
@@ -981,7 +984,8 @@ function hideCancelConfirm() { document.getElementById('cancel-confirm').style.d
 
 function resultPage(title, message) {
   return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>${title} - Why Not Me?</title>
-<style>*{box-sizing:border-box;margin:0;padding:0}body{background:#0D0D0D;color:#F5F3EC;font-family:Arial,Helvetica,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center}.card{max-width:520px;width:100%;margin:40px 20px;background:#151515;border:1px solid #2A2A2A;padding:40px 32px;text-align:center}.logo{margin-bottom:24px}.logo img{height:50px}h1{font-size:24px;font-family:Georgia,serif;margin-bottom:16px}.msg{font-size:14px;line-height:1.7;color:#888;margin-bottom:28px}.btn{display:inline-block;padding:14px 32px;background:#A88E5D;color:#0D0D0D;text-decoration:none;font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase}</style></head>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Damion&family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+<style>*{box-sizing:border-box;margin:0;padding:0}body{background:#0D0D0D;color:#F5F3EC;font-family:'Montserrat',Arial,Helvetica,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center}.card{max-width:520px;width:100%;margin:40px 20px;background:#151515;border:1px solid #2A2A2A;padding:40px 32px;text-align:center}.logo{margin-bottom:24px}.logo img{height:50px}h1{font-size:24px;font-family:'Damion',cursive;margin-bottom:16px}.msg{font-size:14px;line-height:1.7;color:#888;margin-bottom:28px}.btn{display:inline-block;padding:14px 32px;background:#A88E5D;color:#0D0D0D;text-decoration:none;font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;font-family:'Montserrat',Arial,Helvetica,sans-serif}</style></head>
 <body><div class="card">
 <div class="logo"><a href="https://whynotme.co.nz"><img src="https://whynotme.co.nz/images/logos/logo-white-transparent.png" alt="Why Not Me?" /></a></div>
 <h1>${title}</h1>
