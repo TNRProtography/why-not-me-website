@@ -13,7 +13,7 @@
  *   7. PHOTO GRID    - Gallery of campaign photos
  *   8. QUOTES        - Family quotes
  *   9. FACTS         - Brain tumour statistics for NZ
- *  10. MARATHON      - Training update and 16km stat
+ *  10. MARATHON      - Training update and 20km stat
  *  11. DOCO TEASER   - Link through to /documentary
  *  12. CONNECT       - Social links, email, donate CTA
  *
@@ -300,11 +300,11 @@ export default function HomePage() {
             <p>This return is different. It is about the history behind the running, the disappointment she still carries from 2023, and the chance to see how far remission, training, and a bit of vengeance can take her.</p>
           </div>
           <div style={{ marginTop: 50 }}>
-            <div className="marathon-stat">16km</div>
-            <div className="marathon-stat-label">Furthest run so far &middot; May 2026</div>
+            <div className="marathon-stat">20km</div>
+            <div className="marathon-stat-label">Longest run so far</div>
           </div>
           <p style={{ fontStyle: 'italic', marginTop: 30, color: 'var(--warm)', fontSize: 18 }}>
-            "So far I'm feeling good, feeling strong and capable. I'm happy with where I am at the moment."
+            "My longest run so far has been 20km! I'm feeling strong and have a fire in my belly to keep pushing. I'm so excited to see how far we can take this!"
           </p>
           <div style={{ marginTop: 34 }}>
             <Link to="/queenstown-marathon" className="btn-primary" onClick={() => trackCtaClick('Why Queenstown?', 'marathon_section', '/queenstown-marathon')}>Why Queenstown?</Link>
