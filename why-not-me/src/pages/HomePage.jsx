@@ -34,7 +34,13 @@ import ScrollZoomFocus from '../components/ScrollZoomFocus'
 import HeroPortalTitle from '../components/HeroPortalTitle'
 import Lightbox from '../components/Lightbox'
 import BrainTumourSupportSection from '../components/BrainTumourSupportSection'
+import CountdownTimer from '../components/CountdownTimer'
 import { trackCtaClick, trackLightboxOpen, trackDonateClick, trackSocialClick, trackExternalLink, trackVideoSectionView, trackPhotoClick } from '../utils/analytics'
+
+// Queenstown Marathon: Nov 14, 2026, 8:20am NZDT (UTC+13)
+const MARATHON_DATE = new Date('2026-11-14T08:20:00+13:00').getTime()
+// Quiz Night: Oct 7, 2026, 6:00pm NZST (UTC+12 — before daylight saving)
+const QUIZ_DATE = new Date('2026-10-07T18:00:00+13:00').getTime()
 import './HomePage.css'
 
 export default function HomePage() {
@@ -124,6 +130,30 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* ========== QUIZ NIGHT CTA ========== */}
+      {Date.now() < QUIZ_DATE && (
+        <section className="home-quiz-cta">
+          <RevealOnScroll>
+            <div className="home-quiz-cta-inner">
+              <div className="home-quiz-cta-copy">
+                <p className="section-label">Fundraiser Event</p>
+                <ScrollZoomFocus origin="left"><h2 className="section-title" style={{ fontSize: 'clamp(28px, 4vw, 48px)' }}>Quiz Night is coming.</h2></ScrollZoomFocus>
+                <p className="home-quiz-cta-details">
+                  Wednesday 7 October &middot; 6pm &middot; Monteith's Brewery, Greymouth
+                </p>
+                <p className="home-quiz-cta-sub">Teams of 4–6 &middot; $10 per person &middot; All proceeds to Brain Tumour Support NZ</p>
+                <div style={{ marginTop: 24 }}>
+                  <Link to="/quiz-night" className="btn-primary" onClick={() => trackCtaClick('Book Your Team', 'homepage_quiz_cta', '/quiz-night')}>Book Your Team</Link>
+                </div>
+              </div>
+              <div className="home-quiz-cta-countdown">
+                <CountdownTimer targetDate={QUIZ_DATE} label="Countdown to Quiz Night" passedMessage="Tonight!" />
+              </div>
+            </div>
+          </RevealOnScroll>
+        </section>
+      )}
+
       {/* ========== 2. FEATURE VIDEO ========== */}
       <section className="home-video-section" ref={videoRef}>
         <div className="home-video-grid">
@@ -157,6 +187,28 @@ export default function HomePage() {
             <Link to="/dedicate" className="btn-outline" onClick={() => trackCtaClick('Donate & Dedicate a Km', 'video_section', '/dedicate')}>Donate & Dedicate a Km</Link>
           </RevealOnScroll>
         </div>
+      </section>
+
+      {/* ========== MARATHON COUNTDOWN ========== */}
+      <section className="home-marathon-countdown">
+        <RevealOnScroll>
+          <div className="home-marathon-countdown-inner">
+            <p className="section-label">Queenstown Marathon</p>
+            <ScrollZoomFocus><h2 className="section-title" style={{ textAlign: 'center' }}>The clock is ticking.</h2></ScrollZoomFocus>
+            <CountdownTimer
+              targetDate={MARATHON_DATE}
+              label="Countdown to Queenstown Marathon"
+              passedMessage="Race day."
+            />
+            <p className="home-marathon-countdown-date">
+              14 November 2026 &middot; 8:20am &middot; Queenstown
+            </p>
+            <div className="home-marathon-countdown-actions">
+              <Link to="/queenstown-marathon" className="btn-outline" onClick={() => trackCtaClick('Why Queenstown?', 'marathon_countdown', '/queenstown-marathon')}>Why Queenstown?</Link>
+              <Link to="/dedicate" className="btn-outline" onClick={() => trackCtaClick('Dedicate a Km', 'marathon_countdown', '/dedicate')}>Dedicate a Km</Link>
+            </div>
+          </div>
+        </RevealOnScroll>
       </section>
 
       {/* ========== 3. NICOLE'S STORY (condensed) ========== */}
@@ -323,6 +375,34 @@ export default function HomePage() {
             The full story, told by Nicole and the people closest to her. From diagnosis to remission, from the waiting rooms to the finish line. Released May 22, 2026.
           </p>
           <Link to="/documentary" className="btn-primary" onClick={() => trackCtaClick('Watch the Documentary', 'documentary_teaser', '/documentary')}>Watch the Documentary</Link>
+        </RevealOnScroll>
+      </section>
+
+      {/* ========== FOLLOW ON FACEBOOK ========== */}
+      <section className="home-facebook-section">
+        <RevealOnScroll>
+          <div className="home-facebook-inner">
+            <p className="section-label">Follow the Journey</p>
+            <ScrollZoomFocus><h2 className="section-title" style={{ textAlign: 'center' }}>The story keeps going on Facebook.</h2></ScrollZoomFocus>
+            <div className="gold-line" style={{ margin: '20px auto' }} />
+            <p className="section-body" style={{ maxWidth: 600, margin: '0 auto', textAlign: 'center' }}>
+              Training runs, race-day updates, behind-the-scenes moments, and the conversations that keep this campaign moving. Nicole posts it all on her Why Not Me? Facebook page.
+            </p>
+            <div className="home-facebook-stat">
+              <span className="home-facebook-stat-number">440+</span>
+              <span className="home-facebook-stat-label">followers since May 2026</span>
+            </div>
+            <a
+              href="https://www.facebook.com/nicole.white.why.not.me/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-primary home-facebook-btn"
+              onClick={() => trackSocialClick('facebook', 'facebook_section')}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: 10 }}><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+              Follow Why Not Me?
+            </a>
+          </div>
         </RevealOnScroll>
       </section>
 

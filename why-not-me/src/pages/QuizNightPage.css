@@ -468,3 +468,11 @@
     padding: 40px 24px 32px;
   }
 }
+
+/* ============ QUIZ COUNTDOWN ============ */
+.quiz-countdown-section {
+  text-align: center;
+  padding: clamp(28px, 4vw, 48px) 40px;
+  background: rgba(168, 142, 93, 0.04);
+  border-bottom: 1px solid var(--gold-20);
+}

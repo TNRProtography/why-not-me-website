@@ -1056,3 +1056,138 @@ body.is-mobile-view .portal-hero + section {
 .portal-letter-target::before {
   display: none !important;
 }
+
+/* ============ QUIZ NIGHT CTA (HOMEPAGE) ============ */
+.home-quiz-cta {
+  padding: clamp(40px, 6vw, 80px) 40px;
+  background:
+    radial-gradient(circle at 30% 50%, rgba(168, 142, 93, 0.08), transparent 50%),
+    rgba(13, 13, 13, 0.5);
+  border-top: 1px solid var(--gold-20);
+  border-bottom: 1px solid var(--gold-20);
+}
+
+.home-quiz-cta-inner {
+  max-width: 980px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: clamp(30px, 4vw, 60px);
+}
+
+.home-quiz-cta-details {
+  font-size: clamp(14px, 1.3vw, 16px);
+  color: var(--white-70);
+  margin-top: -10px;
+  margin-bottom: 6px;
+}
+
+.home-quiz-cta-sub {
+  font-size: clamp(12px, 1.1vw, 14px);
+  color: var(--white-50);
+}
+
+.home-quiz-cta-countdown {
+  border-left: 1px solid var(--gold-20);
+  padding-left: clamp(24px, 3vw, 50px);
+}
+
+@media (max-width: 768px) {
+  .home-quiz-cta-inner {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+  .home-quiz-cta .section-title {
+    text-align: center;
+  }
+  .home-quiz-cta .gold-line {
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .home-quiz-cta-countdown {
+    border-left: none;
+    padding-left: 0;
+    border-top: 1px solid var(--gold-20);
+    padding-top: 28px;
+  }
+}
+
+/* ============ MARATHON COUNTDOWN (HOMEPAGE) ============ */
+.home-marathon-countdown {
+  padding: clamp(70px, 8vw, 120px) 40px;
+  text-align: center;
+  background:
+    radial-gradient(ellipse at 50% 80%, rgba(85, 96, 77, 0.1), transparent 60%),
+    radial-gradient(ellipse at 50% 20%, rgba(168, 142, 93, 0.06), transparent 50%);
+}
+
+.home-marathon-countdown-inner {
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.home-marathon-countdown-date {
+  font-size: clamp(12px, 1.2vw, 14px);
+  font-weight: 500;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--white-50);
+  margin-top: 20px;
+}
+
+.home-marathon-countdown-actions {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  margin-top: 36px;
+  flex-wrap: wrap;
+}
+
+/* ============ FACEBOOK SECTION (HOMEPAGE) ============ */
+.home-facebook-section {
+  padding: clamp(80px, 8vw, 120px) 40px;
+  text-align: center;
+  border-top: 1px solid var(--gold-20);
+}
+
+.home-facebook-inner {
+  max-width: 680px;
+  margin: 0 auto;
+}
+
+.home-facebook-stat {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 32px;
+  margin-bottom: 28px;
+}
+
+.home-facebook-stat-number {
+  font-family: var(--font-heading);
+  font-size: clamp(36px, 5vw, 52px);
+  font-weight: 700;
+  color: var(--white);
+  line-height: 1;
+}
+
+.home-facebook-stat-label {
+  font-size: clamp(12px, 1.2vw, 14px);
+  font-weight: 500;
+  letter-spacing: 1px;
+  color: var(--white-50);
+}
+
+.home-facebook-btn {
+  display: inline-flex !important;
+  align-items: center;
+}
+
+@media (max-width: 480px) {
+  .home-facebook-stat {
+    flex-direction: column;
+    gap: 4px;
+  }
+}

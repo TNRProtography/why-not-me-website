@@ -12,6 +12,7 @@ import { Link } from 'react-router-dom'
 import PageTransition from '../components/PageTransition'
 import RevealOnScroll from '../components/RevealOnScroll'
 import ScrollZoomFocus from '../components/ScrollZoomFocus'
+import CountdownTimer from '../components/CountdownTimer'
 import { trackQuizPageView, trackQuizFieldFocus, trackQuizMemberFilled, trackQuizFormSubmit, trackQuizBookingSuccess, trackQuizBookingError, trackQuizSoldOutView, trackQuizUrgencyView, trackQuizDocumentaryClick, trackQuizDonateClick, trackDonateClick, trackExternalLink } from '../utils/analytics'
 import './QuizNightPage.css'
 
@@ -19,6 +20,8 @@ const MAX_CAPACITY = 120
 const MIN_TEAM = 4
 const MAX_TEAM = 6
 const COST_PER_PERSON = 10
+// Quiz Night: Oct 7, 2026, 6:00pm NZST (UTC+13)
+const QUIZ_DATE = new Date('2026-10-07T18:00:00+13:00').getTime()
 
 export default function QuizNightPage() {
   const [loading, setLoading] = useState(true)
@@ -166,6 +169,13 @@ export default function QuizNightPage() {
           </div>
         </div>
       </div>
+
+      {/* Countdown */}
+      {Date.now() < QUIZ_DATE && (
+        <div className="quiz-countdown-section">
+          <CountdownTimer targetDate={QUIZ_DATE} label="Countdown to Quiz Night" passedMessage="Tonight!" />
+        </div>
+      )}
 
       {/* Urgency messaging */}
       {!isSoldOut && spotsBooked >= 5 && (
