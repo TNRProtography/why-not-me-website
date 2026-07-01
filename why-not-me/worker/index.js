@@ -686,6 +686,7 @@ async function handlePostQuizBooking(request, env) {
   const members = rawMembers
     .map((m) => (typeof m === 'string' ? m.trim().slice(0, 80) : ''))
     .filter((m) => m !== '')
+  const lowTable = !!body.lowTable
 
   if (!email || !email.includes('@')) {
     return dedicationResponse({ error: 'Please enter a valid email address.' }, 400)
@@ -722,6 +723,7 @@ async function handlePostQuizBooking(request, env) {
     members,
     email,
     memberCount: members.length,
+    lowTable,
     createdAt: new Date().toISOString(),
   }
 
@@ -777,6 +779,7 @@ async function sendQuizConfirmationEmail(booking, env) {
       members: booking.members,
       email: booking.email,
       memberCount: booking.memberCount,
+      lowTable: booking.lowTable,
     }),
   })
 
@@ -813,7 +816,7 @@ async function notifyEmailWorker(type, booking, env) {
     await fetch(QUIZ_EMAIL_WORKER_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + env.EMAIL_WORKER_SECRET },
-      body: JSON.stringify({ type, id: booking.id, teamName: booking.teamName, members: booking.members, email: booking.email, memberCount: booking.memberCount }),
+      body: JSON.stringify({ type, id: booking.id, teamName: booking.teamName, members: booking.members, email: booking.email, memberCount: booking.memberCount, lowTable: booking.lowTable }),
     })
   } catch { /* best effort */ }
 }
@@ -902,7 +905,8 @@ h1{font-size:24px;font-family:Georgia,serif;margin-bottom:20px;text-align:center
       <span class="detail-label">People</span><span class="detail-value">${booking.memberCount}</span>
       <span class="detail-label bold">Total Cost</span><span class="detail-value bold">$${totalCost}</span>
     </div>
-    <p style="font-size:12px;color:#666;margin-top:-12px">Paid at the door on the night (cash or card)</p>
+    ${booking.lowTable ? '<div style="margin-top:8px;padding:10px 14px;background:rgba(168,142,93,0.1);border:1px solid rgba(168,142,93,0.25);font-size:13px;color:#A88E5D;">&#9855; Low table required for accessibility</div>' : ''}
+    <p style="font-size:12px;color:#666;margin-top:12px">Paid at the door on the night (cash or card)</p>
   </div>
 
   <div class="card">

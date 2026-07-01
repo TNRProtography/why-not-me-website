@@ -27,6 +27,7 @@ export default function QuizNightPage() {
   const [teamName, setTeamName] = useState('')
   const [members, setMembers] = useState(['', '', '', '', '', ''])
   const [email, setEmail] = useState('')
+  const [lowTable, setLowTable] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(null)
@@ -84,6 +85,7 @@ export default function QuizNightPage() {
           teamName: teamName.trim(),
           members: filledMembers.map((m) => m.trim()),
           email: email.trim(),
+          lowTable,
         }),
       })
       const data = await res.json()
@@ -104,6 +106,7 @@ export default function QuizNightPage() {
         email: email.trim(),
         memberCount,
         totalCost,
+        lowTable,
       })
       setSubmitting(false)
     } catch {
@@ -117,6 +120,7 @@ export default function QuizNightPage() {
     setTeamName('')
     setMembers(['', '', '', '', '', ''])
     setEmail('')
+    setLowTable(false)
     setAgreedToTerms(false)
   }
 
@@ -311,6 +315,17 @@ export default function QuizNightPage() {
                 </div>
               )}
 
+              {/* Accessibility */}
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer', fontSize: '0.85rem', color: 'rgba(245,243,236,0.7)', lineHeight: '1.5', userSelect: 'none' }}>
+                <input
+                  type="checkbox"
+                  checked={lowTable}
+                  onChange={(e) => setLowTable(e.target.checked)}
+                  style={{ marginTop: '3px', accentColor: '#A88E5D', flexShrink: 0 }}
+                />
+                <span>We require a low table for wheelchair or accessibility needs</span>
+              </label>
+
               {/* Submit */}
               <button
                 type="submit"
@@ -372,6 +387,12 @@ export default function QuizNightPage() {
                 <span>Cost</span>
                 <span>${success.totalCost} (paid on the night)</span>
               </div>
+              {success.lowTable && (
+                <div className="quiz-success-detail-row">
+                  <span>Accessibility</span>
+                  <span>Low table required</span>
+                </div>
+              )}
             </div>
             <button className="btn-primary" onClick={closeSuccess} style={{ position: 'relative', zIndex: 1 }}>Done</button>
           </div>
