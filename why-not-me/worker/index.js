@@ -914,10 +914,23 @@ h1{font-size:24px;font-family:'Damion',cursive;margin-bottom:20px;text-align:cen
 
   <div class="card">
     <p class="section-title">Team Members</p>
-    <p style="font-size:12px;color:#666;margin-bottom:16px">Edit names if someone has changed, or remove a member who can no longer make it (minimum 4 required).</p>
+    <p style="font-size:12px;color:#666;margin-bottom:16px">Edit names, remove someone who can no longer make it, or add a new member (up to 6).</p>
     <div id="members-list">
       ${memberRows}
     </div>
+    ${booking.members.length < QUIZ_MAX_TEAM ? '<div style="margin-top:16px;padding-top:16px;border-top:1px solid #2A2A2A" id="add-member-section"><div style="display:flex;gap:10px;align-items:center"><span class="member-num" style="color:#666">' + (booking.members.length + 1) + '</span><input type="text" id="new-member-input" placeholder="New team member name" maxlength="80" style="flex:1;background:#0D0D0D;border:1px solid #3D3424;color:#F5F3EC;font-family:inherit;font-size:14px;padding:8px 12px" /><button class="btn-edit" style="background:#A88E5D;color:#0D0D0D;border-color:#A88E5D" onclick="addMember()">Add</button></div></div>' : '<p style="margin-top:12px;font-size:12px;color:#666">Team is full (maximum 6 members).</p>'}
+  </div>
+
+  <div class="card">
+    <p class="section-title">Accessibility</p>
+    <p style="font-size:12px;color:#666;margin-bottom:16px">Let us know if your team needs a low table for wheelchair or accessibility needs.</p>
+    <form method="POST" action="/api/quiz-booking/modify?token=${token}" style="display:flex;align-items:center;gap:12px">
+      <input type="hidden" name="action" value="toggle_accessibility" />
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;color:#F5F3EC;flex:1">
+        <input type="checkbox" name="lowTable" value="true" ${booking.lowTable ? 'checked' : ''} onchange="this.form.submit()" style="accent-color:#A88E5D;width:18px;height:18px;cursor:pointer" />
+        We require a low table for accessibility
+      </label>
+    </form>
   </div>
 
   <div class="card" style="text-align:center">
@@ -971,6 +984,20 @@ function removeMember(i) {
   var hi = document.createElement('input'); hi.type='hidden'; hi.name='index'; hi.value=i;
   var ha = document.createElement('input'); ha.type='hidden'; ha.name='action'; ha.value='remove';
   form.appendChild(hi); form.appendChild(ha);
+  document.body.appendChild(form);
+  form.submit();
+}
+
+function addMember() {
+  var input = document.getElementById('new-member-input');
+  var val = input.value.trim();
+  if (!val) { alert('Please enter a name.'); return; }
+  var form = document.createElement('form');
+  form.method = 'POST';
+  form.action = '/api/quiz-booking/modify?token=${token || ''}';
+  var hn = document.createElement('input'); hn.type='hidden'; hn.name='newName'; hn.value=val;
+  var ha = document.createElement('input'); ha.type='hidden'; ha.name='action'; ha.value='add';
+  form.appendChild(hn); form.appendChild(ha);
   document.body.appendChild(form);
   form.submit();
 }
@@ -1038,6 +1065,25 @@ async function handleModifyBooking(request, url, env) {
       flash = { type: 'success', message: removed + ' has been removed from the team.' }
       await notifyEmailWorker('modification_admin', booking, env)
     }
+  } else if (action === 'add') {
+    const newName = (formData.get('newName') || '').trim().slice(0, 80)
+    if (!newName) {
+      flash = { type: 'error', message: 'Please enter a name for the new team member.' }
+    } else if (booking.members.length >= QUIZ_MAX_TEAM) {
+      flash = { type: 'error', message: 'Your team is already full (maximum ' + QUIZ_MAX_TEAM + ' members).' }
+    } else {
+      booking.members.push(newName)
+      booking.memberCount = booking.members.length
+      await env.DEDICATIONS.put(result.key, JSON.stringify(booking), { metadata: { memberCount: booking.memberCount } })
+      flash = { type: 'success', message: newName + ' has been added to the team.' }
+      await notifyEmailWorker('modification_admin', booking, env)
+    }
+  } else if (action === 'toggle_accessibility') {
+    const newValue = formData.get('lowTable') === 'true'
+    booking.lowTable = newValue
+    await env.DEDICATIONS.put(result.key, JSON.stringify(booking), { metadata: { memberCount: booking.memberCount } })
+    flash = { type: 'success', message: newValue ? 'Low table requirement added. We will have one ready for you.' : 'Low table requirement removed.' }
+    await notifyEmailWorker('modification_admin', booking, env)
   }
 
   return new Response(managePage(booking, token, flash), { status: 200, headers: { 'Content-Type': 'text/html' } })
