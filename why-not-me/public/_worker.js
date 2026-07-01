@@ -634,7 +634,7 @@ async function handleCheckEmail(request, env) {
 // Metadata:    { memberCount }  (used for quick capacity counting)
 
 const QUIZ_KEY_PREFIX = 'quiz_'
-const QUIZ_STATUS_KEY = 'quiz_status'
+const QUIZ_STATUS_KEY = '_quiznight_status'
 const QUIZ_MAX_CAPACITY = 120
 const QUIZ_FINAL_THRESHOLD = 110
 const QUIZ_MIN_TEAM = 4
@@ -793,10 +793,13 @@ async function findBookingByToken(token, env) {
   do {
     const result = await env.DEDICATIONS.list({ prefix: QUIZ_KEY_PREFIX, cursor })
     for (const key of result.keys) {
+      if (key.name === QUIZ_STATUS_KEY) continue
       const raw = await env.DEDICATIONS.get(key.name)
       if (raw) {
-        const booking = JSON.parse(raw)
-        if (booking.id === token) return { key: key.name, booking }
+        try {
+          const booking = JSON.parse(raw)
+          if (booking.id === token) return { key: key.name, booking }
+        } catch { /* not valid JSON, skip */ }
       }
     }
     cursor = result.list_complete ? null : result.cursor
