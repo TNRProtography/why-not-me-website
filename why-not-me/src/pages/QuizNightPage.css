@@ -424,6 +424,21 @@
   text-transform: uppercase;
 }
 
+/* ---- Loading spinner ---- */
+.quiz-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(13,13,13,0.3);
+  border-top-color: #0D0D0D;
+  border-radius: 50%;
+  animation: quiz-spin 0.6s linear infinite;
+}
+
+@keyframes quiz-spin {
+  to { transform: rotate(360deg); }
+}
+
 /* ---- Responsive ---- */
 @media (max-width: 900px) {
   .quiz-hero {

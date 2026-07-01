@@ -331,9 +331,14 @@ export default function QuizNightPage() {
                 type="submit"
                 className="btn-primary"
                 disabled={submitting || teamTooSmall || isSoldOut}
-                style={{ width: '100%', marginTop: '8px' }}
+                style={{ width: '100%', marginTop: '8px', position: 'relative' }}
               >
-                {submitting ? 'Booking...' : `Book ${memberCount >= MIN_TEAM ? memberCount : ''} Spot${memberCount !== 1 ? 's' : ''}`}
+                {submitting ? (
+                  <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+                    <span className="quiz-spinner" />
+                    Booking your spots...
+                  </span>
+                ) : `Book ${memberCount >= MIN_TEAM ? memberCount : ''} Spot${memberCount !== 1 ? 's' : ''}`}
               </button>
 
               {error && <p className="quiz-error">{error}</p>}

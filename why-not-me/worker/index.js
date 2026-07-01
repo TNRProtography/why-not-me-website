@@ -825,14 +825,11 @@ function managePage(booking, token, flash) {
   const teamLabel = booking ? (booking.teamName || 'No team name') : ''
   const totalCost = booking ? booking.memberCount * 10 : 0
 
-  const memberRows = booking ? booking.members.map(function(m, i) {
-    return '<div class="member-row" data-index="' + i + '">' +
+  const memberInputs = booking ? booking.members.map(function(m, i) {
+    return '<div class="member-row" id="row-' + i + '">' +
       '<span class="member-num">' + (i + 1) + '</span>' +
-      '<span class="member-name" id="name-display-' + i + '">' + m + '</span>' +
-      '<input type="text" class="member-input" id="name-input-' + i + '" value="' + m.replace(/"/g, '&quot;') + '" maxlength="80" style="display:none" />' +
-      '<button class="btn-edit" onclick="editName(' + i + ')" id="btn-edit-' + i + '">Edit</button>' +
-      '<button class="btn-save-name" onclick="saveName(' + i + ')" id="btn-save-' + i + '" style="display:none">Save</button>' +
-      (booking.members.length > QUIZ_MIN_TEAM ? '<button class="btn-remove" onclick="removeMember(' + i + ')">Remove</button>' : '') +
+      '<input type="text" class="member-input" name="member" value="' + m.replace(/"/g, '&quot;') + '" maxlength="80" />' +
+      '<button type="button" class="btn-remove" onclick="removeMember(this)" title="Remove">✕</button>' +
       '</div>'
   }).join('') : ''
 
@@ -851,7 +848,6 @@ body{background:#0D0D0D;color:#F5F3EC;font-family:'Montserrat',Arial,Helvetica,s
 .logo{text-align:center;margin-bottom:32px}
 .logo img{height:50px}
 .card{background:#151515;border:1px solid #2A2A2A;padding:32px 28px;margin-bottom:20px}
-.label{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#A88E5D;margin-bottom:6px}
 h1{font-size:24px;font-family:'Damion',cursive;margin-bottom:20px;text-align:center}
 .flash{padding:14px 20px;margin-bottom:20px;text-align:center;font-size:14px;line-height:1.5}
 .flash-success{background:#1a2e1a;border:1px solid #2d4a2d;color:#7bc67b}
@@ -860,20 +856,24 @@ h1{font-size:24px;font-family:'Damion',cursive;margin-bottom:20px;text-align:cen
 .detail-label{color:#A88E5D}
 .detail-value{color:#F5F3EC;text-align:right}
 .detail-value.bold{font-weight:700}
-.divider{border-top:1px solid #2A2A2A;margin:20px 0}
-.member-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #1f1f1f}
+.member-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #1f1f1f}
 .member-row:last-child{border-bottom:none}
-.member-num{width:24px;font-size:13px;font-weight:700;color:#A88E5D;flex-shrink:0}
-.member-name{flex:1;font-size:14px}
-.member-input{flex:1;background:#0D0D0D;border:1px solid #A88E5D;color:#F5F3EC;font-family:inherit;font-size:14px;padding:8px 12px}
-.btn-edit,.btn-save-name,.btn-remove{font-size:11px;letter-spacing:1px;text-transform:uppercase;border:none;cursor:pointer;padding:6px 12px;font-family:inherit;font-weight:600}
-.btn-edit{background:transparent;color:#A88E5D;border:1px solid #3D3424}
-.btn-save-name{background:#A88E5D;color:#0D0D0D}
-.btn-remove{background:transparent;color:#888;border:1px solid #333}
+.member-num{width:24px;font-size:13px;font-weight:700;color:#A88E5D;flex-shrink:0;text-align:center}
+.member-input{flex:1;background:#0D0D0D;border:1px solid #333;color:#F5F3EC;font-family:inherit;font-size:14px;padding:10px 12px;transition:border-color 0.2s}
+.member-input:focus{border-color:#A88E5D;outline:none}
+.btn-remove{background:none;border:1px solid #333;color:#666;cursor:pointer;padding:8px 10px;font-size:14px;line-height:1;transition:all 0.2s}
 .btn-remove:hover{color:#d9534f;border-color:#d9534f}
+.btn-add-row{display:flex;align-items:center;gap:10px;padding:12px 0;cursor:pointer;border:none;background:none;color:#A88E5D;font-family:inherit;font-size:13px;font-weight:600;letter-spacing:1px;text-transform:uppercase;width:100%;transition:opacity 0.2s}
+.btn-add-row:hover{opacity:0.7}
+.btn-add-row span{width:24px;height:24px;display:flex;align-items:center;justify-content:center;border:1px dashed #A88E5D;font-size:18px;flex-shrink:0}
 .event-details{background:#1A1A1A;border:1px solid #3D3424;padding:20px;margin-bottom:20px}
 .section-title{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#A88E5D;margin-bottom:12px}
-.btn-primary{display:block;width:100%;padding:16px;background:#A88E5D;color:#0D0D0D;border:none;cursor:pointer;font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;font-family:inherit;text-align:center;text-decoration:none;margin-bottom:12px}
+.access-label{display:flex;align-items:center;gap:12px;cursor:pointer;font-size:14px;color:#F5F3EC}
+.access-label input{accent-color:#A88E5D;width:18px;height:18px;cursor:pointer}
+.btn-save{display:block;width:100%;padding:18px;background:#A88E5D;color:#0D0D0D;border:none;cursor:pointer;font-size:13px;font-weight:700;letter-spacing:2px;text-transform:uppercase;font-family:inherit;text-align:center;margin-bottom:20px;transition:opacity 0.2s;position:relative}
+.btn-save:hover{opacity:0.9}
+.btn-save:disabled{opacity:0.5;cursor:default}
+.btn-save .save-spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(13,13,13,0.3);border-top-color:#0D0D0D;border-radius:50%;animation:manage-spin 0.6s linear infinite;vertical-align:middle;margin-right:8px}
 .btn-cancel{display:block;width:100%;padding:16px;background:transparent;color:#d9534f;border:2px solid #d9534f;cursor:pointer;font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;font-family:inherit;text-align:center}
 .btn-cancel:hover{background:#d9534f;color:#fff}
 .cancel-confirm{display:none;background:#1a1010;border:1px solid #4a2d2d;padding:20px;margin-top:12px;text-align:center}
@@ -881,6 +881,11 @@ h1{font-size:24px;font-family:'Damion',cursive;margin-bottom:20px;text-align:cen
 .back-link{display:block;text-align:center;margin-top:16px;font-size:13px;color:#A88E5D;text-decoration:underline}
 .footer{text-align:center;margin-top:32px;font-size:12px;color:#555}
 .footer a{color:#A88E5D;text-decoration:underline}
+.loading-overlay{display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.85);justify-content:center;align-items:center;flex-direction:column;gap:16px}
+.loading-overlay.active{display:flex}
+.loading-spinner{width:36px;height:36px;border:3px solid rgba(168,142,93,0.2);border-top-color:#A88E5D;border-radius:50%;animation:manage-spin 0.7s linear infinite}
+.loading-text{font-size:13px;letter-spacing:2px;text-transform:uppercase;color:#A88E5D}
+@keyframes manage-spin{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
@@ -902,44 +907,45 @@ h1{font-size:24px;font-family:'Damion',cursive;margin-bottom:20px;text-align:cen
       </div>
     </div>
 
-    <div class="detail-grid">
+    <div class="detail-grid" id="booking-summary">
       <span class="detail-label">Team</span><span class="detail-value">${teamLabel}</span>
       <span class="detail-label">Email</span><span class="detail-value">${booking.email}</span>
-      <span class="detail-label">People</span><span class="detail-value">${booking.memberCount}</span>
-      <span class="detail-label bold">Total Cost</span><span class="detail-value bold">$${totalCost}</span>
+      <span class="detail-label">People</span><span class="detail-value" id="people-count">${booking.memberCount}</span>
+      <span class="detail-label bold">Total Cost</span><span class="detail-value bold" id="total-cost">$${totalCost}</span>
     </div>
-    ${booking.lowTable ? '<div style="margin-top:8px;padding:10px 14px;background:rgba(168,142,93,0.1);border:1px solid rgba(168,142,93,0.25);font-size:13px;color:#A88E5D;">&#9855; Low table required for accessibility</div>' : ''}
-    <p style="font-size:12px;color:#666;margin-top:12px">Paid at the door on the night (cash or card)</p>
+    <p style="font-size:12px;color:#666;margin-top:-12px">Paid at the door on the night (cash or card)</p>
   </div>
 
   <div class="card">
     <p class="section-title">Team Members</p>
-    <p style="font-size:12px;color:#666;margin-bottom:16px">Edit names, remove someone who can no longer make it, or add a new member (up to 6).</p>
+    <p style="font-size:12px;color:#666;margin-bottom:16px">Edit names directly, remove someone with the ✕ button, or add a new member below. Hit Save Changes when you are done.</p>
     <div id="members-list">
-      ${memberRows}
+      ${memberInputs}
     </div>
-    ${booking.members.length < QUIZ_MAX_TEAM ? '<div style="margin-top:16px;padding-top:16px;border-top:1px solid #2A2A2A" id="add-member-section"><div style="display:flex;gap:10px;align-items:center"><span class="member-num" style="color:#666">' + (booking.members.length + 1) + '</span><input type="text" id="new-member-input" placeholder="New team member name" maxlength="80" style="flex:1;background:#0D0D0D;border:1px solid #3D3424;color:#F5F3EC;font-family:inherit;font-size:14px;padding:8px 12px" /><button class="btn-edit" style="background:#A88E5D;color:#0D0D0D;border-color:#A88E5D" onclick="addMember()">Add</button></div></div>' : '<p style="margin-top:12px;font-size:12px;color:#666">Team is full (maximum 6 members).</p>'}
+    <div id="add-section" ${booking.members.length >= QUIZ_MAX_TEAM ? 'style="display:none"' : ''}>
+      <button type="button" class="btn-add-row" onclick="addMemberRow()">
+        <span>+</span> Add team member
+      </button>
+    </div>
   </div>
 
   <div class="card">
     <p class="section-title">Accessibility</p>
-    <p style="font-size:12px;color:#666;margin-bottom:16px">Let us know if your team needs a low table for wheelchair or accessibility needs.</p>
-    <form method="POST" action="/api/quiz-booking/modify?token=${token}" style="display:flex;align-items:center;gap:12px">
-      <input type="hidden" name="action" value="toggle_accessibility" />
-      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;color:#F5F3EC;flex:1">
-        <input type="checkbox" name="lowTable" value="true" ${booking.lowTable ? 'checked' : ''} onchange="this.form.submit()" style="accent-color:#A88E5D;width:18px;height:18px;cursor:pointer" />
-        We require a low table for accessibility
-      </label>
-    </form>
+    <label class="access-label">
+      <input type="checkbox" id="low-table-check" ${booking.lowTable ? 'checked' : ''} />
+      We require a low table for wheelchair or accessibility needs
+    </label>
   </div>
+
+  <button class="btn-save" id="save-btn" onclick="saveAll()">Save Changes</button>
 
   <div class="card" style="text-align:center">
     <p class="section-title">Cancel Booking</p>
     <p style="font-size:13px;color:#888;line-height:1.6;margin-bottom:16px">If your whole team can no longer make it, you can cancel your booking below. Your spots will be released for others.</p>
     <button class="btn-cancel" onclick="showCancelConfirm()">Cancel Entire Booking</button>
     <div class="cancel-confirm" id="cancel-confirm">
-      <p>Are you sure? This will cancel the booking for all ${booking.memberCount} team members and cannot be undone.</p>
-      <form method="POST" action="/api/quiz-booking/cancel?token=${token}">
+      <p>Are you sure? This will cancel the booking for all team members and cannot be undone.</p>
+      <form method="POST" action="/api/quiz-booking/cancel?token=${token}" onsubmit="showLoading('Cancelling booking...')">
         <button type="submit" class="btn-cancel" style="background:#d9534f;color:#fff;border-color:#d9534f;margin-bottom:8px">Yes, Cancel My Booking</button>
       </form>
       <button onclick="hideCancelConfirm()" style="background:none;border:none;color:#A88E5D;cursor:pointer;font-size:13px;text-decoration:underline;font-family:inherit">No, keep my booking</button>
@@ -952,58 +958,98 @@ h1{font-size:24px;font-family:'Damion',cursive;margin-bottom:20px;text-align:cen
   <div class="footer"><a href="https://whynotme.co.nz">whynotme.co.nz</a></div>
 </div>
 
+<div class="loading-overlay" id="loading-overlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-text" id="loading-text">Saving changes...</div>
+</div>
+
 <script>
-function editName(i) {
-  document.getElementById('name-display-'+i).style.display='none';
-  document.getElementById('name-input-'+i).style.display='';
-  document.getElementById('btn-edit-'+i).style.display='none';
-  document.getElementById('btn-save-'+i).style.display='';
-  document.getElementById('name-input-'+i).focus();
+var MIN_TEAM = ${QUIZ_MIN_TEAM};
+var MAX_TEAM = ${QUIZ_MAX_TEAM};
+var COST_PER_PERSON = 10;
+
+function showLoading(msg) {
+  document.getElementById('loading-text').textContent = msg || 'Saving changes...';
+  document.getElementById('loading-overlay').classList.add('active');
 }
 
-function saveName(i) {
-  var input = document.getElementById('name-input-'+i);
-  var val = input.value.trim();
-  if (!val) { alert('Name cannot be empty.'); return; }
+function updateNumbers() {
+  var rows = document.querySelectorAll('#members-list .member-row');
+  var count = rows.length;
+  rows.forEach(function(row, i) {
+    row.querySelector('.member-num').textContent = i + 1;
+  });
+  document.getElementById('people-count').textContent = count;
+  document.getElementById('total-cost').textContent = '$' + (count * COST_PER_PERSON);
+  // Show/hide remove buttons based on min team
+  rows.forEach(function(row) {
+    var btn = row.querySelector('.btn-remove');
+    if (btn) btn.style.display = count <= MIN_TEAM ? 'none' : '';
+  });
+  // Show/hide add section
+  var addSection = document.getElementById('add-section');
+  if (addSection) addSection.style.display = count >= MAX_TEAM ? 'none' : '';
+}
+
+function removeMember(btn) {
+  var rows = document.querySelectorAll('#members-list .member-row');
+  if (rows.length <= MIN_TEAM) { alert('You need at least ' + MIN_TEAM + ' team members.'); return; }
+  btn.closest('.member-row').remove();
+  updateNumbers();
+}
+
+function addMemberRow() {
+  var rows = document.querySelectorAll('#members-list .member-row');
+  if (rows.length >= MAX_TEAM) return;
+  var num = rows.length + 1;
+  var div = document.createElement('div');
+  div.className = 'member-row';
+  div.innerHTML = '<span class="member-num">' + num + '</span>' +
+    '<input type="text" class="member-input" name="member" placeholder="New team member" maxlength="80" />' +
+    '<button type="button" class="btn-remove" onclick="removeMember(this)" title="Remove">&#10005;</button>';
+  document.getElementById('members-list').appendChild(div);
+  div.querySelector('input').focus();
+  updateNumbers();
+}
+
+function saveAll() {
+  var inputs = document.querySelectorAll('#members-list .member-input');
+  var members = [];
+  var empty = false;
+  inputs.forEach(function(input) {
+    var val = input.value.trim();
+    if (!val) empty = true;
+    else members.push(val);
+  });
+  if (empty || members.length < MIN_TEAM) {
+    alert('Please fill in all team member names (minimum ' + MIN_TEAM + ').');
+    return;
+  }
+  if (members.length > MAX_TEAM) {
+    alert('Maximum ' + MAX_TEAM + ' team members allowed.');
+    return;
+  }
+  showLoading('Saving changes...');
+  var lowTable = document.getElementById('low-table-check').checked;
   var form = document.createElement('form');
   form.method = 'POST';
   form.action = '/api/quiz-booking/modify?token=${token || ''}';
-  var hi = document.createElement('input'); hi.type='hidden'; hi.name='index'; hi.value=i;
-  var hn = document.createElement('input'); hn.type='hidden'; hn.name='newName'; hn.value=val;
-  var ha = document.createElement('input'); ha.type='hidden'; ha.name='action'; ha.value='rename';
-  form.appendChild(hi); form.appendChild(hn); form.appendChild(ha);
-  document.body.appendChild(form);
-  form.submit();
-}
-
-function removeMember(i) {
-  if (!confirm('Remove this team member?')) return;
-  var form = document.createElement('form');
-  form.method = 'POST';
-  form.action = '/api/quiz-booking/modify?token=${token || ''}';
-  var hi = document.createElement('input'); hi.type='hidden'; hi.name='index'; hi.value=i;
-  var ha = document.createElement('input'); ha.type='hidden'; ha.name='action'; ha.value='remove';
-  form.appendChild(hi); form.appendChild(ha);
-  document.body.appendChild(form);
-  form.submit();
-}
-
-function addMember() {
-  var input = document.getElementById('new-member-input');
-  var val = input.value.trim();
-  if (!val) { alert('Please enter a name.'); return; }
-  var form = document.createElement('form');
-  form.method = 'POST';
-  form.action = '/api/quiz-booking/modify?token=${token || ''}';
-  var hn = document.createElement('input'); hn.type='hidden'; hn.name='newName'; hn.value=val;
-  var ha = document.createElement('input'); ha.type='hidden'; ha.name='action'; ha.value='add';
-  form.appendChild(hn); form.appendChild(ha);
+  var ha = document.createElement('input'); ha.type='hidden'; ha.name='action'; ha.value='save_all';
+  form.appendChild(ha);
+  members.forEach(function(name) {
+    var input = document.createElement('input'); input.type='hidden'; input.name='members'; input.value=name;
+    form.appendChild(input);
+  });
+  var hl = document.createElement('input'); hl.type='hidden'; hl.name='lowTable'; hl.value=lowTable ? 'true' : 'false';
+  form.appendChild(hl);
   document.body.appendChild(form);
   form.submit();
 }
 
 function showCancelConfirm() { document.getElementById('cancel-confirm').style.display='block'; }
 function hideCancelConfirm() { document.getElementById('cancel-confirm').style.display='none'; }
+
+updateNumbers();
 </script>
 </body>
 </html>`
@@ -1040,50 +1086,26 @@ async function handleModifyBooking(request, url, env) {
 
   const formData = await request.formData()
   const action = formData.get('action')
-  const index = parseInt(formData.get('index'), 10)
   const booking = result.booking
   let flash = null
 
-  if (action === 'rename') {
-    const newName = (formData.get('newName') || '').trim().slice(0, 80)
-    if (!newName) {
-      flash = { type: 'error', message: 'Name cannot be empty.' }
-    } else if (index >= 0 && index < booking.members.length) {
-      const oldName = booking.members[index]
-      booking.members[index] = newName
-      await env.DEDICATIONS.put(result.key, JSON.stringify(booking), { metadata: { memberCount: booking.memberCount } })
-      flash = { type: 'success', message: 'Updated: ' + oldName + ' changed to ' + newName }
-      await notifyEmailWorker('modification_admin', booking, env)
-    }
-  } else if (action === 'remove') {
-    if (booking.members.length <= QUIZ_MIN_TEAM) {
-      flash = { type: 'error', message: 'You need at least ' + QUIZ_MIN_TEAM + ' team members. Cancel the booking instead if your whole team cannot make it.' }
-    } else if (index >= 0 && index < booking.members.length) {
-      const removed = booking.members.splice(index, 1)[0]
-      booking.memberCount = booking.members.length
-      await env.DEDICATIONS.put(result.key, JSON.stringify(booking), { metadata: { memberCount: booking.memberCount } })
-      flash = { type: 'success', message: removed + ' has been removed from the team.' }
-      await notifyEmailWorker('modification_admin', booking, env)
-    }
-  } else if (action === 'add') {
-    const newName = (formData.get('newName') || '').trim().slice(0, 80)
-    if (!newName) {
-      flash = { type: 'error', message: 'Please enter a name for the new team member.' }
-    } else if (booking.members.length >= QUIZ_MAX_TEAM) {
-      flash = { type: 'error', message: 'Your team is already full (maximum ' + QUIZ_MAX_TEAM + ' members).' }
+  if (action === 'save_all') {
+    const newMembers = formData.getAll('members').map(function(m) { return m.trim().slice(0, 80) }).filter(function(m) { return m !== '' })
+    const newLowTable = formData.get('lowTable') === 'true'
+
+    if (newMembers.length < QUIZ_MIN_TEAM) {
+      flash = { type: 'error', message: 'You need at least ' + QUIZ_MIN_TEAM + ' team members.' }
+    } else if (newMembers.length > QUIZ_MAX_TEAM) {
+      flash = { type: 'error', message: 'Maximum ' + QUIZ_MAX_TEAM + ' team members allowed.' }
     } else {
-      booking.members.push(newName)
-      booking.memberCount = booking.members.length
+      booking.members = newMembers
+      booking.memberCount = newMembers.length
+      booking.lowTable = newLowTable
       await env.DEDICATIONS.put(result.key, JSON.stringify(booking), { metadata: { memberCount: booking.memberCount } })
-      flash = { type: 'success', message: newName + ' has been added to the team.' }
+      flash = { type: 'success', message: 'Your booking has been updated. A confirmation has been sent to ' + booking.email + '.' }
       await notifyEmailWorker('modification_admin', booking, env)
+      await notifyEmailWorker('modification', booking, env)
     }
-  } else if (action === 'toggle_accessibility') {
-    const newValue = formData.get('lowTable') === 'true'
-    booking.lowTable = newValue
-    await env.DEDICATIONS.put(result.key, JSON.stringify(booking), { metadata: { memberCount: booking.memberCount } })
-    flash = { type: 'success', message: newValue ? 'Low table requirement added. We will have one ready for you.' : 'Low table requirement removed.' }
-    await notifyEmailWorker('modification_admin', booking, env)
   }
 
   return new Response(managePage(booking, token, flash), { status: 200, headers: { 'Content-Type': 'text/html' } })
