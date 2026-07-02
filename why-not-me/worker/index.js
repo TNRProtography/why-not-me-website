@@ -639,6 +639,8 @@ const QUIZ_MAX_CAPACITY = 120
 const QUIZ_FINAL_THRESHOLD = 110
 const QUIZ_MIN_TEAM = 4
 const QUIZ_MAX_TEAM = 6
+const QUIZ_COST_ONLINE = 10
+const QUIZ_COST_DOOR = 20
 
 function quizKey(teamName, email, id) {
   const label = (teamName || email || 'team').replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-').slice(0, 40)
@@ -687,6 +689,8 @@ async function handlePostQuizBooking(request, env) {
     .map((m) => (typeof m === 'string' ? m.trim().slice(0, 80) : ''))
     .filter((m) => m !== '')
   const lowTable = !!body.lowTable
+  const paymentMethod = body.paymentMethod === 'door' ? 'door' : 'online'
+  const costPerPerson = paymentMethod === 'online' ? QUIZ_COST_ONLINE : QUIZ_COST_DOOR
 
   if (!email || !email.includes('@')) {
     return dedicationResponse({ error: 'Please enter a valid email address.' }, 400)
@@ -724,6 +728,10 @@ async function handlePostQuizBooking(request, env) {
     email,
     memberCount: members.length,
     lowTable,
+    paymentMethod,
+    costPerPerson,
+    totalCost: members.length * costPerPerson,
+    paid: paymentMethod === 'door' ? false : false, // marked true by Stripe webhook
     createdAt: new Date().toISOString(),
   }
 
@@ -731,6 +739,9 @@ async function handlePostQuizBooking(request, env) {
   await env.DEDICATIONS.put(key, JSON.stringify(booking), {
     metadata: { memberCount: members.length },
   })
+
+  // Store a reverse-lookup so the Stripe webhook can find this booking by ID
+  await env.DEDICATIONS.put(`quiz_ref_${id}`, key)
 
   const newSpotsBooked = spotsBooked + members.length
 
@@ -750,11 +761,23 @@ async function handlePostQuizBooking(request, env) {
     console.error('Quiz confirmation email failed:', emailError)
   }
 
+  // Build Stripe redirect URL for online payments
+  let stripeUrl = null
+  if (paymentMethod === 'online' && env.STRIPE_PAYMENT_LINK_URL) {
+    const params = new URLSearchParams({
+      prefilled_email: email,
+      quantity: String(members.length),
+      client_reference_id: id,
+    })
+    stripeUrl = `${env.STRIPE_PAYMENT_LINK_URL}?${params.toString()}`
+  }
+
   return dedicationResponse({
     success: true,
     booking: { ...booking, email: undefined },
     spotsBooked: newSpotsBooked,
     status: newStatus,
+    stripeUrl,
   })
 }
 
@@ -780,6 +803,9 @@ async function sendQuizConfirmationEmail(booking, env) {
       email: booking.email,
       memberCount: booking.memberCount,
       lowTable: booking.lowTable,
+      paymentMethod: booking.paymentMethod,
+      costPerPerson: booking.costPerPerson,
+      totalCost: booking.totalCost,
     }),
   })
 
@@ -1233,6 +1259,107 @@ export default {
       }
     }
 
+    if (url.pathname === '/api/stripe-webhook' && request.method === 'POST') {
+      try {
+        return await handleStripeWebhook(request, env)
+      } catch (error) {
+        console.error('Stripe webhook error:', error)
+        return dedicationResponse({ error: 'Webhook processing failed.' }, 500)
+      }
+    }
+
     return handleAsset(request, env)
   },
+}
+
+// ── Stripe Webhook ──────────────────────────────────────────
+// Listens for checkout.session.completed events from Stripe.
+// Uses client_reference_id (= booking UUID) to find and mark
+// the booking as paid in KV.
+//
+// Required env vars:
+//   STRIPE_WEBHOOK_SECRET  — from Stripe Dashboard > Webhooks > Signing secret
+// ─────────────────────────────────────────────────────────────
+
+async function verifyStripeSignature(payload, sigHeader, secret) {
+  const parts = {}
+  for (const item of sigHeader.split(',')) {
+    const [k, v] = item.split('=')
+    parts[k] = v
+  }
+  const timestamp = parts.t
+  const sig = parts.v1
+  if (!timestamp || !sig) return false
+
+  // Reject if timestamp is older than 5 minutes
+  const age = Math.floor(Date.now() / 1000) - parseInt(timestamp, 10)
+  if (Math.abs(age) > 300) return false
+
+  const signedPayload = `${timestamp}.${payload}`
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  )
+  const mac = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(signedPayload))
+  const expected = Array.from(new Uint8Array(mac)).map(b => b.toString(16).padStart(2, '0')).join('')
+  return sig === expected
+}
+
+async function handleStripeWebhook(request, env) {
+  if (!env.STRIPE_WEBHOOK_SECRET) {
+    console.error('STRIPE_WEBHOOK_SECRET not configured')
+    return dedicationResponse({ error: 'Webhook not configured.' }, 500)
+  }
+
+  const sigHeader = request.headers.get('stripe-signature') || ''
+  const rawBody = await request.text()
+
+  const valid = await verifyStripeSignature(rawBody, sigHeader, env.STRIPE_WEBHOOK_SECRET)
+  if (!valid) {
+    console.error('Invalid Stripe webhook signature')
+    return dedicationResponse({ error: 'Invalid signature.' }, 400)
+  }
+
+  const event = JSON.parse(rawBody)
+
+  // We only care about successful payments
+  if (event.type !== 'checkout.session.completed') {
+    return dedicationResponse({ received: true })
+  }
+
+  const session = event.data?.object
+  const bookingId = session?.client_reference_id
+  if (!bookingId) {
+    console.error('Stripe webhook: no client_reference_id')
+    return dedicationResponse({ received: true })
+  }
+
+  // Look up the booking via the reverse-reference key
+  const kvKey = await env.DEDICATIONS.get(`quiz_ref_${bookingId}`)
+  if (!kvKey) {
+    console.error('Stripe webhook: no KV key found for booking', bookingId)
+    return dedicationResponse({ received: true })
+  }
+
+  const raw = await env.DEDICATIONS.get(kvKey)
+  if (!raw) {
+    console.error('Stripe webhook: booking not found at key', kvKey)
+    return dedicationResponse({ received: true })
+  }
+
+  const booking = JSON.parse(raw)
+  booking.paid = true
+  booking.stripeSessionId = session.id
+  booking.paidAt = new Date().toISOString()
+
+  // Save updated booking
+  await env.DEDICATIONS.put(kvKey, JSON.stringify(booking), {
+    metadata: { memberCount: booking.memberCount },
+  })
+
+  console.log(`Stripe payment confirmed for booking ${bookingId} (${booking.teamName || booking.email})`)
+  return dedicationResponse({ received: true })
 }

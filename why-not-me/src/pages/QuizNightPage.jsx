@@ -4,11 +4,13 @@
  * ============================================================
  * Booking form for the Why Not Me quiz night fundraiser.
  * October 7, 2026 at Monteith's Brewery, Greymouth.
- * Teams of 4-6, $10 per person, paid on the night.
+ * Teams of 4-6.
+ *   - Pay online: $10 per person (via Stripe)
+ *   - Pay at the door: $20 per person
  * ============================================================
  */
 import { useState, useEffect, useCallback } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import PageTransition from '../components/PageTransition'
 import RevealOnScroll from '../components/RevealOnScroll'
 import ScrollZoomFocus from '../components/ScrollZoomFocus'
@@ -19,11 +21,13 @@ import './QuizNightPage.css'
 const MAX_CAPACITY = 120
 const MIN_TEAM = 4
 const MAX_TEAM = 6
-const COST_PER_PERSON = 10
+const COST_ONLINE = 10
+const COST_DOOR = 20
 // Quiz Night: Oct 7, 2026, 6:00pm NZST (UTC+13)
 const QUIZ_DATE = new Date('2026-10-07T18:00:00+13:00').getTime()
 
 export default function QuizNightPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const [loading, setLoading] = useState(true)
   const [spotsBooked, setSpotsBooked] = useState(0)
   const [status, setStatus] = useState('open')
@@ -31,17 +35,37 @@ export default function QuizNightPage() {
   const [members, setMembers] = useState(['', '', '', '', '', ''])
   const [email, setEmail] = useState('')
   const [lowTable, setLowTable] = useState(false)
+  const [paymentMethod, setPaymentMethod] = useState('online')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(null)
 
   const filledMembers = members.filter((m) => m.trim() !== '')
   const memberCount = filledMembers.length
-  const totalCost = memberCount * COST_PER_PERSON
+  const costPerPerson = paymentMethod === 'online' ? COST_ONLINE : COST_DOOR
+  const totalCost = memberCount * costPerPerson
   const isSoldOut = status === 'sold_out'
   const isFinalTeam = status === 'final'
   const teamTooSmall = memberCount < MIN_TEAM
   const teamTooBig = memberCount > MAX_TEAM
+
+  // Handle return from Stripe payment
+  useEffect(() => {
+    if (searchParams.get('payment') === 'success') {
+      setSuccess({
+        teamName: 'Your team',
+        members: [],
+        email: '',
+        memberCount: 0,
+        totalCost: 0,
+        lowTable: false,
+        paymentMethod: 'online',
+        paidOnline: true,
+      })
+      // Clean the URL
+      setSearchParams({}, { replace: true })
+    }
+  }, [])
 
   const fetchCapacity = useCallback(async () => {
     try {
@@ -89,6 +113,7 @@ export default function QuizNightPage() {
           members: filledMembers.map((m) => m.trim()),
           email: email.trim(),
           lowTable,
+          paymentMethod,
         }),
       })
       const data = await res.json()
@@ -103,6 +128,14 @@ export default function QuizNightPage() {
       setSpotsBooked(data.spotsBooked || spotsBooked + memberCount)
       if (data.status) setStatus(data.status)
       trackQuizBookingSuccess(memberCount, teamName.trim())
+
+      // If paying online, redirect to Stripe
+      if (paymentMethod === 'online' && data.stripeUrl) {
+        window.location.href = data.stripeUrl
+        return
+      }
+
+      // Pay-at-door: show success modal
       setSuccess({
         teamName: teamName.trim() || 'Your team',
         members: filledMembers.map((m) => m.trim()),
@@ -110,6 +143,7 @@ export default function QuizNightPage() {
         memberCount,
         totalCost,
         lowTable,
+        paymentMethod,
       })
       setSubmitting(false)
     } catch {
@@ -124,7 +158,7 @@ export default function QuizNightPage() {
     setMembers(['', '', '', '', '', ''])
     setEmail('')
     setLowTable(false)
-    setAgreedToTerms(false)
+    setPaymentMethod('online')
   }
 
   if (loading) {
@@ -159,7 +193,7 @@ export default function QuizNightPage() {
           </div>
           <div className="quiz-detail-divider" />
           <div className="quiz-detail-item">
-            <span className="quiz-detail-value">$10</span>
+            <span className="quiz-detail-value">$10 – $20</span>
             <span className="quiz-detail-label">Per Person</span>
           </div>
           <div className="quiz-detail-divider" />
@@ -221,10 +255,10 @@ export default function QuizNightPage() {
               </p>
             </div>
             <div className="quiz-info-card">
-              <div className="quiz-info-card-icon">🍻</div>
-              <div className="quiz-info-card-title">Pay on the Night</div>
+              <div className="quiz-info-card-icon">💰</div>
+              <div className="quiz-info-card-title">Two Ways to Pay</div>
               <p className="quiz-info-card-desc">
-                $10 per person at the door. Cash or card. Grab a drink from the bar and settle in.
+                $10pp if you pay online now, or $20pp at the door. Pay online to lock in the cheaper rate and save us chasing on the night.
               </p>
             </div>
           </div>
@@ -316,12 +350,71 @@ export default function QuizNightPage() {
                 <div className="quiz-field-hint">You will receive a confirmation email with the event details and a link to the documentary</div>
               </div>
 
+              {/* Payment method */}
+              <div className="quiz-field">
+                <label>How would you like to pay?</label>
+                <div className="quiz-payment-options">
+                  <label
+                    className={`quiz-payment-option${paymentMethod === 'online' ? ' is-selected' : ''}`}
+                    onClick={() => setPaymentMethod('online')}
+                  >
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value="online"
+                      checked={paymentMethod === 'online'}
+                      onChange={() => setPaymentMethod('online')}
+                    />
+                    <div className="quiz-payment-option-content">
+                      <div className="quiz-payment-option-header">
+                        <span className="quiz-payment-option-title">Pay Online Now</span>
+                        <span className="quiz-payment-option-price">$10<span>/person</span></span>
+                      </div>
+                      <span className="quiz-payment-option-desc">
+                        Pay securely via Stripe. Saves us chasing on the night and you get the cheaper rate.
+                      </span>
+                      <span className="quiz-payment-option-badge">Best value</span>
+                    </div>
+                  </label>
+                  <label
+                    className={`quiz-payment-option${paymentMethod === 'door' ? ' is-selected' : ''}`}
+                    onClick={() => setPaymentMethod('door')}
+                  >
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value="door"
+                      checked={paymentMethod === 'door'}
+                      onChange={() => setPaymentMethod('door')}
+                    />
+                    <div className="quiz-payment-option-content">
+                      <div className="quiz-payment-option-header">
+                        <span className="quiz-payment-option-title">Pay at the Door</span>
+                        <span className="quiz-payment-option-price">$20<span>/person</span></span>
+                      </div>
+                      <span className="quiz-payment-option-desc">
+                        Cash or card on the night when you arrive.
+                      </span>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
               {/* Cost summary */}
               {memberCount >= MIN_TEAM && (
                 <div className="quiz-cost-summary">
                   <div className="quiz-cost-total">${totalCost}</div>
-                  <div className="quiz-cost-breakdown">{memberCount} {memberCount === 1 ? 'person' : 'people'} x ${COST_PER_PERSON}</div>
-                  <div className="quiz-cost-note">Paid on the night at the door (cash or card)</div>
+                  <div className="quiz-cost-breakdown">{memberCount} {memberCount === 1 ? 'person' : 'people'} × ${costPerPerson}</div>
+                  <div className="quiz-cost-note">
+                    {paymentMethod === 'online'
+                      ? 'You\'ll be redirected to Stripe to complete payment'
+                      : 'Paid on the night at the door (cash or card)'}
+                  </div>
+                  {paymentMethod === 'door' && (
+                    <div className="quiz-cost-savings">
+                      Pay online instead and save ${memberCount * (COST_DOOR - COST_ONLINE)}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -346,9 +439,11 @@ export default function QuizNightPage() {
                 {submitting ? (
                   <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
                     <span className="quiz-spinner" />
-                    Booking your spots...
+                    {paymentMethod === 'online' ? 'Redirecting to payment...' : 'Booking your spots...'}
                   </span>
-                ) : `Book ${memberCount >= MIN_TEAM ? memberCount : ''} Spot${memberCount !== 1 ? 's' : ''}`}
+                ) : paymentMethod === 'online'
+                  ? `Book & Pay $${memberCount >= MIN_TEAM ? totalCost : ''} Now`
+                  : `Book ${memberCount >= MIN_TEAM ? memberCount : ''} Spot${memberCount !== 1 ? 's' : ''}`}
               </button>
 
               {error && <p className="quiz-error">{error}</p>}
@@ -373,42 +468,61 @@ export default function QuizNightPage() {
         <div className="quiz-success-overlay" onClick={closeSuccess}>
           <div className="quiz-success-modal" onClick={(e) => e.stopPropagation()}>
             <div className="quiz-success-icon">✓</div>
-            <div className="quiz-success-title">You're in.</div>
-            <p className="quiz-success-subtitle">
-              A confirmation has been sent to <strong style={{ color: 'var(--gold)' }}>{success.email}</strong> with everything you need, including a link to the documentary. See you there.
-            </p>
-            <div className="quiz-success-details">
-              <div className="quiz-success-detail-row">
-                <span>Team</span>
-                <span>{success.teamName || 'TBC on the night'}</span>
-              </div>
-              <div className="quiz-success-detail-row">
-                <span>Members</span>
-                <span>{success.memberCount} people</span>
-              </div>
-              <div className="quiz-success-detail-row">
-                <span>Date</span>
-                <span>Wednesday 7 October 2026</span>
-              </div>
-              <div className="quiz-success-detail-row">
-                <span>Time</span>
-                <span>6:00 PM</span>
-              </div>
-              <div className="quiz-success-detail-row">
-                <span>Venue</span>
-                <span>Monteith's Brewery, Greymouth</span>
-              </div>
-              <div className="quiz-success-detail-row">
-                <span>Cost</span>
-                <span>${success.totalCost} (paid on the night)</span>
-              </div>
-              {success.lowTable && (
-                <div className="quiz-success-detail-row">
-                  <span>Accessibility</span>
-                  <span>Low table required</span>
+
+            {/* Returning from Stripe */}
+            {success.paidOnline ? (
+              <>
+                <div className="quiz-success-title">Payment received!</div>
+                <p className="quiz-success-subtitle">
+                  Your payment has been processed. A confirmation email is on its way with everything you need. See you on quiz night.
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="quiz-success-title">You're in.</div>
+                <p className="quiz-success-subtitle">
+                  A confirmation has been sent to <strong style={{ color: 'var(--gold)' }}>{success.email}</strong> with everything you need, including a link to the documentary. See you there.
+                </p>
+                <div className="quiz-success-details">
+                  <div className="quiz-success-detail-row">
+                    <span>Team</span>
+                    <span>{success.teamName || 'TBC on the night'}</span>
+                  </div>
+                  <div className="quiz-success-detail-row">
+                    <span>Members</span>
+                    <span>{success.memberCount} people</span>
+                  </div>
+                  <div className="quiz-success-detail-row">
+                    <span>Date</span>
+                    <span>Wednesday 7 October 2026</span>
+                  </div>
+                  <div className="quiz-success-detail-row">
+                    <span>Time</span>
+                    <span>6:00 PM</span>
+                  </div>
+                  <div className="quiz-success-detail-row">
+                    <span>Venue</span>
+                    <span>Monteith's Brewery, Greymouth</span>
+                  </div>
+                  <div className="quiz-success-detail-row">
+                    <span>Cost</span>
+                    <span>
+                      ${success.totalCost}
+                      {success.paymentMethod === 'door'
+                        ? ' (pay at the door, cash or card)'
+                        : ' (paid online)'}
+                    </span>
+                  </div>
+                  {success.lowTable && (
+                    <div className="quiz-success-detail-row">
+                      <span>Accessibility</span>
+                      <span>Low table required</span>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              </>
+            )}
+
             <button className="btn-primary" onClick={closeSuccess} style={{ position: 'relative', zIndex: 1 }}>Done</button>
           </div>
         </div>
