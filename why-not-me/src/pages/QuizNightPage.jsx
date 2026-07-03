@@ -4,9 +4,7 @@
  * ============================================================
  * Booking form for the Why Not Me quiz night fundraiser.
  * October 7, 2026 at Monteith's Brewery, Greymouth.
- * Teams of 4-6.
- *   Pay Online:  $10/person (via Stripe)
- *   Pay at Door: $20/person (cash or card on the night)
+ * Teams of 4-6, $10 per person, paid on the night.
  * ============================================================
  */
 import { useState, useEffect, useCallback } from 'react'
@@ -21,8 +19,7 @@ import './QuizNightPage.css'
 const MAX_CAPACITY = 120
 const MIN_TEAM = 4
 const MAX_TEAM = 6
-const COST_ONLINE = 10
-const COST_DOOR = 20
+const COST_PER_PERSON = 10
 // Quiz Night: Oct 7, 2026, 6:00pm NZST (UTC+13)
 const QUIZ_DATE = new Date('2026-10-07T18:00:00+13:00').getTime()
 
@@ -34,42 +31,17 @@ export default function QuizNightPage() {
   const [members, setMembers] = useState(['', '', '', '', '', ''])
   const [email, setEmail] = useState('')
   const [lowTable, setLowTable] = useState(false)
-  const [paymentMethod, setPaymentMethod] = useState('online') // 'online' or 'door'
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(null)
 
   const filledMembers = members.filter((m) => m.trim() !== '')
   const memberCount = filledMembers.length
-  const costPerPerson = paymentMethod === 'online' ? COST_ONLINE : COST_DOOR
-  const totalCost = memberCount * costPerPerson
+  const totalCost = memberCount * COST_PER_PERSON
   const isSoldOut = status === 'sold_out'
   const isFinalTeam = status === 'final'
   const teamTooSmall = memberCount < MIN_TEAM
   const teamTooBig = memberCount > MAX_TEAM
-
-  // Check for Stripe success/cancelled return
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    if (params.get('payment') === 'success') {
-      setSuccess({
-        teamName: params.get('team') || 'Your team',
-        email: params.get('email') || '',
-        memberCount: parseInt(params.get('members') || '0', 10),
-        totalCost: parseInt(params.get('total') || '0', 10),
-        paymentMethod: 'online',
-        paid: true,
-        members: [],
-        lowTable: false,
-      })
-      // Clean the URL
-      window.history.replaceState({}, '', window.location.pathname)
-    }
-    if (params.get('payment') === 'cancelled') {
-      setError('Payment was cancelled. Your booking has been saved — you can pay at the door ($20/person) instead.')
-      window.history.replaceState({}, '', window.location.pathname)
-    }
-  }, [])
 
   const fetchCapacity = useCallback(async () => {
     try {
@@ -117,7 +89,6 @@ export default function QuizNightPage() {
           members: filledMembers.map((m) => m.trim()),
           email: email.trim(),
           lowTable,
-          paymentMethod,
         }),
       })
       const data = await res.json()
@@ -131,14 +102,6 @@ export default function QuizNightPage() {
 
       setSpotsBooked(data.spotsBooked || spotsBooked + memberCount)
       if (data.status) setStatus(data.status)
-
-      // If paying online and we got a Stripe URL, redirect
-      if (paymentMethod === 'online' && data.stripeUrl) {
-        window.location.href = data.stripeUrl
-        return
-      }
-
-      // Otherwise show success (pay at door)
       trackQuizBookingSuccess(memberCount, teamName.trim())
       setSuccess({
         teamName: teamName.trim() || 'Your team',
@@ -146,8 +109,6 @@ export default function QuizNightPage() {
         email: email.trim(),
         memberCount,
         totalCost,
-        paymentMethod,
-        paid: false,
         lowTable,
       })
       setSubmitting(false)
@@ -163,7 +124,6 @@ export default function QuizNightPage() {
     setMembers(['', '', '', '', '', ''])
     setEmail('')
     setLowTable(false)
-    setPaymentMethod('online')
   }
 
   if (loading) {
@@ -198,7 +158,7 @@ export default function QuizNightPage() {
           </div>
           <div className="quiz-detail-divider" />
           <div className="quiz-detail-item">
-            <span className="quiz-detail-value">From $10</span>
+            <span className="quiz-detail-value">$10</span>
             <span className="quiz-detail-label">Per Person</span>
           </div>
           <div className="quiz-detail-divider" />
@@ -260,10 +220,10 @@ export default function QuizNightPage() {
               </p>
             </div>
             <div className="quiz-info-card">
-              <div className="quiz-info-card-icon">💰</div>
-              <div className="quiz-info-card-title">Pay Online or at the Door</div>
+              <div className="quiz-info-card-icon">🍻</div>
+              <div className="quiz-info-card-title">Pay on the Night</div>
               <p className="quiz-info-card-desc">
-                $10/person online, $20/person at the door. Pay now and save.
+                $10 per person at the door. Cash or card. Grab a drink from the bar and settle in.
               </p>
             </div>
           </div>
@@ -355,49 +315,12 @@ export default function QuizNightPage() {
                 <div className="quiz-field-hint">You will receive a confirmation email with the event details and a link to the documentary</div>
               </div>
 
-              {/* Payment method selector */}
-              <div className="quiz-field">
-                <label>Payment Method</label>
-                <div className="quiz-payment-options">
-                  <button
-                    type="button"
-                    className={`quiz-payment-card ${paymentMethod === 'online' ? 'is-selected' : ''}`}
-                    onClick={() => setPaymentMethod('online')}
-                  >
-                    <span className="quiz-payment-badge">Save 50%</span>
-                    <span className="quiz-payment-price">${COST_ONLINE}</span>
-                    <span className="quiz-payment-per">per person</span>
-                    <span className="quiz-payment-label">Pay Online Now</span>
-                    <span className="quiz-payment-desc">Secure payment via Stripe</span>
-                  </button>
-                  <button
-                    type="button"
-                    className={`quiz-payment-card ${paymentMethod === 'door' ? 'is-selected' : ''}`}
-                    onClick={() => setPaymentMethod('door')}
-                  >
-                    <span className="quiz-payment-price">${COST_DOOR}</span>
-                    <span className="quiz-payment-per">per person</span>
-                    <span className="quiz-payment-label">Pay at the Door</span>
-                    <span className="quiz-payment-desc">Cash or card on the night</span>
-                  </button>
-                </div>
-              </div>
-
               {/* Cost summary */}
               {memberCount >= MIN_TEAM && (
                 <div className="quiz-cost-summary">
                   <div className="quiz-cost-total">${totalCost}</div>
-                  <div className="quiz-cost-breakdown">{memberCount} {memberCount === 1 ? 'person' : 'people'} × ${costPerPerson}</div>
-                  <div className="quiz-cost-note">
-                    {paymentMethod === 'online'
-                      ? 'You\'ll be redirected to Stripe to complete payment'
-                      : 'Paid at the door on the night (cash or card)'}
-                  </div>
-                  {paymentMethod === 'door' && memberCount >= MIN_TEAM && (
-                    <div className="quiz-cost-savings">
-                      Pay online and save ${memberCount * (COST_DOOR - COST_ONLINE)}
-                    </div>
-                  )}
+                  <div className="quiz-cost-breakdown">{memberCount} {memberCount === 1 ? 'person' : 'people'} × ${COST_PER_PERSON}</div>
+                  <div className="quiz-cost-note">Paid on the night at the door (cash or card)</div>
                 </div>
               )}
 
@@ -422,12 +345,9 @@ export default function QuizNightPage() {
                 {submitting ? (
                   <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
                     <span className="quiz-spinner" />
-                    {paymentMethod === 'online' ? 'Redirecting to payment...' : 'Booking your spots...'}
+                    Booking your spots...
                   </span>
-                ) : paymentMethod === 'online'
-                  ? `Pay $${totalCost} & Book ${memberCount >= MIN_TEAM ? memberCount : ''} Spot${memberCount !== 1 ? 's' : ''}`
-                  : `Book ${memberCount >= MIN_TEAM ? memberCount : ''} Spot${memberCount !== 1 ? 's' : ''}`
-                }
+                ) : `Book ${memberCount >= MIN_TEAM ? memberCount : ''} Spot${memberCount !== 1 ? 's' : ''}`}
               </button>
 
               {error && <p className="quiz-error">{error}</p>}
@@ -478,13 +398,8 @@ export default function QuizNightPage() {
                 <span>Monteith's Brewery, Greymouth</span>
               </div>
               <div className="quiz-success-detail-row">
-                <span>Payment</span>
-                <span>
-                  {success.paid
-                    ? `$${success.totalCost} paid online ✓`
-                    : `$${success.totalCost} (pay at the door)`
-                  }
-                </span>
+                <span>Cost</span>
+                <span>${success.totalCost} (paid on the night)</span>
               </div>
               {success.lowTable && (
                 <div className="quiz-success-detail-row">

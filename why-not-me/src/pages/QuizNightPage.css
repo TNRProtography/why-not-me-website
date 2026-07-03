@@ -269,82 +269,6 @@
   color: var(--white-30);
 }
 
-/* ---- Payment method selector ---- */
-.quiz-payment-options {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-
-.quiz-payment-card {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  padding: 24px 16px 20px;
-  background: rgba(245, 243, 236, 0.03);
-  border: 2px solid var(--white-15);
-  cursor: pointer;
-  transition: all 0.25s ease;
-  font-family: var(--font-body);
-  text-align: center;
-}
-
-.quiz-payment-card:hover {
-  border-color: rgba(168, 142, 93, 0.4);
-  background: rgba(168, 142, 93, 0.05);
-}
-
-.quiz-payment-card.is-selected {
-  border-color: var(--gold);
-  background: rgba(168, 142, 93, 0.1);
-  box-shadow: 0 0 0 1px var(--gold), inset 0 0 20px rgba(168, 142, 93, 0.05);
-}
-
-.quiz-payment-badge {
-  position: absolute;
-  top: -11px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--gold);
-  color: #0D0D0D;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  padding: 3px 12px;
-  white-space: nowrap;
-}
-
-.quiz-payment-price {
-  font-family: var(--font-hero);
-  font-size: 36px;
-  color: var(--gold);
-  line-height: 1;
-}
-
-.quiz-payment-per {
-  font-size: 11px;
-  color: var(--white-30);
-  margin-bottom: 6px;
-}
-
-.quiz-payment-label {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  color: var(--white);
-}
-
-.quiz-payment-desc {
-  font-size: 11px;
-  color: var(--white-30);
-  margin-top: 2px;
-}
-
-/* ---- Cost summary ---- */
 .quiz-cost-summary {
   background: rgba(168, 142, 93, 0.08);
   border: 1px solid rgba(168, 142, 93, 0.2);
@@ -368,13 +292,6 @@
   font-size: 11px;
   color: var(--white-30);
   margin-top: 6px;
-}
-
-.quiz-cost-savings {
-  font-size: 12px;
-  font-weight: 600;
-  color: #7bc67b;
-  margin-top: 8px;
 }
 
 .quiz-error {
@@ -549,19 +466,6 @@
 
   .quiz-success-modal {
     padding: 40px 24px 32px;
-  }
-
-  .quiz-payment-options {
-    grid-template-columns: 1fr;
-    gap: 16px;
-  }
-
-  .quiz-payment-card {
-    padding: 20px 16px 16px;
-  }
-
-  .quiz-payment-price {
-    font-size: 30px;
   }
 }
 
