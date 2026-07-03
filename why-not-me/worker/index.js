@@ -10,11 +10,14 @@
  *   /api/dedications/check-email (POST) — check donation credits for email
  *   /api/dedications/message (POST) — leave a support message (requires donation)
  *   /api/quiz-bookings (GET)       — quiz night capacity info
- *   /api/quiz-booking (POST)       — book a quiz night team
+ *   /api/quiz-booking (POST)       — book a quiz night team (+ Stripe checkout)
+ *   /api/stripe-webhook (POST)     — Stripe webhook for payment confirmation
  *
  * KV binding:      DEDICATIONS
  * Secret:          RAISELY_API_KEY
  * Secret:          EMAIL_WORKER_SECRET (shared with quiz-wnm worker)
+ * Secret:          STRIPE_SECRET_KEY (Stripe secret key for checkout sessions)
+ * Secret:          STRIPE_WEBHOOK_SECRET (Stripe webhook signing secret)
  * Asset binding:   ASSETS (static site)
  * ============================================================
  */
@@ -690,7 +693,6 @@ async function handlePostQuizBooking(request, env) {
     .filter((m) => m !== '')
   const lowTable = !!body.lowTable
   const paymentMethod = body.paymentMethod === 'door' ? 'door' : 'online'
-  const costPerPerson = paymentMethod === 'online' ? QUIZ_COST_ONLINE : QUIZ_COST_DOOR
 
   if (!email || !email.includes('@')) {
     return dedicationResponse({ error: 'Please enter a valid email address.' }, 400)
@@ -720,6 +722,9 @@ async function handlePostQuizBooking(request, env) {
   // After this booking, mark as sold out
   const willSellOut = status === 'final'
 
+  const costPerPerson = paymentMethod === 'online' ? QUIZ_COST_ONLINE : QUIZ_COST_DOOR
+  const totalCost = members.length * costPerPerson
+
   const id = crypto.randomUUID()
   const booking = {
     id,
@@ -730,8 +735,8 @@ async function handlePostQuizBooking(request, env) {
     lowTable,
     paymentMethod,
     costPerPerson,
-    totalCost: members.length * costPerPerson,
-    paid: paymentMethod === 'door' ? false : false, // marked true by Stripe webhook
+    totalCost,
+    paid: paymentMethod === 'door' ? false : false, // both start unpaid; online is set true by webhook
     createdAt: new Date().toISOString(),
   }
 
@@ -739,9 +744,6 @@ async function handlePostQuizBooking(request, env) {
   await env.DEDICATIONS.put(key, JSON.stringify(booking), {
     metadata: { memberCount: members.length },
   })
-
-  // Store a reverse-lookup so the Stripe webhook can find this booking by ID
-  await env.DEDICATIONS.put(`quiz_ref_${id}`, key)
 
   const newSpotsBooked = spotsBooked + members.length
 
@@ -754,23 +756,33 @@ async function handlePostQuizBooking(request, env) {
 
   const newStatus = willSellOut ? 'sold_out' : (newSpotsBooked >= QUIZ_FINAL_THRESHOLD ? 'final' : 'open')
 
-  // Send confirmation email (best-effort)
-  try {
-    await sendQuizConfirmationEmail(booking, env)
-  } catch (emailError) {
-    console.error('Quiz confirmation email failed:', emailError)
+  // If paying online, create Stripe checkout session
+  let stripeUrl = null
+  if (paymentMethod === 'online' && env.STRIPE_SECRET_KEY) {
+    try {
+      stripeUrl = await createStripeCheckoutSession(booking, env)
+    } catch (stripeError) {
+      console.error('Stripe checkout creation failed:', stripeError)
+      // Booking is saved — they can still pay at the door
+      // Update the booking to door payment as fallback
+      booking.paymentMethod = 'door'
+      booking.costPerPerson = QUIZ_COST_DOOR
+      booking.totalCost = members.length * QUIZ_COST_DOOR
+      await env.DEDICATIONS.put(key, JSON.stringify(booking), {
+        metadata: { memberCount: members.length },
+      })
+    }
   }
 
-  // Build Stripe redirect URL for online payments
-  let stripeUrl = null
-  if (paymentMethod === 'online' && env.STRIPE_PAYMENT_LINK_URL) {
-    const params = new URLSearchParams({
-      prefilled_email: email,
-      quantity: String(members.length),
-      client_reference_id: id,
-    })
-    stripeUrl = `${env.STRIPE_PAYMENT_LINK_URL}?${params.toString()}`
+  // If pay at door (or Stripe failed), send confirmation email now
+  if (!stripeUrl) {
+    try {
+      await sendQuizConfirmationEmail(booking, env)
+    } catch (emailError) {
+      console.error('Quiz confirmation email failed:', emailError)
+    }
   }
+  // If stripeUrl exists, email will be sent after webhook confirms payment
 
   return dedicationResponse({
     success: true,
@@ -780,6 +792,139 @@ async function handlePostQuizBooking(request, env) {
     stripeUrl,
   })
 }
+
+// ── Stripe Integration ──────────────────────────────────────
+
+const STRIPE_API_BASE = 'https://api.stripe.com/v1'
+
+async function createStripeCheckoutSession(booking, env) {
+  const siteOrigin = 'https://whynotme.co.nz'
+
+  const successParams = new URLSearchParams({
+    payment: 'success',
+    team: booking.teamName || 'Your team',
+    email: booking.email,
+    members: String(booking.memberCount),
+    total: String(booking.totalCost),
+  })
+
+  const params = new URLSearchParams()
+  params.append('mode', 'payment')
+  params.append('client_reference_id', booking.id)
+  params.append('customer_email', booking.email)
+  params.append('line_items[0][price_data][currency]', 'nzd')
+  params.append('line_items[0][price_data][product_data][name]', 'Quiz Night Entry — ' + (booking.teamName || 'Team'))
+  params.append('line_items[0][price_data][product_data][description]', booking.memberCount + ' people × $' + booking.costPerPerson + '/person')
+  params.append('line_items[0][price_data][unit_amount]', String(booking.totalCost * 100)) // cents
+  params.append('line_items[0][quantity]', '1')
+  params.append('success_url', siteOrigin + '/quiz-night?' + successParams.toString())
+  params.append('cancel_url', siteOrigin + '/quiz-night?payment=cancelled')
+
+  const res = await fetch(STRIPE_API_BASE + '/checkout/sessions', {
+    method: 'POST',
+    headers: {
+      Authorization: 'Basic ' + btoa(env.STRIPE_SECRET_KEY + ':'),
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: params.toString(),
+  })
+
+  if (!res.ok) {
+    const errText = await res.text()
+    throw new Error('Stripe error ' + res.status + ': ' + errText)
+  }
+
+  const session = await res.json()
+  return session.url
+}
+
+// ── Stripe Webhook ──────────────────────────────────────────
+
+async function handleStripeWebhook(request, env) {
+  if (!env.STRIPE_WEBHOOK_SECRET) {
+    return new Response('Webhook secret not configured', { status: 500 })
+  }
+
+  const body = await request.text()
+  const sigHeader = request.headers.get('stripe-signature') || ''
+
+  // Verify the webhook signature
+  const verified = await verifyStripeSignature(body, sigHeader, env.STRIPE_WEBHOOK_SECRET)
+  if (!verified) {
+    return new Response('Invalid signature', { status: 400 })
+  }
+
+  const event = JSON.parse(body)
+
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object
+    const bookingId = session.client_reference_id
+
+    if (!bookingId) {
+      return new Response('No client_reference_id', { status: 200 })
+    }
+
+    // Find and update the booking
+    const result = await findBookingByToken(bookingId, env)
+    if (result) {
+      const booking = result.booking
+      booking.paid = true
+      booking.paidAt = new Date().toISOString()
+      booking.stripeSessionId = session.id
+      booking.stripePaymentIntent = session.payment_intent
+
+      await env.DEDICATIONS.put(result.key, JSON.stringify(booking), {
+        metadata: { memberCount: booking.memberCount },
+      })
+
+      // Now send confirmation email with payment confirmed
+      try {
+        await sendQuizConfirmationEmail(booking, env)
+      } catch (emailError) {
+        console.error('Post-payment confirmation email failed:', emailError)
+      }
+    }
+  }
+
+  return new Response('OK', { status: 200 })
+}
+
+// Stripe webhook signature verification (using Web Crypto)
+async function verifyStripeSignature(payload, sigHeader, secret) {
+  try {
+    const parts = {}
+    sigHeader.split(',').forEach(function(item) {
+      const [key, value] = item.split('=')
+      parts[key.trim()] = value
+    })
+
+    const timestamp = parts.t
+    const signature = parts.v1
+
+    if (!timestamp || !signature) return false
+
+    // Check timestamp is within 5 minutes
+    const now = Math.floor(Date.now() / 1000)
+    if (Math.abs(now - parseInt(timestamp)) > 300) return false
+
+    const signedPayload = timestamp + '.' + payload
+    const key = await crypto.subtle.importKey(
+      'raw',
+      new TextEncoder().encode(secret),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
+    )
+    const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(signedPayload))
+    const expectedSignature = Array.from(new Uint8Array(sig)).map(function(b) { return b.toString(16).padStart(2, '0') }).join('')
+
+    return expectedSignature === signature
+  } catch {
+    return false
+  }
+}
+
+// ── Quiz Email ──────────────────────────────────────────────
 
 const QUIZ_EMAIL_WORKER_URL = 'https://quiz-wnm.thenamesrock.workers.dev'
 
@@ -803,9 +948,10 @@ async function sendQuizConfirmationEmail(booking, env) {
       email: booking.email,
       memberCount: booking.memberCount,
       lowTable: booking.lowTable,
-      paymentMethod: booking.paymentMethod,
-      costPerPerson: booking.costPerPerson,
-      totalCost: booking.totalCost,
+      paymentMethod: booking.paymentMethod || 'door',
+      costPerPerson: booking.costPerPerson || QUIZ_COST_DOOR,
+      totalCost: booking.totalCost || (booking.memberCount * QUIZ_COST_DOOR),
+      paid: booking.paid || false,
     }),
   })
 
@@ -842,14 +988,29 @@ async function notifyEmailWorker(type, booking, env) {
     await fetch(QUIZ_EMAIL_WORKER_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + env.EMAIL_WORKER_SECRET },
-      body: JSON.stringify({ type, id: booking.id, teamName: booking.teamName, members: booking.members, email: booking.email, memberCount: booking.memberCount, lowTable: booking.lowTable }),
+      body: JSON.stringify({
+        type,
+        id: booking.id,
+        teamName: booking.teamName,
+        members: booking.members,
+        email: booking.email,
+        memberCount: booking.memberCount,
+        lowTable: booking.lowTable,
+        paymentMethod: booking.paymentMethod || 'door',
+        costPerPerson: booking.costPerPerson || QUIZ_COST_DOOR,
+        totalCost: booking.totalCost || (booking.memberCount * QUIZ_COST_DOOR),
+        paid: booking.paid || false,
+      }),
     })
   } catch { /* best effort */ }
 }
 
 function managePage(booking, token, flash) {
   const teamLabel = booking ? (booking.teamName || 'No team name') : ''
-  const totalCost = booking ? booking.memberCount * 10 : 0
+  const costPerPerson = booking ? (booking.costPerPerson || 10) : 10
+  const totalCost = booking ? (booking.memberCount * costPerPerson) : 0
+  const paymentMethod = booking ? (booking.paymentMethod || 'door') : 'door'
+  const paid = booking ? (booking.paid || false) : false
 
   const memberInputs = booking ? booking.members.map(function(m, i) {
     return '<div class="member-row" id="row-' + i + '">' +
@@ -882,6 +1043,9 @@ h1{font-size:24px;font-family:'Damion',cursive;margin-bottom:20px;text-align:cen
 .detail-label{color:#A88E5D}
 .detail-value{color:#F5F3EC;text-align:right}
 .detail-value.bold{font-weight:700}
+.payment-badge{display:inline-block;padding:3px 10px;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase}
+.payment-paid{background:rgba(123,198,123,0.15);color:#7bc67b;border:1px solid rgba(123,198,123,0.3)}
+.payment-unpaid{background:rgba(168,142,93,0.15);color:#A88E5D;border:1px solid rgba(168,142,93,0.3)}
 .member-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #1f1f1f}
 .member-row:last-child{border-bottom:none}
 .member-num{width:24px;font-size:13px;font-weight:700;color:#A88E5D;flex-shrink:0;text-align:center}
@@ -938,8 +1102,9 @@ h1{font-size:24px;font-family:'Damion',cursive;margin-bottom:20px;text-align:cen
       <span class="detail-label">Email</span><span class="detail-value">${booking.email}</span>
       <span class="detail-label">People</span><span class="detail-value" id="people-count">${booking.memberCount}</span>
       <span class="detail-label bold">Total Cost</span><span class="detail-value bold" id="total-cost">$${totalCost}</span>
+      <span class="detail-label">Payment</span><span class="detail-value"><span class="payment-badge ${paid ? 'payment-paid' : 'payment-unpaid'}">${paid ? '✓ Paid Online' : paymentMethod === 'online' ? 'Awaiting Payment' : 'Pay at Door'}</span></span>
     </div>
-    <p style="font-size:12px;color:#666;margin-top:-12px">Paid at the door on the night (cash or card)</p>
+    <p style="font-size:12px;color:#666;margin-top:-12px">${paid ? 'Payment received — thank you!' : paymentMethod === 'online' ? '$' + costPerPerson + '/person — payment pending' : '$' + costPerPerson + '/person — paid at the door on the night (cash or card)'}</p>
   </div>
 
   <div class="card">
@@ -992,7 +1157,7 @@ h1{font-size:24px;font-family:'Damion',cursive;margin-bottom:20px;text-align:cen
 <script>
 var MIN_TEAM = ${QUIZ_MIN_TEAM};
 var MAX_TEAM = ${QUIZ_MAX_TEAM};
-var COST_PER_PERSON = 10;
+var COST_PER_PERSON = ${costPerPerson};
 
 function showLoading(msg) {
   document.getElementById('loading-text').textContent = msg || 'Saving changes...';
@@ -1127,6 +1292,9 @@ async function handleModifyBooking(request, url, env) {
       booking.members = newMembers
       booking.memberCount = newMembers.length
       booking.lowTable = newLowTable
+      // Recalculate cost based on new member count
+      const costPP = booking.costPerPerson || QUIZ_COST_DOOR
+      booking.totalCost = newMembers.length * costPP
       await env.DEDICATIONS.put(result.key, JSON.stringify(booking), { metadata: { memberCount: booking.memberCount } })
       flash = { type: 'success', message: 'Your booking has been updated. A confirmation has been sent to ' + booking.email + '.' }
       await notifyEmailWorker('modification_admin', booking, env)
@@ -1235,6 +1403,15 @@ export default {
       }
     }
 
+    if (url.pathname === '/api/stripe-webhook' && request.method === 'POST') {
+      try {
+        return await handleStripeWebhook(request, env)
+      } catch (error) {
+        console.error('Stripe webhook error:', error)
+        return new Response('Webhook error', { status: 500 })
+      }
+    }
+
     if (url.pathname === '/api/quiz-booking/manage' && request.method === 'GET') {
       try {
         return await handleManagePage(url, env)
@@ -1259,107 +1436,6 @@ export default {
       }
     }
 
-    if (url.pathname === '/api/stripe-webhook' && request.method === 'POST') {
-      try {
-        return await handleStripeWebhook(request, env)
-      } catch (error) {
-        console.error('Stripe webhook error:', error)
-        return dedicationResponse({ error: 'Webhook processing failed.' }, 500)
-      }
-    }
-
     return handleAsset(request, env)
   },
 }
-
-// ── Stripe Webhook ──────────────────────────────────────────
-// Listens for checkout.session.completed events from Stripe.
-// Uses client_reference_id (= booking UUID) to find and mark
-// the booking as paid in KV.
-//
-// Required env vars:
-//   STRIPE_WEBHOOK_SECRET  — from Stripe Dashboard > Webhooks > Signing secret
-// ─────────────────────────────────────────────────────────────
-
-async function verifyStripeSignature(payload, sigHeader, secret) {
-  const parts = {}
-  for (const item of sigHeader.split(',')) {
-    const [k, v] = item.split('=')
-    parts[k] = v
-  }
-  const timestamp = parts.t
-  const sig = parts.v1
-  if (!timestamp || !sig) return false
-
-  // Reject if timestamp is older than 5 minutes
-  const age = Math.floor(Date.now() / 1000) - parseInt(timestamp, 10)
-  if (Math.abs(age) > 300) return false
-
-  const signedPayload = `${timestamp}.${payload}`
-  const key = await crypto.subtle.importKey(
-    'raw',
-    new TextEncoder().encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign']
-  )
-  const mac = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(signedPayload))
-  const expected = Array.from(new Uint8Array(mac)).map(b => b.toString(16).padStart(2, '0')).join('')
-  return sig === expected
-}
-
-async function handleStripeWebhook(request, env) {
-  if (!env.STRIPE_WEBHOOK_SECRET) {
-    console.error('STRIPE_WEBHOOK_SECRET not configured')
-    return dedicationResponse({ error: 'Webhook not configured.' }, 500)
-  }
-
-  const sigHeader = request.headers.get('stripe-signature') || ''
-  const rawBody = await request.text()
-
-  const valid = await verifyStripeSignature(rawBody, sigHeader, env.STRIPE_WEBHOOK_SECRET)
-  if (!valid) {
-    console.error('Invalid Stripe webhook signature')
-    return dedicationResponse({ error: 'Invalid signature.' }, 400)
-  }
-
-  const event = JSON.parse(rawBody)
-
-  // We only care about successful payments
-  if (event.type !== 'checkout.session.completed') {
-    return dedicationResponse({ received: true })
-  }
-
-  const session = event.data?.object
-  const bookingId = session?.client_reference_id
-  if (!bookingId) {
-    console.error('Stripe webhook: no client_reference_id')
-    return dedicationResponse({ received: true })
-  }
-
-  // Look up the booking via the reverse-reference key
-  const kvKey = await env.DEDICATIONS.get(`quiz_ref_${bookingId}`)
-  if (!kvKey) {
-    console.error('Stripe webhook: no KV key found for booking', bookingId)
-    return dedicationResponse({ received: true })
-  }
-
-  const raw = await env.DEDICATIONS.get(kvKey)
-  if (!raw) {
-    console.error('Stripe webhook: booking not found at key', kvKey)
-    return dedicationResponse({ received: true })
-  }
-
-  const booking = JSON.parse(raw)
-  booking.paid = true
-  booking.stripeSessionId = session.id
-  booking.paidAt = new Date().toISOString()
-
-  // Save updated booking
-  await env.DEDICATIONS.put(kvKey, JSON.stringify(booking), {
-    metadata: { memberCount: booking.memberCount },
-  })
-
-  console.log(`Stripe payment confirmed for booking ${bookingId} (${booking.teamName || booking.email})`)
-  return dedicationResponse({ received: true })
-} 
