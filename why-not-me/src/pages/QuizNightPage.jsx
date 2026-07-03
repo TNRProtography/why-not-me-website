@@ -223,7 +223,7 @@ export default function QuizNightPage() {
               <div className="quiz-info-card-icon">🍻</div>
               <div className="quiz-info-card-title">Pay on the Night</div>
               <p className="quiz-info-card-desc">
-                $10 per person at the door. Cash or card. Grab a drink from the bar and settle in.
+                $10 per person at the door. Cash only. Grab a drink from the bar and settle in.
               </p>
             </div>
           </div>
@@ -320,7 +320,7 @@ export default function QuizNightPage() {
                 <div className="quiz-cost-summary">
                   <div className="quiz-cost-total">${totalCost}</div>
                   <div className="quiz-cost-breakdown">{memberCount} {memberCount === 1 ? 'person' : 'people'} × ${COST_PER_PERSON}</div>
-                  <div className="quiz-cost-note">Paid on the night at the door (cash or card)</div>
+                  <div className="quiz-cost-note">Paid on the night at the door (cash only)</div>
                 </div>
               )}
 

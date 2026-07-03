@@ -914,7 +914,7 @@ h1{font-size:24px;font-family:'Damion',cursive;margin-bottom:20px;text-align:cen
       <span class="detail-label">People</span><span class="detail-value" id="people-count">${booking.memberCount}</span>
       <span class="detail-label bold">Total Cost</span><span class="detail-value bold" id="total-cost">$${totalCost}</span>
     </div>
-    <p style="font-size:12px;color:#666;margin-top:-12px">Paid at the door on the night (cash or card)</p>
+    <p style="font-size:12px;color:#666;margin-top:-12px">Paid at the door on the night (cash only)</p>
   </div>
 
   <div class="card">
