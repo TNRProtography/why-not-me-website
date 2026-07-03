@@ -635,8 +635,8 @@ async function handleCheckEmail(request, env) {
 
 const QUIZ_KEY_PREFIX = 'quiz_'
 const QUIZ_STATUS_KEY = '_quiznight_status'
-const QUIZ_MAX_CAPACITY = 114
-const QUIZ_FINAL_THRESHOLD = 108
+const QUIZ_MAX_CAPACITY = 120
+const QUIZ_SOLD_OUT_THRESHOLD = 114
 const QUIZ_MIN_TEAM = 4
 const QUIZ_MAX_TEAM = 6
 
@@ -668,7 +668,8 @@ async function getQuizStatus(env) {
 
 async function handleGetQuizBookings(env) {
   const spotsBooked = await getQuizSpotsBooked(env)
-  const status = await getQuizStatus(env)
+  // Derive status from live count — sold out at threshold
+  const status = spotsBooked >= QUIZ_SOLD_OUT_THRESHOLD ? 'sold_out' : 'open'
   return dedicationResponse({ spotsBooked, status })
 }
 
@@ -698,23 +699,17 @@ async function handlePostQuizBooking(request, env) {
     return dedicationResponse({ error: `Maximum ${QUIZ_MAX_TEAM} team members allowed.` }, 400)
   }
 
-  const status = await getQuizStatus(env)
-
-  // If already sold out, reject
-  if (status === 'sold_out') {
-    return dedicationResponse({ error: 'Sorry, the quiz night is fully booked.' }, 409)
-  }
-
   const spotsBooked = await getQuizSpotsBooked(env)
+
+  // Sold out at threshold (114) — still allow bookings up to hard cap (120)
+  if (spotsBooked >= QUIZ_SOLD_OUT_THRESHOLD) {
+    return dedicationResponse({ error: 'Sorry, the quiz night is fully booked.', status: 'sold_out' }, 409)
+  }
 
   // Hard cap safety check
   if (members.length > (QUIZ_MAX_CAPACITY - spotsBooked)) {
-    return dedicationResponse({ error: 'Sorry, the quiz night is fully booked.' }, 409)
+    return dedicationResponse({ error: 'Sorry, the quiz night is fully booked.', status: 'sold_out' }, 409)
   }
-
-  // If status is 'final', this is the last team allowed
-  // After this booking, mark as sold out
-  const willSellOut = status === 'final'
 
   const id = crypto.randomUUID()
   const booking = {
@@ -735,13 +730,11 @@ async function handlePostQuizBooking(request, env) {
   const newSpotsBooked = spotsBooked + members.length
 
   // Update status based on new total
-  if (willSellOut) {
+  if (newSpotsBooked >= QUIZ_SOLD_OUT_THRESHOLD) {
     await env.DEDICATIONS.put(QUIZ_STATUS_KEY, 'sold_out')
-  } else if (newSpotsBooked >= QUIZ_FINAL_THRESHOLD) {
-    await env.DEDICATIONS.put(QUIZ_STATUS_KEY, 'final')
   }
 
-  const newStatus = willSellOut ? 'sold_out' : (newSpotsBooked >= QUIZ_FINAL_THRESHOLD ? 'final' : 'open')
+  const newStatus = newSpotsBooked >= QUIZ_SOLD_OUT_THRESHOLD ? 'sold_out' : 'open'
 
   // Send confirmation email (best-effort)
   try {
@@ -1122,10 +1115,10 @@ async function handleCancelBooking(request, url, env) {
   await env.DEDICATIONS.delete(result.key)
 
   const spotsBooked = await getQuizSpotsBooked(env)
-  if (spotsBooked < QUIZ_FINAL_THRESHOLD) {
+  if (spotsBooked < QUIZ_SOLD_OUT_THRESHOLD) {
     await env.DEDICATIONS.put(QUIZ_STATUS_KEY, 'open')
   } else {
-    await env.DEDICATIONS.put(QUIZ_STATUS_KEY, 'final')
+    await env.DEDICATIONS.put(QUIZ_STATUS_KEY, 'sold_out')
   }
 
   // Notify the booker and admin

@@ -40,7 +40,7 @@ export default function QuizNightPage() {
   const memberCount = filledMembers.length
   const totalCost = memberCount * COST_PER_PERSON
   const isSoldOut = status === 'sold_out'
-  const isFinalTeam = status === 'final'
+
   const teamTooSmall = memberCount < MIN_TEAM
   const teamTooBig = memberCount > MAX_TEAM
 
@@ -53,7 +53,6 @@ export default function QuizNightPage() {
         setStatus(data.status || 'open')
         trackQuizPageView(data.spotsBooked || 0, data.status || 'open')
         if (data.status === 'sold_out') trackQuizSoldOutView()
-        else if (data.status === 'final') trackQuizUrgencyView('final')
         else if ((data.spotsBooked || 0) >= 80) trackQuizUrgencyView('nearly_sold_out')
         else if ((data.spotsBooked || 0) >= 40) trackQuizUrgencyView('selling_fast')
         else if ((data.spotsBooked || 0) >= 5) trackQuizUrgencyView('filling_quick')
@@ -182,21 +181,19 @@ export default function QuizNightPage() {
         <div style={{ textAlign: 'center', padding: '20px 40px 0' }}>
           <p style={{
             display: 'inline-block',
-            background: isFinalTeam ? 'rgba(217,83,79,0.15)' : 'rgba(168,142,93,0.1)',
-            border: `1px solid ${isFinalTeam ? 'rgba(217,83,79,0.3)' : 'rgba(168,142,93,0.25)'}`,
+            background: 'rgba(168,142,93,0.1)',
+            border: '1px solid rgba(168,142,93,0.25)',
             padding: '12px 24px',
             fontSize: '0.9rem',
             fontWeight: 700,
-            color: isFinalTeam ? '#d9534f' : '#A88E5D',
+            color: '#A88E5D',
             letterSpacing: '0.5px',
           }}>
-            {isFinalTeam
-              ? '🔥 Last chance! Only one more team can book before we sell out!'
-              : spotsBooked >= 80
-                ? '🔥 Limited spots left. Nearly sold out!'
-                : spotsBooked >= 40
-                  ? 'Selling out quick, get in so you don\'t miss out!'
-                  : 'Spots are filling quick, book fast!'}
+            {spotsBooked >= 80
+              ? '🔥 Limited spots left. Nearly sold out!'
+              : spotsBooked >= 40
+                ? 'Selling out quick, get in so you don\'t miss out!'
+                : 'Spots are filling quick, book fast!'}
           </p>
         </div>
       )}
