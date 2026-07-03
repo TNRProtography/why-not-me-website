@@ -1362,4 +1362,4 @@ async function handleStripeWebhook(request, env) {
 
   console.log(`Stripe payment confirmed for booking ${bookingId} (${booking.teamName || booking.email})`)
   return dedicationResponse({ received: true })
-}
+} 
