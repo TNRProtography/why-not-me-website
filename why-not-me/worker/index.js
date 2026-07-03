@@ -635,8 +635,8 @@ async function handleCheckEmail(request, env) {
 
 const QUIZ_KEY_PREFIX = 'quiz_'
 const QUIZ_STATUS_KEY = '_quiznight_status'
-const QUIZ_MAX_CAPACITY = 120
-const QUIZ_FINAL_THRESHOLD = 110
+const QUIZ_MAX_CAPACITY = 114
+const QUIZ_FINAL_THRESHOLD = 108
 const QUIZ_MIN_TEAM = 4
 const QUIZ_MAX_TEAM = 6
 

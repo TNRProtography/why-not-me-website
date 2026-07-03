@@ -4,7 +4,8 @@
  * ============================================================
  * Booking form for the Why Not Me quiz night fundraiser.
  * October 7, 2026 at Monteith's Brewery, Greymouth.
- * Teams of 4-6, $10 per person, paid on the night.
+ * Teams of 4-6, $10 per person, cash on the night.
+ * Sold out at 114 people.
  * ============================================================
  */
 import { useState, useEffect, useCallback } from 'react'
@@ -16,7 +17,7 @@ import CountdownTimer from '../components/CountdownTimer'
 import { trackQuizPageView, trackQuizFieldFocus, trackQuizMemberFilled, trackQuizFormSubmit, trackQuizBookingSuccess, trackQuizBookingError, trackQuizSoldOutView, trackQuizUrgencyView, trackQuizDocumentaryClick, trackQuizDonateClick, trackDonateClick, trackExternalLink } from '../utils/analytics'
 import './QuizNightPage.css'
 
-const MAX_CAPACITY = 120
+const MAX_CAPACITY = 114
 const MIN_TEAM = 4
 const MAX_TEAM = 6
 const COST_PER_PERSON = 10
@@ -139,7 +140,7 @@ export default function QuizNightPage() {
           <p className="section-label">Fundraiser Event</p>
           <ScrollZoomFocus><h1>Quiz Night.</h1></ScrollZoomFocus>
           <p className="quiz-hero-subtitle">
-            Get a team together, watch the documentary, and come ready to play. Raffles, prizes, and a night out for a cause that matters. All proceeds support Brain Tumour Support NZ.
+            Get a team together, watch the documentary, and come ready to play. Over $2,000 in prizes across quiz winners, raffles and spot prizes. All proceeds support Brain Tumour Support NZ.
           </p>
         </div>
       </section>
@@ -213,18 +214,54 @@ export default function QuizNightPage() {
               </p>
             </div>
             <div className="quiz-info-card">
-              <div className="quiz-info-card-icon">🎟️</div>
-              <div className="quiz-info-card-title">Raffles &amp; Prizes</div>
+              <div className="quiz-info-card-icon">🏆</div>
+              <div className="quiz-info-card-title">$2,000+ in Prizes</div>
               <p className="quiz-info-card-desc">
-                Raffle draws on the night and a winning team prize valued at $250. Bring your A game.
+                Heaps of prizes on the night. Quiz winners, spot prizes and raffles. It's going to be a great night out.
               </p>
             </div>
             <div className="quiz-info-card">
-              <div className="quiz-info-card-icon">🍻</div>
-              <div className="quiz-info-card-title">Pay on the Night</div>
+              <div className="quiz-info-card-icon">🃏</div>
+              <div className="quiz-info-card-title">Joker &amp; The Thief</div>
               <p className="quiz-info-card-desc">
-                $10 per person at the door. Cash only. Grab a drink from the bar and settle in.
+                Every team gets one free Joker to double a round's score. Buy power-ups on the night to gain the edge.
               </p>
+            </div>
+          </div>
+        </RevealOnScroll>
+      </section>
+
+      {/* Power-ups section */}
+      <section style={{ maxWidth: 700, margin: '0 auto', padding: '0 40px 48px', textAlign: 'center' }}>
+        <RevealOnScroll>
+          <p className="section-label">Power-Ups</p>
+          <p style={{ color: 'var(--white-50)', fontSize: '14px', lineHeight: '1.7', marginBottom: '24px' }}>
+            Available for purchase on the night. Use them wisely — they can make or break your final score.
+          </p>
+          <div className="quiz-info-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+            <div className="quiz-info-card">
+              <div className="quiz-info-card-icon">💡</div>
+              <div className="quiz-info-card-title">Buy a Hint</div>
+              <p className="quiz-info-card-desc" style={{ marginBottom: '8px' }}>
+                Stuck on a question? Buy a hint for $2 to nudge your team in the right direction.
+              </p>
+              <span style={{ color: 'var(--gold)', fontWeight: 700, fontSize: '13px' }}>$2 per question</span>
+            </div>
+            <div className="quiz-info-card">
+              <div className="quiz-info-card-icon">🃏</div>
+              <div className="quiz-info-card-title">Extra Joker</div>
+              <p className="quiz-info-card-desc" style={{ marginBottom: '8px' }}>
+                Every team gets one free Joker that doubles your score for a round. Buy a second one for $10.
+              </p>
+              <span style={{ color: 'var(--gold)', fontWeight: 700, fontSize: '13px' }}>$10</span>
+            </div>
+            <div className="quiz-info-card">
+              <div className="quiz-info-card-icon">🦹</div>
+              <div className="quiz-info-card-title">The Thief</div>
+              <p className="quiz-info-card-desc" style={{ marginBottom: '8px' }}>
+                Steal half of another team's points for a round. But if they play their Joker on that same round, they take YOUR points instead. High risk, high reward.
+              </p>
+              <span style={{ color: 'var(--gold)', fontWeight: 700, fontSize: '13px' }}>$20</span>
             </div>
           </div>
         </RevealOnScroll>
@@ -399,7 +436,7 @@ export default function QuizNightPage() {
               </div>
               <div className="quiz-success-detail-row">
                 <span>Cost</span>
-                <span>${success.totalCost} (paid on the night)</span>
+                <span>${success.totalCost} (cash on the night)</span>
               </div>
               {success.lowTable && (
                 <div className="quiz-success-detail-row">
