@@ -154,7 +154,7 @@ export default function QuizNightPage() {
           <div className="quiz-detail-divider" />
           <div className="quiz-detail-item">
             <span className="quiz-detail-value">6pm</span>
-            <span className="quiz-detail-label">Doors Open</span>
+            <span className="quiz-detail-label">Quiz Starts</span>
           </div>
           <div className="quiz-detail-divider" />
           <div className="quiz-detail-item">
@@ -425,7 +425,7 @@ export default function QuizNightPage() {
               </div>
               <div className="quiz-success-detail-row">
                 <span>Time</span>
-                <span>6:00 PM</span>
+                <span>6:00 PM (be there beforehand)</span>
               </div>
               <div className="quiz-success-detail-row">
                 <span>Venue</span>
