@@ -318,7 +318,7 @@ export default function QuizNightPage() {
                       </span>
                       <input
                         type="text"
-                        placeholder={i < MIN_TEAM ? `Team member ${i + 1}` : `Team member ${i + 1} (optional)`}
+                        placeholder={i === 0 ? 'Your name' : i < MIN_TEAM ? `Team member ${i + 1}` : `Team member ${i + 1} (optional)`}
                         maxLength={80}
                         value={name}
                         onChange={(e) => updateMember(i, e.target.value)}
