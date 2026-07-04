@@ -207,7 +207,7 @@ export default function QuizNightPage() {
               <div className="quiz-info-card-icon">🎬</div>
               <div className="quiz-info-card-title">Documentary Round</div>
               <p className="quiz-info-card-desc">
-                There's a dedicated documentary round based on "A Bit of Vengeance — Nicole White — Her Story." Watch it before you come — all the answers are in the doco!
+                There's a dedicated documentary round based on "A Bit of Vengeance - Nicole White - Her Story." Watch it before you come, all the answers are in the doco!
               </p>
             </div>
             <div className="quiz-info-card">
@@ -395,7 +395,7 @@ export default function QuizNightPage() {
         <RevealOnScroll>
           <p className="section-label">Before the Night</p>
           <p className="section-body" style={{ maxWidth: '100%', textAlign: 'center', marginBottom: '24px' }}>
-            There's a full round dedicated to the documentary "A Bit of Vengeance — Nicole White — Her Story." All the answers are in the doco, so watch it before quiz night or you'll cost your team points. No excuses.
+            There's a full round dedicated to the documentary "A Bit of Vengeance - Nicole White - Her Story." All the answers are in the doco, so watch it before quiz night or you'll cost your team points. No excuses.
           </p>
           <Link to="/documentary" className="btn-outline" onClick={() => trackQuizDocumentaryClick('bottom_cta')}>Watch "A Bit of Vengeance"</Link>
         </RevealOnScroll>
