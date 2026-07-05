@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from 'react'
 
 const SiteConfigContext = createContext({
   loaded: false,
+  comingSoon: false,
   quizEnabled: false,
   trackerEnabled: false,
   furthestDistance: { km: 20, label: 'Longest run so far', quote: '' },
@@ -51,6 +52,7 @@ export function SiteConfigProvider({ children }) {
 
   const value = {
     loaded,
+    comingSoon: config?.comingSoon || false,
     quizEnabled: config ? isInDateRange(config.quiz) : false,
     trackerEnabled: config ? isInDateRange(config.tracker) : false,
     furthestDistance: config?.furthestDistance || { km: 20, label: 'Longest run so far', quote: '' },

@@ -140,6 +140,32 @@ export default function AdminPage() {
           </div>
         )}
 
+        {/* Coming Soon */}
+        <div className="admin-card" style={config.comingSoon ? { borderColor: '#d9534f' } : {}}>
+          <h2 className="admin-card-title">Coming Soon Mode</h2>
+          <p className="admin-card-desc">
+            When enabled, the entire website is replaced with a simple splash page showing only the logo
+            and "Something is coming soon." No navigation, no content, no links. The admin page at /admin still works.
+          </p>
+          <div className="admin-row">
+            <label className="admin-toggle">
+              <input
+                type="checkbox"
+                checked={config.comingSoon || false}
+                onChange={(e) => setConfig((prev) => ({ ...prev, comingSoon: e.target.checked }))}
+              />
+              <span>{config.comingSoon ? 'Site is hidden' : 'Site is live'}</span>
+            </label>
+          </div>
+          <button
+            className="admin-btn"
+            disabled={saving}
+            onClick={() => save({ comingSoon: config.comingSoon })}
+          >
+            {saving ? 'Saving...' : 'Save'}
+          </button>
+        </div>
+
         {/* Quiz Night */}
         <div className="admin-card">
           <h2 className="admin-card-title">Quiz Night</h2>

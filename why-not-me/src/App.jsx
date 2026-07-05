@@ -68,9 +68,42 @@ function getMobileView() {
   return viewportMatch || (touchMatch && window.innerWidth <= 980) || compactLandscape
 }
 
+function ComingSoon() {
+  return (
+    <div style={{
+      minHeight: '100vh',
+      background: '#000',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 40,
+      textAlign: 'center',
+    }}>
+      <img
+        src="/images/logos/logo-white-transparent.png"
+        alt="Why Not Me?"
+        style={{ width: 220, maxWidth: '60vw', marginBottom: 40 }}
+      />
+      <p style={{
+        fontFamily: 'Damion, Georgia, serif',
+        fontSize: 'clamp(28px, 5vw, 48px)',
+        color: '#F5F3EC',
+        margin: 0,
+      }}>
+        Something is coming soon.
+      </p>
+    </div>
+  )
+}
+
 function AppInner() {
   const [isMobileView, setIsMobileView] = useState(getMobileView)
-  const { trackerEnabled, quizEnabled } = useSiteConfig()
+  const { loaded, comingSoon, trackerEnabled, quizEnabled } = useSiteConfig()
+  const location = useLocation()
+
+  // Allow /admin even in coming soon mode
+  const isAdminRoute = location.pathname === '/admin'
 
   useEffect(() => {
     const updateMobileView = () => setIsMobileView(getMobileView())
@@ -107,21 +140,27 @@ function AppInner() {
   }, [isMobileView])
 
   return (
-    <div className={`site-shell ${isMobileView ? 'mobile-view' : 'desktop-view'}`} data-mobile-view={isMobileView}>
-      <PageViewTracker />
-      <ScrollToTop />
-      <ScrollAtmosphere />
-      <header className="site-header-sticky">
-        <Nav
-          trackerEnabled={trackerEnabled}
-          quizEnabled={quizEnabled}
-          mobileDonationTracker={isMobileView ? <DonationGoalTracker variant="nav" /> : null}
-        />
-        {!isMobileView && <DonationGoalTracker variant="compact" />}
-      </header>
-      <AnimatedRoutes />
-      <Footer />
-    </div>
+    <>
+      {loaded && comingSoon && !isAdminRoute ? (
+        <ComingSoon />
+      ) : (
+        <div className={`site-shell ${isMobileView ? 'mobile-view' : 'desktop-view'}`} data-mobile-view={isMobileView}>
+          <PageViewTracker />
+          <ScrollToTop />
+          <ScrollAtmosphere />
+          <header className="site-header-sticky">
+            <Nav
+              trackerEnabled={trackerEnabled}
+              quizEnabled={quizEnabled}
+              mobileDonationTracker={isMobileView ? <DonationGoalTracker variant="nav" /> : null}
+            />
+            {!isMobileView && <DonationGoalTracker variant="compact" />}
+          </header>
+          <AnimatedRoutes />
+          <Footer />
+        </div>
+      )}
+    </>
   )
 }
 
