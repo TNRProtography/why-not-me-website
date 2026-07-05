@@ -233,12 +233,16 @@ async function handleProgress(env) {
   }
 
   // Merge in manually added donations/sponsorships from KV
+  let manualTotal = 0
+  let manualCount = 0
   if (env.DEDICATIONS) {
     try {
       const list = await env.DEDICATIONS.list({ prefix: 'donation_' })
       for (const key of list.keys) {
         const entry = await env.DEDICATIONS.get(key.name, 'json')
         if (entry) {
+          manualTotal += (entry.amount || 0)
+          manualCount++
           donations.push({
             uuid: entry.id,
             displayName: entry.name || 'Anonymous supporter',
@@ -257,8 +261,20 @@ async function handleProgress(env) {
     }
   }
 
+  const normalisedProfile = normaliseProfile(profile)
+
+  // Add manual amounts to the profile totals so they show everywhere
+  normalisedProfile.raised = normalisedProfile.raised + manualTotal
+  normalisedProfile.donorCount = normalisedProfile.donorCount + manualCount
+  normalisedProfile.donationCount = normalisedProfile.donationCount + manualCount
+  normalisedProfile.allDonationCount = normalisedProfile.allDonationCount + manualCount
+  // Recalculate percentage with the combined raised total
+  if (normalisedProfile.goal > 0) {
+    normalisedProfile.percent = (normalisedProfile.raised / normalisedProfile.goal) * 100
+  }
+
   return jsonResponse({
-    profile: normaliseProfile(profile),
+    profile: normalisedProfile,
     donations: donations.map(normaliseDonation),
     updatedAt: new Date().toISOString(),
   })
