@@ -28,10 +28,20 @@ const CACHE_TTL_SECONDS = 45
 const DONATION_LIMIT = 100
 const MAX_DONATIONS = 2000
 
+const DEFAULT_ADMIN_CONFIG = {
+  quiz: { enabled: false, startDate: '', endDate: '' },
+  tracker: { enabled: false, startDate: '', endDate: '' },
+  furthestDistance: {
+    km: 20,
+    label: 'Longest run so far',
+    quote: "My longest run so far has been 20km! I'm feeling strong and have a fire in my belly to keep pushing. I'm so excited to see how far we can take this!",
+  },
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Accept, Content-Type',
+  'Access-Control-Allow-Headers': 'Accept, Content-Type, Authorization',
 }
 
 function jsonResponse(body, status = 200) {
@@ -1224,6 +1234,64 @@ export default {
         return await handleCancelBooking(request, url, env)
       } catch (error) {
         return new Response('Something went wrong.', { status: 500, headers: { 'Content-Type': 'text/plain' } })
+      }
+    }
+
+    // ── Admin config (GET = public read, POST = auth'd write) ──
+    if (url.pathname === '/api/admin-config') {
+      if (request.method === 'GET') {
+        try {
+          const stored = await env.DEDICATIONS.get('admin_config', 'json')
+          const config = { ...DEFAULT_ADMIN_CONFIG, ...stored }
+          return jsonResponse({ success: true, config })
+        } catch {
+          return jsonResponse({ success: true, config: DEFAULT_ADMIN_CONFIG })
+        }
+      }
+      if (request.method === 'POST') {
+        const authHeader = request.headers.get('Authorization') || ''
+        const token = authHeader.replace(/^Bearer\s+/i, '')
+        if (!env.EMAIL_WORKER_SECRET || token !== env.EMAIL_WORKER_SECRET) {
+          return jsonResponse({ error: 'Unauthorized.' }, 401)
+        }
+        try {
+          const body = await request.json()
+          const current = await env.DEDICATIONS.get('admin_config', 'json') || DEFAULT_ADMIN_CONFIG
+          const updated = { ...current, ...body }
+          await env.DEDICATIONS.put('admin_config', JSON.stringify(updated))
+          return jsonResponse({ success: true, config: updated })
+        } catch {
+          return jsonResponse({ error: 'Failed to save config.' }, 500)
+        }
+      }
+      return jsonResponse({ error: 'Method not allowed.' }, 405)
+    }
+
+    // ── Admin donation entry ──
+    if (url.pathname === '/api/admin-donation' && request.method === 'POST') {
+      const authHeader = request.headers.get('Authorization') || ''
+      const token = authHeader.replace(/^Bearer\s+/i, '')
+      if (!env.EMAIL_WORKER_SECRET || token !== env.EMAIL_WORKER_SECRET) {
+        return jsonResponse({ error: 'Unauthorized.' }, 401)
+      }
+      try {
+        const body = await request.json()
+        const { name, amount, message } = body
+        if (!amount || amount <= 0) {
+          return jsonResponse({ error: 'Amount must be positive.' }, 400)
+        }
+        const donation = {
+          id: 'admin_donation_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+          name: name || 'Anonymous',
+          amount,
+          message: message || '',
+          source: 'admin',
+          createdAt: new Date().toISOString(),
+        }
+        await env.DEDICATIONS.put('donation_' + donation.id, JSON.stringify(donation))
+        return jsonResponse({ success: true, donation })
+      } catch {
+        return jsonResponse({ error: 'Failed to record donation.' }, 500)
       }
     }
 

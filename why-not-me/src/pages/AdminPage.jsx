@@ -95,7 +95,7 @@ export default function AdminPage() {
                 type="password"
                 value={token}
                 onChange={(e) => setToken(e.target.value)}
-                placeholder="Enter ADMIN_SECRET"
+                placeholder="Enter EMAIL_WORKER_SECRET"
                 autoFocus
               />
             </div>
