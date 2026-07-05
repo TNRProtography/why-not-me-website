@@ -724,7 +724,67 @@ export default function LiveTrackerPage() {
         zoom: DEFAULT_ZOOM,
         zoomControl: true,
         attributionControl: true,
+        scrollWheelZoom: false,
+        dragging: !L.Browser.mobile,
+        tap: false,
+        touchZoom: true,
       })
+
+      // ── Scroll/touch guard overlays ──
+      // Desktop: show "Use Ctrl + scroll to zoom" on wheel
+      // Mobile: show "Use two fingers to move the map" on single-finger drag
+      const guardOverlay = document.createElement('div')
+      guardOverlay.className = 'map-scroll-guard'
+      guardOverlay.style.cssText = 'position:absolute;inset:0;z-index:1100;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.55);opacity:0;pointer-events:none;transition:opacity 0.25s;'
+      const guardMsg = document.createElement('span')
+      guardMsg.style.cssText = 'color:#F5F3EC;font-family:Montserrat,Arial,Helvetica,sans-serif;font-size:13px;letter-spacing:1px;padding:10px 20px;background:rgba(0,0,0,0.7);border:1px solid #A88E5D;'
+      guardOverlay.appendChild(guardMsg)
+      container.style.position = 'relative'
+      container.appendChild(guardOverlay)
+
+      let guardTimer = null
+      const showGuard = (msg) => {
+        guardMsg.textContent = msg
+        guardOverlay.style.opacity = '1'
+        clearTimeout(guardTimer)
+        guardTimer = setTimeout(() => { guardOverlay.style.opacity = '0' }, 1600)
+      }
+
+      // Desktop: intercept wheel events, only zoom if Ctrl held
+      container.addEventListener('wheel', (e) => {
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault()
+          map.scrollWheelZoom.enable()
+          // One-shot: disable again after a pause
+          clearTimeout(container._wheelResetTimer)
+          container._wheelResetTimer = setTimeout(() => map.scrollWheelZoom.disable(), 400)
+          // Forward the zoom manually
+          const delta = e.deltaY > 0 ? -1 : 1
+          map.setZoom(map.getZoom() + delta, { animate: true })
+        } else {
+          showGuard('Use Ctrl + scroll to zoom the map')
+        }
+      }, { passive: false })
+
+      // Mobile: detect single-finger touch and show hint
+      if (L.Browser.mobile) {
+        let touchCount = 0
+        container.addEventListener('touchstart', (e) => {
+          touchCount = e.touches.length
+          if (touchCount >= 2) {
+            map.dragging.enable()
+          }
+        }, { passive: true })
+        container.addEventListener('touchmove', (e) => {
+          if (touchCount < 2) {
+            showGuard('Use two fingers to move the map')
+          }
+        }, { passive: true })
+        container.addEventListener('touchend', () => {
+          touchCount = 0
+          map.dragging.disable()
+        }, { passive: true })
+      }
 
       const layer = createTileLayer(L, BASEMAP).addTo(map)
       tileLayerRef.current = layer
@@ -1751,6 +1811,10 @@ export default function LiveTrackerPage() {
             </div>
           )}
         </motion.div>
+
+        <div className="map-interaction-hint">
+          Use Ctrl + scroll to zoom · Click and drag to pan · Use the buttons on the right to recenter
+        </div>
 
         {/* Elevation profile - own section below map */}
         {elevProfile && (
