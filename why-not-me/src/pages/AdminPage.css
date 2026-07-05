@@ -1,0 +1,210 @@
+.admin-page {
+  min-height: 100vh;
+  background: #000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 60px 20px 80px;
+}
+.admin-login {
+  width: 100%;
+  max-width: 400px;
+  background: #0D0D0D;
+  padding: 48px 32px;
+  text-align: center;
+  margin-top: 60px;
+}
+.admin-wrap {
+  width: 100%;
+  max-width: 640px;
+  background: #0D0D0D;
+  padding: 32px;
+}
+.admin-brand {
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #A88E5D;
+  margin: 0;
+  font-family: Montserrat, Arial, Helvetica, sans-serif;
+}
+.admin-title {
+  font-family: Damion, Georgia, serif;
+  color: #F5F3EC;
+  font-weight: 400;
+  font-size: 28px;
+  margin: 4px 0 0;
+}
+.admin-divider {
+  border-top: 1px solid #2A2A2A;
+  margin: 20px 0;
+}
+.admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.admin-field {
+  margin-bottom: 16px;
+  flex: 1;
+}
+.admin-field label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #A88E5D;
+  font-family: Montserrat, Arial, Helvetica, sans-serif;
+}
+.admin-field input,
+.admin-field textarea {
+  width: 100%;
+  padding: 10px 12px;
+  background: #1A1A1A;
+  border: 1px solid #2A2A2A;
+  color: #F5F3EC;
+  font-family: Montserrat, Arial, Helvetica, sans-serif;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+.admin-field input:focus,
+.admin-field textarea:focus {
+  border-color: #A88E5D;
+}
+.admin-field textarea {
+  resize: vertical;
+  line-height: 1.6;
+}
+.admin-btn {
+  display: inline-block;
+  padding: 12px 28px;
+  background: #A88E5D;
+  color: #0D0D0D;
+  font-family: Montserrat, Arial, Helvetica, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  border: none;
+  cursor: pointer;
+}
+.admin-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.admin-btn-ghost {
+  background: none;
+  border: 1px solid #2A2A2A;
+  color: #B0B0A8;
+  padding: 8px 16px;
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  font-family: Montserrat, Arial, Helvetica, sans-serif;
+}
+.admin-error {
+  color: #d9534f;
+  font-size: 13px;
+  margin: 0 0 16px;
+  font-family: Montserrat, Arial, Helvetica, sans-serif;
+}
+.admin-toast {
+  padding: 12px 16px;
+  font-size: 13px;
+  font-family: Montserrat, Arial, Helvetica, sans-serif;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+.admin-toast.ok {
+  background: #1a2e1a;
+  border: 1px solid #2d5a2d;
+  color: #8fbc8f;
+}
+.admin-toast.err {
+  background: #2e1a1a;
+  border: 1px solid #5a2d2d;
+  color: #e08080;
+}
+.admin-card {
+  background: #111;
+  border: 1px solid #2A2A2A;
+  padding: 24px;
+  margin-bottom: 24px;
+}
+.admin-card-title {
+  font-size: 16px;
+  font-family: Montserrat, Arial, Helvetica, sans-serif;
+  color: #F5F3EC;
+  font-weight: 600;
+  margin: 0 0 6px;
+}
+.admin-card-desc {
+  font-size: 12px;
+  font-family: Montserrat, Arial, Helvetica, sans-serif;
+  color: #666;
+  margin: 0 0 20px;
+  line-height: 1.5;
+}
+.admin-row {
+  margin-bottom: 16px;
+}
+.admin-row-pair {
+  display: flex;
+  gap: 16px;
+}
+.admin-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-family: Montserrat, Arial, Helvetica, sans-serif;
+  color: #F5F3EC;
+  cursor: pointer;
+}
+.admin-toggle input[type="checkbox"] {
+  appearance: none;
+  width: 40px;
+  height: 22px;
+  background: #2A2A2A;
+  border-radius: 11px;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.admin-toggle input[type="checkbox"]::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  background: #666;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+.admin-toggle input[type="checkbox"]:checked {
+  background: #3D3424;
+}
+.admin-toggle input[type="checkbox"]:checked::after {
+  left: 21px;
+  background: #A88E5D;
+}
+
+@media (max-width: 600px) {
+  .admin-wrap {
+    padding: 20px 16px;
+  }
+  .admin-row-pair {
+    flex-direction: column;
+    gap: 0;
+  }
+  .admin-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+}

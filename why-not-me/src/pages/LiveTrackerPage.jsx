@@ -489,10 +489,10 @@ export default function LiveTrackerPage() {
       setTrackingStatus('waiting')
       return
     }
-    if (lastReceivedAgeSeconds > 900) {
-      setTrackingStatus('dead') // 15+ minutes
-    } else if (lastReceivedAgeSeconds > 300) {
-      setTrackingStatus('stale') // 5+ minutes
+    if (lastReceivedAgeSeconds > 1800) {
+      setTrackingStatus('dead') // 30+ minutes
+    } else if (lastReceivedAgeSeconds > 600) {
+      setTrackingStatus('stale') // 10+ minutes
     } else {
       setTrackingStatus('live')
     }
@@ -1759,8 +1759,8 @@ export default function LiveTrackerPage() {
               <span className="tracking-alert-icon">{trackingStatus === 'dead' ? '⚠' : '⏳'}</span>
               <span className="tracking-alert-text">
                 {trackingStatus === 'dead'
-                  ? 'Tracking data may have failed or the race has finished - no location received for over 15 minutes'
-                  : 'No new GPS data for over 5 minutes - signal may be weak'
+                  ? 'Tracking data may have failed or the race has finished - no location received for over 30 minutes'
+                  : 'No new GPS data for over 10 minutes - signal may be weak'
                 }
               </span>
             </div>

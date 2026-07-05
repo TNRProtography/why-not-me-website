@@ -13,7 +13,8 @@ import DedicateKmPage from './pages/DedicateKmPage'
 import QuizNightPage from './pages/QuizNightPage'
 import LiveTrackerPage from './pages/LiveTrackerPage'
 import NicolesStoryPage from './pages/NicolesStoryPage'
-import { isTrackerWindowOpen } from './config/trackerAvailability'
+import AdminPage from './pages/AdminPage'
+import { SiteConfigProvider, useSiteConfig } from './config/siteConfig'
 import { trackPageView, initScrollTracking, initEngagementTracking, trackVisibilityChange } from './utils/analytics'
 
 function PageViewTracker() {
@@ -39,7 +40,8 @@ function PageViewTracker() {
   return null
 }
 
-function AnimatedRoutes({ trackerEnabled }) {
+function AnimatedRoutes() {
+  const { quizEnabled, trackerEnabled } = useSiteConfig()
   return (
     <Routes>
       <Route path="/" element={<HomePage />} />
@@ -47,10 +49,11 @@ function AnimatedRoutes({ trackerEnabled }) {
       <Route path="/nicoles-story" element={<NicolesStoryPage />} />
       <Route path="/queenstown-marathon" element={<MarathonPage />} />
       <Route path="/dedicate" element={<DedicateKmPage />} />
-      <Route path="/quiz-night" element={<QuizNightPage />} />
+      {quizEnabled && <Route path="/quiz-night" element={<QuizNightPage />} />}
       <Route path="/donate" element={<DonationProgressPage />} />
       <Route path="/donation-progress" element={<DonationProgressPage />} />
       {trackerEnabled && <Route path="/live" element={<LiveTrackerPage />} />}
+      <Route path="/admin" element={<AdminPage />} />
     </Routes>
   )
 }
@@ -65,15 +68,9 @@ function getMobileView() {
   return viewportMatch || (touchMatch && window.innerWidth <= 980) || compactLandscape
 }
 
-export default function App() {
+function AppInner() {
   const [isMobileView, setIsMobileView] = useState(getMobileView)
-  const [nowMs, setNowMs] = useState(Date.now())
-  const trackerEnabled = isTrackerWindowOpen(nowMs)
-
-  useEffect(() => {
-    const interval = setInterval(() => setNowMs(Date.now()), 30000)
-    return () => clearInterval(interval)
-  }, [])
+  const { trackerEnabled, quizEnabled } = useSiteConfig()
 
   useEffect(() => {
     const updateMobileView = () => setIsMobileView(getMobileView())
@@ -110,21 +107,30 @@ export default function App() {
   }, [isMobileView])
 
   return (
+    <div className={`site-shell ${isMobileView ? 'mobile-view' : 'desktop-view'}`} data-mobile-view={isMobileView}>
+      <PageViewTracker />
+      <ScrollToTop />
+      <ScrollAtmosphere />
+      <header className="site-header-sticky">
+        <Nav
+          trackerEnabled={trackerEnabled}
+          quizEnabled={quizEnabled}
+          mobileDonationTracker={isMobileView ? <DonationGoalTracker variant="nav" /> : null}
+        />
+        {!isMobileView && <DonationGoalTracker variant="compact" />}
+      </header>
+      <AnimatedRoutes />
+      <Footer />
+    </div>
+  )
+}
+
+export default function App() {
+  return (
     <BrowserRouter>
-      <div className={`site-shell ${isMobileView ? 'mobile-view' : 'desktop-view'}`} data-mobile-view={isMobileView}>
-        <PageViewTracker />
-        <ScrollToTop />
-        <ScrollAtmosphere />
-        <header className="site-header-sticky">
-          <Nav
-            trackerEnabled={trackerEnabled}
-            mobileDonationTracker={isMobileView ? <DonationGoalTracker variant="nav" /> : null}
-          />
-          {!isMobileView && <DonationGoalTracker variant="compact" />}
-        </header>
-        <AnimatedRoutes trackerEnabled={trackerEnabled} />
-        <Footer />
-      </div>
+      <SiteConfigProvider>
+        <AppInner />
+      </SiteConfigProvider>
     </BrowserRouter>
   )
 }

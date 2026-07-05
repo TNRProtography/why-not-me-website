@@ -7,14 +7,14 @@ const navItems = [
   { to: '/', label: 'Home', end: true },
   { to: '/nicoles-story', label: "Nicole's Story" },
   { to: '/live', label: 'Live Tracker', trackerOnly: true },
-  { to: '/quiz-night', label: 'Quiz Night' },
+  { to: '/quiz-night', label: 'Quiz Night', quizOnly: true },
   { to: '/dedicate', label: 'Dedicate a Km' },
   { to: '/donate', label: 'Donate', isDonate: true },
   { to: '/documentary', label: 'Documentary' },
   { to: '/queenstown-marathon', label: 'Marathon' },
 ]
 
-export default function Nav({ trackerEnabled = false, mobileDonationTracker = null }) {
+export default function Nav({ trackerEnabled = false, quizEnabled = false, mobileDonationTracker = null }) {
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const location = useLocation()
@@ -38,6 +38,7 @@ export default function Nav({ trackerEnabled = false, mobileDonationTracker = nu
   const currentPath = location.pathname
   const visibleItems = navItems
     .filter((item) => !item.trackerOnly || trackerEnabled)
+    .filter((item) => !item.quizOnly || quizEnabled)
     .filter((item) => {
       if (item.end) return currentPath !== item.to
       return !currentPath.startsWith(item.to)

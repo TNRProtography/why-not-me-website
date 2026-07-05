@@ -35,6 +35,7 @@ import HeroPortalTitle from '../components/HeroPortalTitle'
 import Lightbox from '../components/Lightbox'
 import BrainTumourSupportSection from '../components/BrainTumourSupportSection'
 import CountdownTimer from '../components/CountdownTimer'
+import { useSiteConfig } from '../config/siteConfig'
 import { trackCtaClick, trackLightboxOpen, trackDonateClick, trackSocialClick, trackExternalLink, trackVideoSectionView, trackPhotoClick } from '../utils/analytics'
 
 // Queenstown Marathon: Nov 14, 2026, 8:20am NZDT (UTC+13)
@@ -47,6 +48,7 @@ export default function HomePage() {
   const [lightbox, setLightbox] = useState(null)
   const heroRef = useRef(null)
   const videoRef = useRef(null)
+  const { quizEnabled, furthestDistance } = useSiteConfig()
 
   // Track when video section enters viewport
   useEffect(() => {
@@ -131,7 +133,7 @@ export default function HomePage() {
       </section>
 
       {/* ========== QUIZ NIGHT CTA ========== */}
-      {Date.now() < QUIZ_DATE && (
+      {quizEnabled && (
         <section className="home-quiz-cta">
           <RevealOnScroll>
             <div className="home-quiz-cta-inner">
@@ -352,12 +354,14 @@ export default function HomePage() {
             <p>This return is different. It is about the history behind the running, the disappointment she still carries from 2023, and the chance to see how far remission, training, and a bit of vengeance can take her.</p>
           </div>
           <div style={{ marginTop: 50 }}>
-            <div className="marathon-stat">20km</div>
-            <div className="marathon-stat-label">Longest run so far</div>
+            <div className="marathon-stat">{furthestDistance.km}km</div>
+            <div className="marathon-stat-label">{furthestDistance.label || 'Longest run so far'}</div>
           </div>
-          <p style={{ fontStyle: 'italic', marginTop: 30, color: 'var(--warm)', fontSize: 18 }}>
-            "My longest run so far has been 20km! I'm feeling strong and have a fire in my belly to keep pushing. I'm so excited to see how far we can take this!"
-          </p>
+          {furthestDistance.quote && (
+            <p style={{ fontStyle: 'italic', marginTop: 30, color: 'var(--warm)', fontSize: 18 }}>
+              "{furthestDistance.quote}"
+            </p>
+          )}
           <div style={{ marginTop: 34 }}>
             <Link to="/queenstown-marathon" className="btn-primary" onClick={() => trackCtaClick('Why Queenstown?', 'marathon_section', '/queenstown-marathon')}>Why Queenstown?</Link>
             <Link to="/dedicate" className="btn-outline" style={{ marginLeft: 14 }} onClick={() => trackCtaClick('Donate & Dedicate a Km', 'marathon_section', '/dedicate')}>Donate & Dedicate a Km</Link>
