@@ -28,7 +28,7 @@ export function SiteConfigProvider({ children }) {
 
   useEffect(() => {
     let cancelled = false
-    fetch('/api/admin-config')
+    fetch('https://quiz-wnm.thenamesrock.workers.dev/config')
       .then((res) => res.json())
       .then((data) => {
         if (!cancelled && data?.config) {

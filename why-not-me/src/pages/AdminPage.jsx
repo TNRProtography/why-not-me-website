@@ -12,9 +12,7 @@ export default function AdminPage() {
   // Load config on auth
   useEffect(() => {
     if (!authed) return
-    fetch('/api/admin-config', {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    fetch('https://quiz-wnm.thenamesrock.workers.dev/config')
       .then((r) => r.json())
       .then((d) => {
         if (d.config) setConfig(d.config)
@@ -28,11 +26,11 @@ export default function AdminPage() {
       setAuthError('Enter the admin secret.')
       return
     }
-    // Test the token by making a POST with no changes
-    fetch('/api/admin-config', {
+    // Test the token by making a POST with save_config (no changes)
+    fetch('https://quiz-wnm.thenamesrock.workers.dev', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({}),
+      body: JSON.stringify({ type: 'save_config', config: {} }),
     })
       .then((r) => {
         if (r.status === 401) {
@@ -55,10 +53,10 @@ export default function AdminPage() {
     setSaving(true)
     setToast(null)
     try {
-      const res = await fetch('/api/admin-config', {
+      const res = await fetch('https://quiz-wnm.thenamesrock.workers.dev', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(updates),
+        body: JSON.stringify({ type: 'save_config', config: updates }),
       })
       const d = await res.json()
       if (d.config) {
@@ -303,10 +301,11 @@ function DonationForm({ token, onToast }) {
     setSending(true)
     onToast(null)
     try {
-      const res = await fetch('/api/admin-donation', {
+      const res = await fetch('https://quiz-wnm.thenamesrock.workers.dev', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
+          type: 'add_donation',
           name: name.trim() || 'Anonymous',
           amount: parseFloat(amount),
           message: message.trim(),
