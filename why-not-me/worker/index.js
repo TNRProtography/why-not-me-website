@@ -159,6 +159,8 @@ function normaliseDonation(donation) {
     amount: centsToCurrency(firstValue(donation.total, donation.amount, donation.displayTotal)),
     currency: donation.currency || 'NZD',
     createdAt: donation.createdAt || donation.paidAt || donation.updatedAt,
+    kind: donation._kind || 'donation',
+    source: donation._source || 'raisely',
   }
 }
 
@@ -220,7 +222,7 @@ async function getAllPublicDonations() {
   return donations.slice(0, MAX_DONATIONS)
 }
 
-async function handleProgress() {
+async function handleProgress(env) {
   const profile = await getProfile() // required
 
   let donations = []
@@ -228,6 +230,31 @@ async function handleProgress() {
     donations = await getAllPublicDonations() // optional
   } catch {
     donations = []
+  }
+
+  // Merge in manually added donations/sponsorships from KV
+  if (env.DEDICATIONS) {
+    try {
+      const list = await env.DEDICATIONS.list({ prefix: 'donation_' })
+      for (const key of list.keys) {
+        const entry = await env.DEDICATIONS.get(key.name, 'json')
+        if (entry) {
+          donations.push({
+            uuid: entry.id,
+            displayName: entry.name || 'Anonymous supporter',
+            message: entry.message || '',
+            total: Math.round((entry.amount || 0) * 100),
+            currency: 'NZD',
+            createdAt: entry.createdAt,
+            anonymous: false,
+            _source: 'admin',
+            _kind: entry.kind || 'donation',
+          })
+        }
+      }
+    } catch {
+      // KV read failed, continue without manual donations
+    }
   }
 
   return jsonResponse({
@@ -1144,7 +1171,7 @@ export default {
 
     if (url.pathname === '/api/raisely-progress') {
       try {
-        return await handleProgress()
+        return await handleProgress(env)
       } catch (error) {
         return jsonResponse({ error: 'Unable to load Raisely donation progress right now.' }, 502)
       }

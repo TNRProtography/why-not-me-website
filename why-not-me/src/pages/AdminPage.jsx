@@ -8,6 +8,7 @@ export default function AdminPage() {
   const [config, setConfig] = useState(null)
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState(null)
+  const [donationsKey, setDonationsKey] = useState(0)
 
   // Load config on auth
   useEffect(() => {
@@ -298,24 +299,27 @@ export default function AdminPage() {
           </button>
         </div>
 
-        {/* Raisely Donation */}
+        {/* Donations & Sponsorships */}
         <div className="admin-card">
-          <h2 className="admin-card-title">Add Donation</h2>
+          <h2 className="admin-card-title">Donations & Sponsorships</h2>
           <p className="admin-card-desc">
-            Record an individual donation. This will be sent to the Raisely API so it appears
-            in the donation tracker on the site.
+            Manually add a donation or sponsorship. These appear alongside Raisely donations
+            on the site. Each entry is stored separately in KV so you can delete individually.
           </p>
-          <DonationForm token={token} onToast={setToast} />
+          <DonationForm token={token} onToast={setToast} onAdded={() => setDonationsKey((k) => k + 1)} />
+          <div className="admin-divider" />
+          <DonationList token={token} onToast={setToast} refreshKey={donationsKey} />
         </div>
       </div>
     </div>
   )
 }
 
-function DonationForm({ token, onToast }) {
+function DonationForm({ token, onToast, onAdded }) {
   const [name, setName] = useState('')
   const [amount, setAmount] = useState('')
   const [message, setMessage] = useState('')
+  const [kind, setKind] = useState('donation')
   const [sending, setSending] = useState(false)
 
   const handleSubmit = async (e) => {
@@ -335,16 +339,18 @@ function DonationForm({ token, onToast }) {
           name: name.trim() || 'Anonymous',
           amount: parseFloat(amount),
           message: message.trim(),
+          kind,
         }),
       })
       const d = await res.json()
       if (d.success) {
-        onToast({ ok: true, msg: `Donation of $${amount} recorded for ${name || 'Anonymous'}.` })
+        onToast({ ok: true, msg: `${kind === 'sponsorship' ? 'Sponsorship' : 'Donation'} of $${amount} recorded for ${name || 'Anonymous'}.` })
         setName('')
         setAmount('')
         setMessage('')
+        if (onAdded) onAdded()
       } else {
-        onToast({ ok: false, msg: d.error || 'Failed to record donation.' })
+        onToast({ ok: false, msg: d.error || 'Failed to record.' })
       }
     } catch {
       onToast({ ok: false, msg: 'Network error.' })
@@ -378,18 +384,126 @@ function DonationForm({ token, onToast }) {
           />
         </div>
       </div>
-      <div className="admin-field">
-        <label>Message (optional)</label>
-        <input
-          type="text"
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          placeholder="Go Nicole!"
-        />
+      <div className="admin-row-pair">
+        <div className="admin-field">
+          <label>Type</label>
+          <select
+            value={kind}
+            onChange={(e) => setKind(e.target.value)}
+            style={{
+              width: '100%', padding: '10px 12px', background: '#1A1A1A',
+              border: '1px solid #2A2A2A', color: '#F5F3EC',
+              fontFamily: 'Montserrat, Arial, Helvetica, sans-serif', fontSize: 14,
+            }}
+          >
+            <option value="donation">Donation</option>
+            <option value="sponsorship">Sponsorship</option>
+          </select>
+        </div>
+        <div className="admin-field">
+          <label>Message (optional)</label>
+          <input
+            type="text"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder="Go Nicole!"
+          />
+        </div>
       </div>
       <button type="submit" className="admin-btn" disabled={sending}>
-        {sending ? 'Recording...' : 'Record Donation'}
+        {sending ? 'Recording...' : 'Add'}
       </button>
     </form>
+  )
+}
+
+function DonationList({ token, onToast, refreshKey }) {
+  const [donations, setDonations] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [deleting, setDeleting] = useState(null)
+
+  useEffect(() => {
+    setLoading(true)
+    fetch('https://quiz-wnm.thenamesrock.workers.dev', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ type: 'list_donations' }),
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.donations) setDonations(d.donations)
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
+  }, [token, refreshKey])
+
+  const handleDelete = async (kvKey, name) => {
+    if (!window.confirm(`Delete ${name}'s entry?`)) return
+    setDeleting(kvKey)
+    try {
+      const res = await fetch('https://quiz-wnm.thenamesrock.workers.dev', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ type: 'delete_donation', kvKey }),
+      })
+      const d = await res.json()
+      if (d.success) {
+        setDonations((prev) => prev.filter((don) => don.kvKey !== kvKey))
+        onToast({ ok: true, msg: `Deleted ${name}.` })
+      } else {
+        onToast({ ok: false, msg: d.error || 'Delete failed.' })
+      }
+    } catch {
+      onToast({ ok: false, msg: 'Network error.' })
+    } finally {
+      setDeleting(null)
+    }
+  }
+
+  if (loading) return <p style={{ color: '#555', fontSize: 13 }}>Loading entries...</p>
+  if (!donations.length) return <p style={{ color: '#555', fontSize: 13 }}>No manual entries yet.</p>
+
+  return (
+    <div>
+      <p style={{ fontSize: 12, color: '#A88E5D', letterSpacing: 1.5, textTransform: 'uppercase', margin: '0 0 12px' }}>
+        Manual Entries ({donations.length})
+      </p>
+      {donations.map((d) => (
+        <div key={d.kvKey} style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          background: '#1A1A1A', border: '1px solid #2A2A2A', padding: '10px 14px',
+          marginBottom: 6, fontSize: 13, fontFamily: 'Montserrat, Arial, Helvetica, sans-serif',
+        }}>
+          <div style={{ flex: 1 }}>
+            <span style={{ color: '#F5F3EC', fontWeight: 600 }}>{d.name}</span>
+            <span style={{
+              display: 'inline-block', background: d.kind === 'sponsorship' ? '#3D3424' : '#1a2e1a',
+              color: d.kind === 'sponsorship' ? '#A88E5D' : '#8fbc8f',
+              padding: '2px 8px', fontSize: 10, fontWeight: 700, letterSpacing: 1,
+              textTransform: 'uppercase', marginLeft: 8, borderRadius: 2,
+            }}>
+              {d.kind || 'donation'}
+            </span>
+            <span style={{ color: '#F5F3EC', fontWeight: 700, marginLeft: 12 }}>${d.amount}</span>
+            {d.message && <span style={{ color: '#666', marginLeft: 8 }}>"{d.message}"</span>}
+            <span style={{ color: '#444', marginLeft: 8, fontSize: 11 }}>
+              {new Date(d.createdAt).toLocaleDateString()}
+            </span>
+          </div>
+          <button
+            onClick={() => handleDelete(d.kvKey, d.name)}
+            disabled={deleting === d.kvKey}
+            style={{
+              background: 'none', border: '1px solid #5a2d2d', color: '#e08080',
+              padding: '4px 12px', fontSize: 11, cursor: 'pointer', marginLeft: 12,
+              fontFamily: 'Montserrat, Arial, Helvetica, sans-serif',
+              opacity: deleting === d.kvKey ? 0.5 : 1,
+            }}
+          >
+            {deleting === d.kvKey ? '...' : 'Delete'}
+          </button>
+        </div>
+      ))}
+    </div>
   )
 }

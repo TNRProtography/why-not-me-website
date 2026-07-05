@@ -288,7 +288,10 @@ function DetailedDonationTracker({ middleSlot = null }) {
                   <article className="donation-detail__donation-card" key={donation.id} id={`donation-${donation.id}`}>
                     <div className="donation-detail__donation-top">
                       <strong>{donation.name || 'Anonymous supporter'}</strong>
-                      <span>{formatCurrency(donation.amount, donation.currency || progress.currency)}</span>
+                      <span>
+                        {donation.kind === 'sponsorship' && <em style={{ fontSize: 11, color: 'var(--gold, #A88E5D)', marginRight: 6, fontStyle: 'normal', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Sponsor</em>}
+                        {formatCurrency(donation.amount, donation.currency || progress.currency)}
+                      </span>
                     </div>
                     {donation.message && <p>{donation.message}</p>}
                     <small>{formatDate(donation.createdAt)}</small>
