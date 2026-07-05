@@ -86,22 +86,57 @@ function useDonationProgress() {
           setState((current) => ({ ...current, loading: true, error: '' }))
         }
 
-        const response = await fetch('/api/raisely-progress', {
-          headers: { Accept: 'application/json' },
-        })
+        // Fetch Raisely data and manual donations in parallel
+        const [raiselyRes, manualRes] = await Promise.all([
+          fetch('/api/raisely-progress', { headers: { Accept: 'application/json' } }),
+          fetch('https://quiz-wnm.thenamesrock.workers.dev/donations')
+            .then(r => r.json())
+            .catch(() => ({ donations: [] })),
+        ])
 
-        if (!response.ok) {
-          throw new Error(`Donation progress request failed with ${response.status}`)
+        if (!raiselyRes.ok) {
+          throw new Error(`Donation progress request failed with ${raiselyRes.status}`)
         }
 
-        const payload = await response.json()
+        const payload = await raiselyRes.json()
+        const manualDonations = (manualRes && manualRes.donations) ? manualRes.donations : []
+
+        // Merge manual donations into the donations list
+        const mergedDonations = [...(payload.donations || [])]
+        let manualTotal = 0
+        let manualCount = 0
+
+        for (const entry of manualDonations) {
+          manualTotal += (entry.amount || 0)
+          manualCount++
+          mergedDonations.push({
+            id: entry.id,
+            name: entry.name || 'Anonymous supporter',
+            message: entry.message || '',
+            amount: entry.amount || 0,
+            currency: 'NZD',
+            createdAt: entry.createdAt,
+            kind: entry.kind || 'donation',
+            source: 'admin',
+          })
+        }
+
+        // Add manual totals to the profile
+        const profile = payload.profile || {}
+        profile.raised = (Number(profile.raised) || 0) + manualTotal
+        profile.donorCount = (Number(profile.donorCount) || 0) + manualCount
+        profile.donationCount = (Number(profile.donationCount) || 0) + manualCount
+        profile.allDonationCount = (Number(profile.allDonationCount) || 0) + manualCount
+        if (profile.goal > 0) {
+          profile.percent = (profile.raised / profile.goal) * 100
+        }
 
         if (!cancelled) {
           setState({
             loading: false,
             error: '',
-            profile: payload.profile,
-            donations: payload.donations || [],
+            profile,
+            donations: mergedDonations,
             updatedAt: payload.updatedAt || new Date().toISOString(),
           })
         }
