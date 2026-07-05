@@ -238,6 +238,7 @@ async function handleProgress(env) {
   if (env.DEDICATIONS) {
     try {
       const list = await env.DEDICATIONS.list({ prefix: 'donation_' })
+      console.log('[handleProgress] KV donation_ keys found:', list.keys.length, list.keys.map(k => k.name))
       for (const key of list.keys) {
         const entry = await env.DEDICATIONS.get(key.name, 'json')
         if (entry) {
@@ -256,9 +257,12 @@ async function handleProgress(env) {
           })
         }
       }
-    } catch {
-      // KV read failed, continue without manual donations
+      console.log('[handleProgress] Manual total: $' + manualTotal + ', count: ' + manualCount)
+    } catch (err) {
+      console.error('[handleProgress] KV read failed:', err)
     }
+  } else {
+    console.log('[handleProgress] WARNING: env.DEDICATIONS is not bound!')
   }
 
   const normalisedProfile = normaliseProfile(profile)
@@ -1190,6 +1194,28 @@ export default {
         return await handleProgress(env)
       } catch (error) {
         return jsonResponse({ error: 'Unable to load Raisely donation progress right now.' }, 502)
+      }
+    }
+
+    // Debug endpoint - check manual donations from KV
+    if (url.pathname === '/api/debug-donations') {
+      if (!env.DEDICATIONS) {
+        return jsonResponse({ error: 'DEDICATIONS not bound', hasBinding: false })
+      }
+      try {
+        const list = await env.DEDICATIONS.list({ prefix: 'donation_' })
+        const entries = []
+        let total = 0
+        for (const key of list.keys) {
+          const val = await env.DEDICATIONS.get(key.name, 'json')
+          if (val) {
+            entries.push({ key: key.name, name: val.name, amount: val.amount, kind: val.kind })
+            total += (val.amount || 0)
+          }
+        }
+        return jsonResponse({ hasBinding: true, count: entries.length, total, entries })
+      } catch (err) {
+        return jsonResponse({ error: String(err), hasBinding: true })
       }
     }
 
