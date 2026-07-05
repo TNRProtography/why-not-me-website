@@ -1537,23 +1537,28 @@ export default function LiveTrackerPage() {
       finishTimeMs: Math.round(finishTimeMs),
       confidence,
     }
-  }, [progressKm, raceProgress.startTimeMs, sortedHistory, elevProfile, kmlTrackPath, now])
+  }, [progressKm, raceProgress.startTimeMs, sortedHistory, elevProfile, kmlTrackPath])
 
   // Format finish estimate for display
   const finishDisplay = useMemo(() => {
     if (!finishEstimate) return null
 
-    const { remainingSec, totalPredictedSec, finishTimeMs, confidence } = finishEstimate
+    const { finishTimeMs, confidence } = finishEstimate
+
+    // Remaining seconds counts down live between GPS updates
+    const liveRemainingSec = Math.max(0, Math.round((finishTimeMs - Date.now()) / 1000))
+    const liveElapsedSec = raceProgress.startTimeMs ? Math.round((Date.now() - raceProgress.startTimeMs) / 1000) : 0
+    const liveTotalSec = liveElapsedSec + liveRemainingSec
 
     const finishDate = new Date(finishTimeMs)
     const finishTime = finishDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 
-    const totalH = Math.floor(totalPredictedSec / 3600)
-    const totalM = Math.floor((totalPredictedSec % 3600) / 60)
+    const totalH = Math.floor(liveTotalSec / 3600)
+    const totalM = Math.floor((liveTotalSec % 3600) / 60)
     const totalFormatted = `${totalH}h ${totalM}m`
 
-    const remH = Math.floor(remainingSec / 3600)
-    const remM = Math.floor((remainingSec % 3600) / 60)
+    const remH = Math.floor(liveRemainingSec / 3600)
+    const remM = Math.floor((liveRemainingSec % 3600) / 60)
     const remainingFormatted = remH > 0 ? `${remH}h ${remM}m` : `${remM}m`
 
     const confidenceLabel = {
@@ -1571,7 +1576,7 @@ export default function LiveTrackerPage() {
     }[confidence]
 
     return { finishTime, totalFormatted, remainingFormatted, confidenceLabel, confidenceIcon, confidence }
-  }, [finishEstimate])
+  }, [finishEstimate, summaryNow, raceProgress.startTimeMs])
 
   const progressSpeedColor = speedColor(displayKmh)
 
