@@ -1394,6 +1394,185 @@ export default function LiveTrackerPage() {
   const avgPace = formatMinPerKm(avgKmh)
 
   const totalDistanceKm = clientSpeed.totalKm > 0 ? clientSpeed.totalKm : null
+  // ── Estimated finish time prediction ──
+  // Only activates after 1km. Uses observed speed-vs-elevation data and applies
+  // a fatigue curve that increases with distance covered. Gets more accurate
+  // as the race progresses and more data is available.
+  const finishEstimate = useMemo(() => {
+    const distDone = progressKm
+    if (distDone < 1 || !raceProgress.startTimeMs || !elevProfile) {
+      return null
+    }
+
+    // Build segments from history with elevation data
+    const pts = sortedHistory.filter(p => p.location?.lat && p.location?.lng)
+    if (pts.length < 3) return null
+
+    const gradientBuckets = {} // key: rounded gradient%, value: { totalSec, totalKm }
+    let cumKm = 0
+
+    for (let i = 1; i < pts.length; i++) {
+      const prev = pts[i - 1]
+      const curr = pts[i]
+      const prevTime = getPointReceivedTimeMs(prev)
+      const currTime = getPointReceivedTimeMs(curr)
+      if (!prevTime || !currTime) continue
+
+      const seconds = (currTime - prevTime) / 1000
+      if (seconds <= 0.5 || seconds > 300) continue
+
+      const km = haversineKm(
+        { lat: prev.location.lat, lng: prev.location.lng },
+        { lat: curr.location.lat, lng: curr.location.lng }
+      )
+      const kmh = (km / seconds) * 3600
+      if (kmh > 35 || km < 0.001) continue
+
+      cumKm += km
+
+      // Get elevation for this segment
+      const prevElev = prev.location?.altitudeM ?? nearestKmlElevation(prev.location.lat, prev.location.lng, kmlTrackPath)
+      const currElev = curr.location?.altitudeM ?? nearestKmlElevation(curr.location.lat, curr.location.lng, kmlTrackPath)
+
+      let gradientKey = 0
+      if (prevElev != null && currElev != null && km > 0) {
+        const gradientPct = ((currElev - prevElev) / (km * 1000)) * 100
+        // Bucket into 2% intervals: -10, -8, ..., 0, 2, 4, ...
+        gradientKey = Math.round(gradientPct / 2) * 2
+        gradientKey = Math.max(-12, Math.min(12, gradientKey))
+      }
+
+      const key = String(gradientKey)
+      if (!gradientBuckets[key]) gradientBuckets[key] = { totalSec: 0, totalKm: 0 }
+      gradientBuckets[key].totalSec += seconds
+      gradientBuckets[key].totalKm += km
+    }
+
+    // Need at least some data
+    const bucketEntries = Object.entries(gradientBuckets)
+    if (bucketEntries.length === 0) return null
+
+    // Overall average pace as fallback (sec/km)
+    const totalMovingSec = bucketEntries.reduce((s, [, b]) => s + b.totalSec, 0)
+    const totalMovingKm = bucketEntries.reduce((s, [, b]) => s + b.totalKm, 0)
+    if (totalMovingKm < 0.5 || totalMovingSec < 30) return null
+    const avgSecPerKm = totalMovingSec / totalMovingKm
+
+    // Pace per gradient bucket (sec/km)
+    const paceByGradient = {}
+    for (const [key, bucket] of bucketEntries) {
+      if (bucket.totalKm > 0.05) {
+        paceByGradient[key] = bucket.totalSec / bucket.totalKm
+      }
+    }
+
+    // Now predict remaining time using the KML elevation profile
+    const remainingKm = MARATHON_DISTANCE_KM - distDone
+    if (remainingKm <= 0) return { remainingSec: 0, finishTimeMs: Date.now(), confidence: 'high' }
+
+    // Find where we are on the KML route
+    const elevPts = elevProfile.pts
+    let startIdx = 0
+    let bestDist = Infinity
+    for (let i = 0; i < elevPts.length; i++) {
+      const d = Math.abs(elevPts[i].distanceKm - distDone)
+      if (d < bestDist) { bestDist = d; startIdx = i }
+    }
+
+    // Walk through remaining route segments, applying gradient-aware pace
+    let predictedSec = 0
+    let segKmAccum = 0
+    for (let i = startIdx + 1; i < elevPts.length; i++) {
+      const prev = elevPts[i - 1]
+      const curr = elevPts[i]
+      const segKm = curr.distanceKm - prev.distanceKm
+      if (segKm <= 0) continue
+      segKmAccum += segKm
+      if (segKmAccum > remainingKm) break
+
+      // Calculate gradient for this route segment
+      let gradientKey = 0
+      if (prev.elevation != null && curr.elevation != null && segKm > 0) {
+        const gradientPct = ((curr.elevation - prev.elevation) / (segKm * 1000)) * 100
+        gradientKey = Math.round(gradientPct / 2) * 2
+        gradientKey = Math.max(-12, Math.min(12, gradientKey))
+      }
+
+      // Use observed pace for this gradient, or fall back to average
+      const basePace = paceByGradient[String(gradientKey)] ?? avgSecPerKm
+
+      // Fatigue factor: runner slows down as the race progresses
+      // Starts at 1.0, increases gently. By 30km adds ~8%, by 40km adds ~15%
+      const kmAtPoint = distDone + segKmAccum
+      const fatiguePct = kmAtPoint / MARATHON_DISTANCE_KM
+      const fatigueFactor = 1 + Math.pow(fatiguePct, 2.5) * 0.20
+
+      // Early-race uncertainty: weight toward average pace more when we have less data
+      const dataWeight = Math.min(1, distDone / 10) // full confidence at 10km
+      const adjustedPace = basePace * dataWeight + avgSecPerKm * (1 - dataWeight)
+
+      predictedSec += adjustedPace * fatigueFactor * segKm
+    }
+
+    // If we didn't cover the full remaining distance via KML points, extrapolate
+    if (segKmAccum < remainingKm * 0.9) {
+      const uncoveredKm = remainingKm - segKmAccum
+      const fatigueFactor = 1 + Math.pow(0.85, 2.5) * 0.20
+      predictedSec += avgSecPerKm * fatigueFactor * uncoveredKm
+    }
+
+    const finishTimeMs = Date.now() + predictedSec * 1000
+    const elapsedSec = (Date.now() - raceProgress.startTimeMs) / 1000
+    const totalPredictedSec = elapsedSec + predictedSec
+
+    // Confidence based on how far through the race
+    let confidence = 'low'
+    if (distDone >= 30) confidence = 'high'
+    else if (distDone >= 15) confidence = 'medium'
+    else if (distDone >= 5) confidence = 'building'
+
+    return {
+      remainingSec: Math.round(predictedSec),
+      totalPredictedSec: Math.round(totalPredictedSec),
+      finishTimeMs: Math.round(finishTimeMs),
+      confidence,
+    }
+  }, [progressKm, raceProgress.startTimeMs, sortedHistory, elevProfile, kmlTrackPath, now])
+
+  // Format finish estimate for display
+  const finishDisplay = useMemo(() => {
+    if (!finishEstimate) return null
+
+    const { remainingSec, totalPredictedSec, finishTimeMs, confidence } = finishEstimate
+
+    const finishDate = new Date(finishTimeMs)
+    const finishTime = finishDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+
+    const totalH = Math.floor(totalPredictedSec / 3600)
+    const totalM = Math.floor((totalPredictedSec % 3600) / 60)
+    const totalFormatted = `${totalH}h ${totalM}m`
+
+    const remH = Math.floor(remainingSec / 3600)
+    const remM = Math.floor((remainingSec % 3600) / 60)
+    const remainingFormatted = remH > 0 ? `${remH}h ${remM}m` : `${remM}m`
+
+    const confidenceLabel = {
+      low: 'Very early estimate',
+      building: 'Building accuracy',
+      medium: 'Getting accurate',
+      high: 'High confidence',
+    }[confidence]
+
+    const confidenceIcon = {
+      low: '◔',
+      building: '◑',
+      medium: '◕',
+      high: '●',
+    }[confidence]
+
+    return { finishTime, totalFormatted, remainingFormatted, confidenceLabel, confidenceIcon, confidence }
+  }, [finishEstimate])
+
   const progressSpeedColor = speedColor(displayKmh)
 
   return (
@@ -1606,13 +1785,23 @@ export default function LiveTrackerPage() {
         </div>
         <div className="tracker-info-strip">
           <div className="tracker-info-card">
-            <div className="tracker-info-card-label">Coordinates</div>
+            <div className="tracker-info-card-label">Estimated Finish</div>
             <div className="tracker-info-card-value">
-              {data?.location ? `${data.location.lat.toFixed(5)}, ${data.location.lng.toFixed(5)}` : 'Awaiting signal'}
+              {finishDisplay
+                ? `${finishDisplay.finishTime} (${finishDisplay.totalFormatted} total)`
+                : progressKm < 1
+                  ? 'Kicks in after 1km'
+                  : 'Calculating...'
+              }
             </div>
-            {data?.location?.altitudeM != null && (
-              <div className="tracker-info-card-sub">Altitude: {Math.round(data.location.altitudeM)}m</div>
-            )}
+            <div className="tracker-info-card-sub">
+              {finishDisplay
+                ? `${finishDisplay.remainingFormatted} remaining · ${finishDisplay.confidenceIcon} ${finishDisplay.confidenceLabel}`
+                : progressKm < 1
+                  ? 'Needs pace and elevation data to predict'
+                  : 'Awaiting enough GPS data'
+              }
+            </div>
           </div>
 
           <div className="tracker-info-card">
