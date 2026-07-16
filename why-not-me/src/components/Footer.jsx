@@ -56,6 +56,12 @@ export default function Footer() {
           <a href="https://www.badboygraphix.co.nz/" target="_blank" rel="noopener noreferrer" onClick={() => trackSponsorClick('Badboy Graphix', 'https://www.badboygraphix.co.nz/')}>
             <img src="/images/sponsors/badboy-graphix.png" alt="Badboy Graphix" className="footer-sponsor-logo footer-sponsor-logo--square" />
           </a>
+          <a href="https://westfleet.co.nz/" target="_blank" rel="noopener noreferrer" onClick={() => trackSponsorClick('Westfleet Seafoods', 'https://westfleet.co.nz/')}>
+            <img src="/images/sponsors/westfleet.png" alt="Westfleet Seafoods" className="footer-sponsor-logo" />
+          </a>
+          <a href="https://www.tnrprotography.co.nz" target="_blank" rel="noopener noreferrer" onClick={() => trackSponsorClick('TNR Protography', 'https://www.tnrprotography.co.nz')}>
+            <img src="/images/sponsors/tnr-protography.png" alt="TNR Protography" className="footer-sponsor-logo" />
+          </a>
         </div>
       </div>
 
