@@ -102,23 +102,31 @@ function normalizeTimestamp(value) {
   return Number.isFinite(ms) && ms > 0 ? ms : null
 }
 
+// When the phone loses reception, OwnTracks queues points and replays them once
+// signal returns. Every replayed point arrives stamped with the CURRENT time, so
+// arrival time says a 20-minute-old position is the newest thing we have. Ordering
+// by arrival makes the marker jump backwards down the course and scribbles the
+// trail over ground already covered.
+//
+// GPS time is when the runner was actually at that spot, so that is what orders
+// position. Arrival time is still useful, but only for answering "how long since
+// the server last heard anything" — that lives in getPointArrivalTimeMs below.
 function getPointReceivedTimeMs(point) {
   if (!point) return null
 
-  // Prefer server-side timestamps (reflect when data actually arrived at the API)
-  // over GPS device timestamps, which may lag by minutes if the device batches updates.
   const candidates = [
+    point.gpsTimestamp,
+    point.time,
+    point.location?.timestamp,
+    point.timestamp,
+    point.ownTracks?.tst,
+    // Fall back to arrival only when the point carries no GPS time at all.
     point.receivedAt,
     point.lastReceivedAt,
     point.ingestedAt,
     point.location?.receivedAt,
     point.location?.lastReceivedAt,
     point.ownTracks?.receivedAt,
-    point.gpsTimestamp,
-    point.time,
-    point.location?.timestamp,
-    point.timestamp,
-    point.ownTracks?.tst,
   ]
 
   for (const candidate of candidates) {
@@ -129,6 +137,45 @@ function getPointReceivedTimeMs(point) {
   return null
 }
 
+// Arrival time — when the server received this point, regardless of when the GPS
+// fix was taken. Used for connection health, never for ordering positions.
+function getPointArrivalTimeMs(point) {
+  if (!point) return null
+
+  const candidates = [
+    point.receivedAt,
+    point.lastReceivedAt,
+    point.ingestedAt,
+    point.location?.receivedAt,
+    point.location?.lastReceivedAt,
+    point.ownTracks?.receivedAt,
+    point.gpsTimestamp,
+    point.time,
+    point.timestamp,
+  ]
+
+  for (const candidate of candidates) {
+    const ms = normalizeTimestamp(candidate)
+    if (ms != null) return ms
+  }
+
+  return null
+}
+
+// True when this point was recorded well before it reached the server — i.e. it
+// came out of the phone's offline queue rather than arriving live.
+function isBackloggedPoint(point, thresholdSeconds = 120) {
+  if (point?.backlogged === true) return true
+
+  const gpsMs = normalizeTimestamp(
+    point?.gpsTimestamp ?? point?.time ?? point?.timestamp
+  )
+  const arrivalMs = normalizeTimestamp(point?.receivedAt ?? point?.lastReceivedAt)
+
+  if (gpsMs == null || arrivalMs == null) return false
+  return (arrivalMs - gpsMs) / 1000 > thresholdSeconds
+}
+
 function getLatestReceivedAt(data, history) {
   const times = []
 
@@ -137,6 +184,8 @@ function getLatestReceivedAt(data, history) {
     if (ms != null) times.push(ms)
   }
 
+  // Connection health question: when did the server last hear ANYTHING?
+  // That is arrival time, including points replayed out of the offline queue.
   pushTime(data?.lastReceivedAt)
   pushTime(data?.receivedAt)
   pushTime(data?.location?.receivedAt)
@@ -148,7 +197,7 @@ function getLatestReceivedAt(data, history) {
 
   if (Array.isArray(history)) {
     history.forEach((point) => {
-      const ms = getPointReceivedTimeMs(point)
+      const ms = getPointArrivalTimeMs(point)
       if (ms != null) times.push(ms)
     })
   }
@@ -366,6 +415,9 @@ export default function LiveTrackerPage() {
 
   const [data, setData] = useState(null)
   const [history, setHistory] = useState([])
+  // Number of queued (offline) points that arrived in the last 90s. Non-zero
+  // means the phone is draining its backlog after regaining reception.
+  const [backlogCount, setBacklogCount] = useState(0)
   const [kmlTrackPath, setKmlTrackPath] = useState([])
   const [kmlSourceName, setKmlSourceName] = useState('queenstown-marathon.kml')
   const [kmlError, setKmlError] = useState(null)
@@ -590,6 +642,8 @@ export default function LiveTrackerPage() {
       const latest = payload?.latest && typeof payload.latest === 'object' ? payload.latest : null
       const normalizedHistory = Array.isArray(payload?.history) ? payload.history : []
 
+      // Freshest by GPS TIME, not by arrival. During a backlog replay the
+      // last-arrived point is usually the OLDEST position in the queue.
       const freshestHistoryPoint = [...normalizedHistory]
         .filter((p) => p?.location?.lat != null && p?.location?.lng != null)
         .sort((a, b) => (getPointReceivedTimeMs(b) ?? 0) - (getPointReceivedTimeMs(a) ?? 0))[0] ?? null
@@ -599,12 +653,25 @@ export default function LiveTrackerPage() {
         if (!freshestHistoryPoint) return latest
         const latestTs = getPointReceivedTimeMs(latest) ?? 0
         const historyTs = getPointReceivedTimeMs(freshestHistoryPoint) ?? 0
+        // Strictly greater: ties keep `latest`, which the ingest worker already
+        // guarantees never moves backwards.
         return historyTs > latestTs ? freshestHistoryPoint : latest
       })()
+
+      // Detect a draining offline queue so the UI can say "catching up" instead
+      // of showing a frozen marker that claims to be live.
+      const nowMs = Date.now()
+      const backlogPoints = normalizedHistory.filter((p) => isBackloggedPoint(p))
+      const recentlyArrivedBacklog = backlogPoints.filter((p) => {
+        const arrival = getPointArrivalTimeMs(p)
+        return arrival != null && (nowMs - arrival) < 90000
+      })
+      setBacklogCount(recentlyArrivedBacklog.length)
 
       if (payload?.status === 'waiting' || !normalizedData) {
         setData(null)
         setHistory([])
+        setBacklogCount(0)
         setApiStatus('waiting')
         setTrackingStatus('waiting')
         setError(null)
@@ -1921,6 +1988,13 @@ export default function LiveTrackerPage() {
 
         {/* Footer */}
         <div className="tracker-footer-spacer">
+          {backlogCount > 0 && (
+            <p style={{ color: 'var(--warm)', fontSize: 12, marginTop: 8 }}>
+              Catching up - {backlogCount} queued point{backlogCount === 1 ? '' : 's'} received
+              after a reception gap. The trail is filling in; the marker stays at the
+              most recent confirmed position.
+            </p>
+          )}
           {error && (
             <p style={{ color: 'var(--warm)', fontSize: 12, marginTop: 8 }}>
               Connection issue: {error} - map remains open and will retry automatically.
