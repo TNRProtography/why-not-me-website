@@ -6,7 +6,7 @@ import './LiveTrackerPage.css'
 
 const API_BASE = 'https://marathon-tracking-proxy.why-not-me-nicole-white.workers.dev'
 const API_ENDPOINT = `${API_BASE}/live.json`
-const POLL_INTERVAL = 10000
+const POLL_INTERVAL = 3000
 const KML_ROUTE_URL = '/data/queenstown-marathon.kml'
 
 // Queenstown Marathon start area - default when no tracker data
