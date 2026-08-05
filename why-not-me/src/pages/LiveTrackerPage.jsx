@@ -206,6 +206,27 @@ function getLatestReceivedAt(data, history) {
   return new Date(Math.max(...times))
 }
 
+// Merge a delta batch into the history we already hold.
+// Deduped on gps timestamp, so a replayed point that we already received
+// replaces rather than duplicates, and the result stays in GPS order.
+function mergeHistory(existing, incoming) {
+  if (!incoming?.length) return existing
+  if (!existing?.length) return sortHistory(incoming)
+
+  const byKey = new Map()
+
+  const keyOf = (p) => {
+    const ms = getPointReceivedTimeMs(p)
+    if (ms != null) return `t:${ms}`
+    return `c:${p?.location?.lat},${p?.location?.lng}`
+  }
+
+  for (const p of existing) byKey.set(keyOf(p), p)
+  for (const p of incoming) byKey.set(keyOf(p), p)
+
+  return sortHistory([...byKey.values()])
+}
+
 function sortHistory(points) {
   if (!Array.isArray(points)) return []
   return [...points].sort((a, b) => {
@@ -418,6 +439,15 @@ export default function LiveTrackerPage() {
   // Number of queued (offline) points that arrived in the last 90s. Non-zero
   // means the phone is draining its backlog after regaining reception.
   const [backlogCount, setBacklogCount] = useState(0)
+  // Arrival-time watermark: the newest point the server has already given us.
+  // Sent back as ?since= so each poll only carries what we are missing.
+  const syncTokenRef = useRef(0)
+  // Mirror of `history` that fetchData can read without re-creating itself.
+  const historyRef = useRef([])
+  // Set when we detect we are missing points; next poll refetches everything.
+  const needsResyncRef = useRef(false)
+  // Server's total point count, so we can spot a desync and resync in full.
+  const serverTotalRef = useRef(null)
   const [kmlTrackPath, setKmlTrackPath] = useState([])
   const [kmlSourceName, setKmlSourceName] = useState('queenstown-marathon.kml')
   const [kmlError, setKmlError] = useState(null)
@@ -618,9 +648,12 @@ export default function LiveTrackerPage() {
   }, [sortedHistory, data, summaryNow, kmlTrackPath])
 
   // ---- Data fetching (pull every 10s, detect new vs stale vs dead) ----
-  const fetchData = useCallback(async ({ force = false } = {}) => {
+  const fetchData = useCallback(async ({ force = false, fullResync = false } = {}) => {
     if (fetchInFlightRef.current && !force) return
-    if (force && fetchControllerRef.current) fetchControllerRef.current.abort()
+    if (force && fetchControllerRef.current) {
+      fetchControllerRef.current.supersededByForce = true
+      fetchControllerRef.current.abort()
+    }
 
     const controller = new AbortController()
     const startedAt = Date.now()
@@ -628,11 +661,19 @@ export default function LiveTrackerPage() {
     fetchInFlightRef.current = true
     setIsRefreshing(true)
 
-    const timeoutId = setTimeout(() => controller.abort(), 12000)
+    // 30s, not 12s. A first load on a weak connection is a large payload and
+    // aborting it early meant the tracker silently never updated at all.
+    const timeoutId = setTimeout(() => controller.abort(), 30000)
 
     try {
       const cacheBust = `${Date.now()}-${Math.random().toString(36).slice(2)}`
-      const res = await fetch(`${API_ENDPOINT}?_=${cacheBust}`, {
+
+      // Ask only for what we do not already hold. `fullResync` forces a
+      // complete refetch (first load, or after we detect we are missing points).
+      const since = fullResync ? 0 : syncTokenRef.current
+      const sinceParam = since > 0 ? `&since=${since}` : ''
+
+      const res = await fetch(`${API_ENDPOINT}?_=${cacheBust}${sinceParam}`, {
         method: 'GET',
         cache: 'no-store',
         signal: controller.signal,
@@ -640,7 +681,32 @@ export default function LiveTrackerPage() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const payload = await res.json()
       const latest = payload?.latest && typeof payload.latest === 'object' ? payload.latest : null
-      const normalizedHistory = Array.isArray(payload?.history) ? payload.history : []
+      const incomingHistory = Array.isArray(payload?.history) ? payload.history : []
+      const isDelta = payload?.delta === true
+
+      // Merge deltas into what we have; a full response replaces outright.
+      const normalizedHistory = isDelta
+        ? mergeHistory(historyRef.current, incomingHistory)
+        : sortHistory(incomingHistory)
+
+      historyRef.current = normalizedHistory
+
+      // Advance the watermark so the next poll starts from here.
+      if (Number.isFinite(payload?.syncToken) && payload.syncToken > 0) {
+        syncTokenRef.current = payload.syncToken
+      }
+
+      // If the server holds more points than we do, we have drifted out of
+      // sync (a dropped response, a cache edge). Resync fully on the next tick.
+      const serverTotal = payload?.stats?.historyPoints
+      serverTotalRef.current = Number.isFinite(serverTotal) ? serverTotal : null
+      if (
+        isDelta &&
+        Number.isFinite(serverTotal) &&
+        normalizedHistory.length < serverTotal
+      ) {
+        needsResyncRef.current = true
+      }
 
       // Freshest by GPS TIME, not by arrival. During a backlog replay the
       // last-arrived point is usually the OLDEST position in the queue.
@@ -672,6 +738,8 @@ export default function LiveTrackerPage() {
         setData(null)
         setHistory([])
         setBacklogCount(0)
+        historyRef.current = []
+        syncTokenRef.current = 0
         setApiStatus('waiting')
         setTrackingStatus('waiting')
         setError(null)
@@ -689,7 +757,14 @@ export default function LiveTrackerPage() {
       setError(null)
       setNow(Date.now())
     } catch (err) {
-      if (err.name !== 'AbortError') {
+      if (err.name === 'AbortError') {
+        // Previously swallowed. On a slow connection every fetch timed out and
+        // the page just stopped updating with no explanation -- which reads as
+        // "the runner stopped" rather than "your connection is struggling".
+        if (!controller.supersededByForce) {
+          setError('Slow connection - still trying')
+        }
+      } else {
         setError(err.message)
         setApiStatus((prev) => prev === 'loading' ? 'error' : prev)
       }
@@ -711,14 +786,16 @@ export default function LiveTrackerPage() {
   }, [])
 
   useEffect(() => {
-    fetchData({ force: true })
+    fetchData({ force: true, fullResync: true })
     let cancelled = false
     let timeoutId = null
 
     const scheduleNextPoll = () => {
       if (cancelled) return
       timeoutId = setTimeout(async () => {
-        await fetchData()
+        const resync = needsResyncRef.current
+        needsResyncRef.current = false
+        await fetchData({ fullResync: resync })
         scheduleNextPoll()
       }, POLL_INTERVAL)
     }
