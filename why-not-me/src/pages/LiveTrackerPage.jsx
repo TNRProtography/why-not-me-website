@@ -1753,13 +1753,6 @@ export default function LiveTrackerPage() {
           </div>
 
           <div className="tracker-stat">
-            <span className="tracker-stat-value">
-              {lastReceivedAt ? formatClockTime(lastReceivedAt) : '--'}
-            </span>
-            <span className="tracker-stat-label">Last Received</span>
-          </div>
-
-          <div className="tracker-stat">
             <span className="tracker-stat-value pace">
               {displayPace || '--'}
             </span>
@@ -1792,6 +1785,18 @@ export default function LiveTrackerPage() {
               {totalDistanceKm != null ? `${totalDistanceKm.toFixed(2)} km` : '--'}
             </span>
             <span className="tracker-stat-label">Distance</span>
+          </div>
+
+          <div className="tracker-stat">
+            <span className="tracker-stat-value">
+              {finishDisplay
+                ? finishDisplay.finishTime
+                : progressKm < 1
+                  ? '--'
+                  : '...'
+              }
+            </span>
+            <span className="tracker-stat-label">Est. Finish</span>
           </div>
         </motion.div>
 
