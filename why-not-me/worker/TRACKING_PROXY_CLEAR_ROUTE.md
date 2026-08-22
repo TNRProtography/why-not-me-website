@@ -1,90 +1,143 @@
-# Clear Tracking Data — route needed in `marathon-tracking-proxy`
+# Clear Tracking Data — patch for `marathon-tracking-proxy`
 
-The admin page's **Live Tracking Data** card calls a route that lives in the
-separate `marathon-tracking-proxy` worker (not this repo). Add it there.
-
-## Contract
+The admin page's **Clear Tracking Data** button calls:
 
 ```
-DELETE /admin/history
-Authorization: Bearer <TRACKING_ADMIN_SECRET>
+DELETE https://marathon-tracking-proxy.why-not-me-nicole-white.workers.dev/admin/history
+Authorization: Bearer <ADMIN_SECRET>
 ```
 
-| Response | Meaning |
+The proxy currently only serves `/` and `/live.json`, so that request 404s and
+nothing is deleted. The three edits below add the route.
+
+The proxy is the right place for this: it already binds the `LIVE_TRACKING` KV
+namespace, so it can delete the keys directly without calling the ingest worker.
+
+---
+
+## Why the data survived
+
+Position data lives across several KV keys written by the **ingest** worker:
+
+| Key | Contents |
 |---|---|
-| `200 {"success":true,"deleted":<n>}` | Wiped. `deleted` is optional; shown in the toast if present. |
-| `401` / `403` | Bad or missing secret. |
-| `404` | Route not deployed yet. |
+| `snapshot` | Pre-built blob: `latest` + `session` + a 60-point tail |
+| `latest` | Most recent position |
+| `session` | Session record, including `chunkCount` |
+| `history:<sessionId>:00000`, `:00001`, … | The track, 200 points per chunk |
+| `history-blob:<sessionId>` | Legacy single-blob history from the old worker |
+| `event:<ms>` | Non-location OwnTracks events |
+| `cheers` | Messages from supporters — **not** tracking data |
 
-The admin page handles all four cases with its own message, so you don't need
-to match the body exactly — only the status codes matter.
+Deleting only some of these leaves the trail intact, because `buildSnapshot()`
+falls back through `snapshot` → `latest`/`session` → chunks → `snap.recent`.
+Every one of those paths has to be cleared.
 
-Also add `DELETE` to the CORS allow-list and handle the `OPTIONS` preflight, or
-the browser will block the call before it reaches the worker.
+---
 
-## Implementation
-
-Adapt the storage part to however the proxy actually persists history. If it
-keeps points as individual KV entries under a prefix:
+## Edit 1 — allow DELETE through CORS
 
 ```js
-const ADMIN_PATH = '/admin/history'
-
 function corsHeaders() {
   return {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  }
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, DELETE, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  };
 }
+```
 
-// --- inside fetch(), before the existing routes ---
+Both the methods and the headers line need changing. Without `Authorization` in
+the allowed headers the browser blocks the preflight before the request is ever
+sent.
 
-if (request.method === 'OPTIONS') {
-  return new Response(null, { headers: corsHeaders() })
-}
+## Edit 2 — add the route
 
-if (url.pathname === ADMIN_PATH && request.method === 'DELETE') {
-  const token = (request.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '')
-  if (!env.TRACKING_ADMIN_SECRET || token !== env.TRACKING_ADMIN_SECRET) {
-    return Response.json({ error: 'Unauthorized.' }, { status: 401, headers: corsHeaders() })
+In `fetch()`, above the final 404:
+
+```js
+    if (url.pathname === "/admin/history" && request.method === "DELETE") {
+      return handleClearHistory(request, env);
+    }
+```
+
+## Edit 3 — add the handler
+
+```js
+async function handleClearHistory(request, env) {
+  const token = (request.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
+
+  if (!env.ADMIN_SECRET || token !== env.ADMIN_SECRET) {
+    return json({ ok: false, error: "Unauthorized" }, 401);
   }
 
-  let deleted = 0
-  let cursor
+  if (!env.LIVE_TRACKING) {
+    return json({ ok: false, error: "Missing KV binding named LIVE_TRACKING" }, 500);
+  }
+
+  // Everything except `cheers`, which is supporter messages, not tracking data.
+  const keep = new Set(["cheers"]);
+  const toDelete = [];
+  let cursor;
+
   do {
-    const page = await env.TRACKING.list({ prefix: 'point:', cursor })
-    await Promise.all(page.keys.map((k) => env.TRACKING.delete(k.name)))
-    deleted += page.keys.length
-    cursor = page.list_complete ? null : page.cursor
-  } while (cursor)
+    const listed = await env.LIVE_TRACKING.list({ cursor, limit: 1000 });
+    for (const key of listed.keys) {
+      if (!keep.has(key.name)) toDelete.push(key.name);
+    }
+    cursor = listed.list_complete ? undefined : listed.cursor;
+  } while (cursor);
 
-  // Reset whatever singleton keys the proxy keeps alongside the history,
-  // e.g. the latest position and the running point counter.
-  await env.TRACKING.delete('latest')
-  await env.TRACKING.delete('stats')
+  await Promise.all(toDelete.map(k => env.LIVE_TRACKING.delete(k)));
 
-  return Response.json({ success: true, deleted }, { headers: corsHeaders() })
+  // Drop this isolate's cached snapshot so the very next read rebuilds empty.
+  _cachedSnapshot = null;
+  _cachedAt = 0;
+
+  return json({ success: true, deleted: toDelete.length, keys: toDelete });
 }
 ```
 
-If history is instead stored as one JSON blob, replace the loop with a single
-`await env.TRACKING.delete('history')` and return the old array's length as
-`deleted`.
+Listing rather than deleting a fixed key list matters: session IDs are
+timestamped (`session-1750000000000`), so chunk key names aren't knowable in
+advance, and old sessions leave chunks behind that a fixed list would miss.
 
-## Secret
+---
+
+## Set the secret
 
 ```
-npx wrangler secret put TRACKING_ADMIN_SECRET
+npx wrangler secret put ADMIN_SECRET --name marathon-tracking-proxy
 ```
 
-Set it to the same value as the site's `EMAIL_SECRET` so the one admin login
-works for both workers. If you'd rather keep them separate, the admin page will
-need a second password field.
+Use the same value as the site's `EMAIL_SECRET`, so the single admin login works
+for both. If you'd rather keep them separate, the admin page needs a second
+password field.
 
-## Note on KV consistency
+---
 
-Cloudflare KV is eventually consistent, so the tracker page may keep serving a
-cached `live.json` for up to ~60s after a clear. The admin card's point count
-can also lag on the first refresh. Wait a minute and refresh if the number
-doesn't drop straight away.
+## Two things to expect
+
+**A stale response for a second or two.** The proxy caches the snapshot in
+memory for 2 seconds, per isolate. Clearing resets the cache in whichever
+isolate served the DELETE, but other isolates keep their copy until it expires.
+Wait a couple of seconds and hard-refresh.
+
+**The trail coming back on its own.** If OwnTracks is still running on Nicole's
+phone, it repopulates within seconds. Stop it before clearing, or you'll be
+deleting a track that immediately rebuilds.
+
+---
+
+## Fallback that works right now
+
+The ingest worker already has `POST /api/purge` behind Basic auth
+(`TRACKER_USERNAME` / `TRACKER_PASSWORD`), which does the same wipe:
+
+```
+curl -X POST -u "USERNAME:PASSWORD" https://<ingest-worker-host>/api/purge
+```
+
+Two reasons the admin button doesn't use it: it wipes `cheers` too, and putting
+the OwnTracks credentials into a browser page would expose the same login that
+authorises position writes.

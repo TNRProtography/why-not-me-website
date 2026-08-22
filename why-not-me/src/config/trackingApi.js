@@ -6,5 +6,7 @@ export const TRACKING_API_BASE = 'https://marathon-tracking-proxy.why-not-me-nic
 export const TRACKING_LIVE_ENDPOINT = `${TRACKING_API_BASE}/live.json`
 
 // Admin only: DELETE wipes all stored position history.
-// Requires `Authorization: Bearer <TRACKING_ADMIN_SECRET>`.
+// Requires `Authorization: Bearer <ADMIN_SECRET>`.
+// This route does NOT exist in the proxy by default - see
+// worker/TRACKING_PROXY_CLEAR_ROUTE.md for the patch that adds it.
 export const TRACKING_ADMIN_ENDPOINT = `${TRACKING_API_BASE}/admin/history`
