@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { COURSE_OPTIONS, DEFAULT_COURSE_ID } from '../config/courses'
+import { TRACKING_LIVE_ENDPOINT, TRACKING_ADMIN_ENDPOINT } from '../config/trackingApi'
 import './AdminPage.css'
 
 export default function AdminPage() {
@@ -271,6 +272,9 @@ export default function AdminPage() {
           </button>
         </div>
 
+        {/* Live Tracking Data */}
+        <TrackingDataCard token={token} onToast={setToast} />
+
         {/* Furthest Distance */}
         <div className="admin-card">
           <h2 className="admin-card-title">Training Progress</h2>
@@ -325,6 +329,134 @@ export default function AdminPage() {
           <DonationForm token={token} onToast={setToast} onAdded={() => setDonationsKey((k) => k + 1)} />
           <div className="admin-divider" />
           <DonationList token={token} onToast={setToast} refreshKey={donationsKey} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function TrackingDataCard({ token, onToast }) {
+  const [pointCount, setPointCount] = useState(null)
+  const [lastFix, setLastFix] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [confirmText, setConfirmText] = useState('')
+  const [clearing, setClearing] = useState(false)
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    fetch(`${TRACKING_LIVE_ENDPOINT}?_=${Date.now()}`, { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled) return
+        const count = d?.stats?.historyPoints
+        setPointCount(Number.isFinite(count) ? count : 0)
+        const ts = d?.location?.timestamp || d?.time
+        setLastFix(ts ? new Date(ts < 1e12 ? ts * 1000 : ts) : null)
+        setLoading(false)
+      })
+      .catch(() => {
+        if (cancelled) return
+        setPointCount(null)
+        setLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [refreshKey])
+
+  const armed = confirmText.trim().toUpperCase() === 'CLEAR'
+
+  const handleClear = async () => {
+    if (!armed || clearing) return
+    if (!window.confirm(
+      'Permanently delete all stored tracking positions?\n\n' +
+      'The trail, splits and elapsed time on the tracker page will reset to empty. ' +
+      'This cannot be undone.'
+    )) return
+
+    setClearing(true)
+    onToast(null)
+    try {
+      const res = await fetch(TRACKING_ADMIN_ENDPOINT, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.status === 401 || res.status === 403) {
+        onToast({ ok: false, msg: 'Tracking worker rejected the admin secret.' })
+        return
+      }
+      if (res.status === 404) {
+        onToast({ ok: false, msg: 'Tracking worker has no /admin/history route yet.' })
+        return
+      }
+      const d = await res.json().catch(() => ({}))
+      if (res.ok && d.success !== false) {
+        const n = Number.isFinite(d.deleted) ? ` (${d.deleted} points)` : ''
+        onToast({ ok: true, msg: `Tracking data cleared${n}.` })
+        setConfirmText('')
+        setRefreshKey((k) => k + 1)
+      } else {
+        onToast({ ok: false, msg: d.error || 'Clear failed.' })
+      }
+    } catch {
+      onToast({ ok: false, msg: 'Could not reach the tracking worker.' })
+    } finally {
+      setClearing(false)
+    }
+  }
+
+  return (
+    <div className="admin-card">
+      <h2 className="admin-card-title">Live Tracking Data</h2>
+      <p className="admin-card-desc">
+        Positions recorded by Nicole's phone. Clearing wipes the trail, splits and elapsed
+        time on the tracker page so a fresh run starts from zero. Useful after a training
+        run or a test. This does not affect donations, dedications or any other settings.
+      </p>
+
+      <div className="admin-stat-row">
+        <div>
+          <span className="admin-stat-label">Stored points</span>
+          <span className="admin-stat-value">
+            {loading ? '...' : pointCount == null ? 'Unavailable' : pointCount.toLocaleString()}
+          </span>
+        </div>
+        <div>
+          <span className="admin-stat-label">Last fix</span>
+          <span className="admin-stat-value">
+            {loading ? '...' : lastFix ? lastFix.toLocaleString() : 'None'}
+          </span>
+        </div>
+        <button
+          type="button"
+          className="admin-btn-ghost"
+          onClick={() => setRefreshKey((k) => k + 1)}
+          disabled={loading}
+        >
+          Refresh
+        </button>
+      </div>
+
+      <div className="admin-danger">
+        <p className="admin-danger-note">
+          Type <strong>CLEAR</strong> to enable the button. This cannot be undone.
+        </p>
+        <div className="admin-danger-row">
+          <input
+            type="text"
+            value={confirmText}
+            onChange={(e) => setConfirmText(e.target.value)}
+            placeholder="CLEAR"
+            aria-label="Type CLEAR to confirm"
+          />
+          <button
+            type="button"
+            className="admin-btn-danger"
+            disabled={!armed || clearing}
+            onClick={handleClear}
+          >
+            {clearing ? 'Clearing...' : 'Clear Tracking Data'}
+          </button>
         </div>
       </div>
     </div>

@@ -3,10 +3,10 @@ import { motion } from 'framer-motion'
 import PageTransition from '../components/PageTransition'
 import { trackLiveTrackerView, trackLiveTrackerMapInteraction, trackSplitMarkerClick, trackElevationProfileInteraction, trackTrackerDataStatus, trackMapZoomChange } from '../utils/analytics'
 import { useSiteConfig } from '../config/siteConfig'
+import { TRACKING_LIVE_ENDPOINT } from '../config/trackingApi'
 import './LiveTrackerPage.css'
 
-const API_BASE = 'https://marathon-tracking-proxy.why-not-me-nicole-white.workers.dev'
-const API_ENDPOINT = `${API_BASE}/live.json`
+const API_ENDPOINT = TRACKING_LIVE_ENDPOINT
 const POLL_INTERVAL = 3000
 
 // Course-specific values (KML route, map start view, distance, split markers,
