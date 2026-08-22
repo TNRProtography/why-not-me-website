@@ -2,16 +2,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import PageTransition from '../components/PageTransition'
 import { trackLiveTrackerView, trackLiveTrackerMapInteraction, trackSplitMarkerClick, trackElevationProfileInteraction, trackTrackerDataStatus, trackMapZoomChange } from '../utils/analytics'
+import { useSiteConfig } from '../config/siteConfig'
 import './LiveTrackerPage.css'
 
 const API_BASE = 'https://marathon-tracking-proxy.why-not-me-nicole-white.workers.dev'
 const API_ENDPOINT = `${API_BASE}/live.json`
 const POLL_INTERVAL = 3000
-const KML_ROUTE_URL = '/data/queenstown-marathon.kml'
 
-// Queenstown Marathon start area - default when no tracker data
-const DEFAULT_CENTER = [-45.0312, 168.6626]
-const DEFAULT_ZOOM = 13
+// Course-specific values (KML route, map start view, distance, split markers,
+// spectator zones) now live in src/config/courses.js and are selected from the
+// admin page. See `course` inside LiveTrackerPage below.
 
 const SITE_COLORS = {
   gold: '#A88E5D',
@@ -36,15 +36,6 @@ const BASEMAPS = {
   },
 }
 const BASEMAP = BASEMAPS.dark
-
-const MARATHON_DISTANCE_KM = 42.2
-const SPLIT_MARKERS_KM = [1, 5, 10, 15, 20, 21.1, 25, 30, 35, 40]
-const SPECTATOR_ZONES = [
-  { id: 'zone-1', label: 'Spectator Zone 1', lat: -44.988056, lng: 168.811444 },
-  { id: 'zone-2', label: 'Spectator Zone 2', lat: -44.997111, lng: 168.756722 },
-  { id: 'zone-3', label: 'Spectator Zone 3', lat: -45.030639, lng: 168.659472 },
-  { id: 'zone-4', label: 'Spectator Zone 4', lat: -45.029111, lng: 168.66 },
-]
 
 function formatAge(seconds) {
   if (seconds == null) return ''
@@ -416,6 +407,14 @@ function createCourseMarkerIcon(L, label, type) {
 }
 
 export default function LiveTrackerPage() {
+  // Which course to draw. Chosen in the admin page; falls back to Queenstown.
+  const { trackerCourse: course } = useSiteConfig()
+  const MARATHON_DISTANCE_KM = course.distanceKm
+  const SPLIT_MARKERS_KM = course.splitMarkersKm
+  const SPECTATOR_ZONES = course.spectatorZones
+  const DEFAULT_CENTER = course.defaultCenter
+  const DEFAULT_ZOOM = course.defaultZoom
+
   const mapContainerRef = useRef(null)
   const mapRef = useRef(null)
   const tileLayerRef = useRef(null)
@@ -449,7 +448,7 @@ export default function LiveTrackerPage() {
   // Server's total point count, so we can spot a desync and resync in full.
   const serverTotalRef = useRef(null)
   const [kmlTrackPath, setKmlTrackPath] = useState([])
-  const [kmlSourceName, setKmlSourceName] = useState('queenstown-marathon.kml')
+  const [kmlSourceName, setKmlSourceName] = useState(course.kmlSourceName)
   const [kmlError, setKmlError] = useState(null)
   const [mapReady, setMapReady] = useState(false)
   const [error, setError] = useState(null)
@@ -491,7 +490,7 @@ export default function LiveTrackerPage() {
       progressKm: Math.min(MARATHON_DISTANCE_KM, cumKm),
       splitTimes: out,
     }
-  }, [sortedHistory])
+  }, [sortedHistory, SPLIT_MARKERS_KM, MARATHON_DISTANCE_KM])
   const splitTimes = raceProgress.splitTimes
   const lastReceivedAt = useMemo(() => getLatestReceivedAt(data, sortedHistory), [data, sortedHistory])
   const lastReceivedAgeSeconds = lastReceivedAt
@@ -529,24 +528,24 @@ export default function LiveTrackerPage() {
     let isMounted = true
     trackLiveTrackerView()
 
-    fetch(KML_ROUTE_URL)
+    fetch(course.kmlUrl)
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         return res.text()
       })
       .then((kmlText) => {
         if (!isMounted) return
-        loadKmlFromText(kmlText, 'queenstown-marathon.kml')
+        loadKmlFromText(kmlText, course.kmlSourceName)
       })
       .catch((err) => {
-        console.warn('Could not load Queenstown Marathon KML route', err)
+        console.warn(`Could not load ${course.label} KML route`, err)
         if (isMounted) setKmlError('Could not load default KML route.')
       })
 
     return () => {
       isMounted = false
     }
-  }, [loadKmlFromText])
+  }, [loadKmlFromText, course])
 
   // Keep relative received times honest while the page is open (1s cadence).
   const [nicoleImgLoaded, setNicoleImgLoaded] = useState(false)
@@ -982,6 +981,18 @@ export default function LiveTrackerPage() {
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ---- Keep the map view on the right course ----
+  // The admin config loads asynchronously, so the map is usually created with
+  // the fallback course's centre before we know which course is actually
+  // selected. Once the course settles, snap the view over - but only while we
+  // have no live position and have not already panned to Nicole.
+  useEffect(() => {
+    if (!mapReady || !mapRef.current) return
+    if (hasInitialPanRef.current) return
+    if (data?.location) return
+    mapRef.current.setView(DEFAULT_CENTER, DEFAULT_ZOOM, { animate: false })
+  }, [mapReady, course]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // ---- Draw KML course path ----
   useEffect(() => {
     if (!mapRef.current || !routeLayerRef.current || !window.L) return
@@ -1101,7 +1112,7 @@ export default function LiveTrackerPage() {
         nextIdx += 1
       }
     }
-  }, [mapReady, kmlTrackPath, splitTimes, raceProgress.startTimeMs, showMarkers])
+  }, [mapReady, kmlTrackPath, splitTimes, raceProgress.startTimeMs, showMarkers, SPLIT_MARKERS_KM])
 
   useEffect(() => {
     if (!mapReady || !window.L || !spectatorLayerRef.current) return
@@ -1115,7 +1126,7 @@ export default function LiveTrackerPage() {
       }).bindTooltip(zone.label, { direction: 'top', offset: [0, -14], className: 'course-tooltip' })
         .addTo(spectatorLayerRef.current)
     })
-  }, [mapReady, showMarkers])
+  }, [mapReady, showMarkers, SPECTATOR_ZONES])
 
   // ---- Update marker + trail when data changes ----
   useEffect(() => {
@@ -1367,14 +1378,14 @@ export default function LiveTrackerPage() {
     }
 
     // Km ticks
-    const kmLabels = [0, 5, 10, 15, 20, 25, 30, 35, 40, 42.2]
+    const kmLabels = course.elevationTicksKm
     kmLabels.forEach(km => {
       if (km > totalKm) return
       const x = toX(km)
       ctx.font = 'bold 7px Montserrat, sans-serif'
       ctx.fillStyle = 'rgba(245,243,236,0.2)'
       ctx.textAlign = 'center'
-      ctx.fillText(km === 42.2 ? '42.2' : `${km}`, x, h - padBot + 12)
+      ctx.fillText(Number.isInteger(km) ? `${km}` : km.toFixed(1), x, h - padBot + 12)
     })
 
     // Hover cursor (only when user is actively hovering)
@@ -1439,7 +1450,7 @@ export default function LiveTrackerPage() {
         ctx.fillText('🏃‍♀️', nx, ny)
       }
     }
-  }, [elevProfile])
+  }, [elevProfile, course])
 
   // ---- Elevation hover interaction ----
   const elevHoverTrackedRef = useRef(false)
@@ -1741,7 +1752,7 @@ export default function LiveTrackerPage() {
       finishTimeMs: Math.round(finishTimeMs),
       confidence,
     }
-  }, [progressKm, raceProgress.startTimeMs, sortedHistory, elevProfile, kmlTrackPath])
+  }, [progressKm, raceProgress.startTimeMs, sortedHistory, elevProfile, kmlTrackPath, MARATHON_DISTANCE_KM])
 
   // Format finish estimate for display
   const finishDisplay = useMemo(() => {
@@ -1801,7 +1812,7 @@ export default function LiveTrackerPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.1 }}
             >
-              Live Marathon Tracker
+              {course.trackerLabel}
             </motion.p>
             <motion.h1
               initial={{ opacity: 0, y: 24 }}
@@ -1954,7 +1965,7 @@ export default function LiveTrackerPage() {
           {isWaiting && (
             <div className="map-waiting-overlay">
               <div className="map-waiting-content">
-                <p className="map-waiting-heading">Queenstown, New Zealand</p>
+                <p className="map-waiting-heading">{course.locationName}</p>
                 <p className="map-waiting-sub">Tracking will appear here on race day</p>
               </div>
             </div>
@@ -1979,9 +1990,18 @@ export default function LiveTrackerPage() {
             </div>
             <div className="elev-section-footer">
               <div className="elev-legend-inline">
-                <span>{Math.round(elevProfile.minE)} m</span>
-                <div className="elev-legend-bar" />
-                <span>{Math.round(elevProfile.maxE)} m</span>
+                {course.hasElevation ? (
+                  <>
+                    <span>{Math.round(elevProfile.minE)} m</span>
+                    <div className="elev-legend-bar" />
+                    <span>{Math.round(elevProfile.maxE)} m</span>
+                  </>
+                ) : (
+                  <>
+                    <div className="elev-legend-bar" />
+                    <span>Course profile</span>
+                  </>
+                )}
               </div>
               <div className="elev-progress-text">
                 {progressPct.toFixed(1)}% · {progressKm.toFixed(2)} km covered · {(MARATHON_DISTANCE_KM - progressKm).toFixed(2)} km remaining

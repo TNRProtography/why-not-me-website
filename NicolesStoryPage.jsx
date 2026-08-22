@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { COURSE_OPTIONS, DEFAULT_COURSE_ID } from '../config/courses'
 import './AdminPage.css'
 
 export default function AdminPage() {
@@ -245,6 +246,21 @@ export default function AdminPage() {
                 onChange={(e) => updateField('tracker', 'endDate', e.target.value)}
               />
             </div>
+          </div>
+          <div className="admin-field">
+            <label>Course</label>
+            <select
+              value={tracker.course || DEFAULT_COURSE_ID}
+              onChange={(e) => updateField('tracker', 'course', e.target.value)}
+            >
+              {COURSE_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+            <p className="admin-field-hint">
+              Sets which route the tracker map draws, along with its start view, split
+              markers and total distance. Nothing else on the site changes.
+            </p>
           </div>
           <button
             className="admin-btn"
