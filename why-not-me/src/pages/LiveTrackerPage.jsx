@@ -408,7 +408,7 @@ function createCourseMarkerIcon(L, label, type) {
 
 export default function LiveTrackerPage() {
   // Which course to draw. Chosen in the admin page; falls back to Queenstown.
-  const { trackerCourse: course } = useSiteConfig()
+  const { trackerCourse: course, trackerFinished: raceFinished } = useSiteConfig()
   const MARATHON_DISTANCE_KM = course.distanceKm
   const SPLIT_MARKERS_KM = course.splitMarkersKm
   const SPECTATOR_ZONES = course.spectatorZones
@@ -566,6 +566,12 @@ export default function LiveTrackerPage() {
 
   // Tracking status is based on how old the last received location is.
   useEffect(() => {
+    // Race marked finished in the admin page: the data is meant to be old, so
+    // hold the final state rather than reporting a stale or lost signal.
+    if (raceFinished && lastReceivedAt) {
+      setTrackingStatus('finished')
+      return
+    }
     if (apiStatus === 'waiting' || !lastReceivedAt) {
       setTrackingStatus('waiting')
       return
@@ -577,7 +583,7 @@ export default function LiveTrackerPage() {
     } else {
       setTrackingStatus('live')
     }
-  }, [apiStatus, lastReceivedAt, lastReceivedAgeSeconds])
+  }, [apiStatus, lastReceivedAt, lastReceivedAgeSeconds, raceFinished])
 
   // Track status changes for analytics
   useEffect(() => {
@@ -791,6 +797,8 @@ export default function LiveTrackerPage() {
 
     const scheduleNextPoll = () => {
       if (cancelled) return
+      // Nothing more is coming once the race is over - one fetch is enough.
+      if (raceFinished) return
       timeoutId = setTimeout(async () => {
         const resync = needsResyncRef.current
         needsResyncRef.current = false
@@ -827,7 +835,7 @@ export default function LiveTrackerPage() {
       if (fetchControllerRef.current) fetchControllerRef.current.abort()
       if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current)
     }
-  }, [fetchData])
+  }, [fetchData, raceFinished])
 
   // ---- Load Leaflet from CDN (guard against duplicate injection) ----
   useEffect(() => {
@@ -1523,13 +1531,16 @@ export default function LiveTrackerPage() {
 
   // ---- Derived display values ----
   const isWaiting = apiStatus === 'waiting' && !lastReceivedAt
-  const signalClass = trackingStatus === 'dead' ? 'offline'
+  const isFinished = trackingStatus === 'finished'
+  const signalClass = isFinished ? 'finished'
+    : trackingStatus === 'dead' ? 'offline'
     : trackingStatus === 'stale' ? 'stale'
     : trackingStatus === 'live' ? ''
     : isWaiting ? 'offline'
     : lastReceivedAgeSeconds == null ? 'offline'
     : ''
-  const signalLabel = isWaiting ? 'Waiting'
+  const signalLabel = isFinished ? 'Finished'
+    : isWaiting ? 'Waiting'
     : trackingStatus === 'dead' ? 'Tracking Lost'
     : trackingStatus === 'stale' ? 'Signal Stale'
     : trackingStatus === 'live' ? 'Live'
@@ -1537,7 +1548,24 @@ export default function LiveTrackerPage() {
     : 'Live'
   const speed = data?.speed || {}
   const session = data?.session || {}
-  const sessionDuration = formatDuration(raceProgress.startTimeMs || session.startedAt, now)
+  // Once finished, freeze the clock at the last GPS fix instead of letting it
+  // tick on forever.
+  const sessionDuration = formatDuration(
+    raceProgress.startTimeMs || session.startedAt,
+    isFinished && lastReceivedAt ? lastReceivedAt.getTime() : now
+  )
+  // Final elapsed time, used in place of the live finish prediction.
+  const finalTimeFormatted = (() => {
+    const startMs = raceProgress.startTimeMs || (session.startedAt ? new Date(session.startedAt).getTime() : null)
+    if (!isFinished || !startMs || !lastReceivedAt) return null
+    const totalSec = Math.max(0, Math.round((lastReceivedAt.getTime() - startMs) / 1000))
+    const h = Math.floor(totalSec / 3600)
+    const m = Math.floor((totalSec % 3600) / 60)
+    const sec = totalSec % 60
+    return h > 0
+      ? `${h}h ${String(m).padStart(2, '0')}m`
+      : `${m}m ${String(sec).padStart(2, '0')}s`
+  })()
 
   // Compute speed and pace with full precision from raw data
   // Prefer calculatedKmh (higher precision) over worker-rounded kmh
@@ -1836,22 +1864,26 @@ export default function LiveTrackerPage() {
               {signalLabel}
             </span>
             <span className="tracker-stat-label">
-              {lastReceivedAgeSeconds != null ? formatAge(lastReceivedAgeSeconds) : 'Awaiting signal'}
+              {isFinished
+                ? 'Race complete'
+                : lastReceivedAgeSeconds != null ? formatAge(lastReceivedAgeSeconds) : 'Awaiting signal'}
             </span>
           </div>
 
           <div className="tracker-stat">
             <span className="tracker-stat-value pace">
-              {displayPace || '--'}
+              {isFinished ? (avgPace || '--') : (displayPace || '--')}
             </span>
-            <span className="tracker-stat-label">Current Pace</span>
+            <span className="tracker-stat-label">{isFinished ? 'Final Pace' : 'Current Pace'}</span>
           </div>
 
           <div className="tracker-stat">
             <span className="tracker-stat-value">
-              {displayKmh != null ? `${formatSpeedKmh(displayKmh)} km/h` : '--'}
+              {isFinished
+                ? (avgKmh != null ? `${formatSpeedKmh(avgKmh)} km/h` : '--')
+                : (displayKmh != null ? `${formatSpeedKmh(displayKmh)} km/h` : '--')}
             </span>
-            <span className="tracker-stat-label">Current Speed</span>
+            <span className="tracker-stat-label">{isFinished ? 'Final Speed' : 'Current Speed'}</span>
           </div>
 
           <div className="tracker-stat">
@@ -1877,14 +1909,16 @@ export default function LiveTrackerPage() {
 
           <div className="tracker-stat">
             <span className="tracker-stat-value">
-              {finishDisplay
-                ? finishDisplay.finishTime
-                : progressKm < 1
-                  ? '--'
-                  : '...'
+              {isFinished
+                ? (finalTimeFormatted || '--')
+                : finishDisplay
+                  ? finishDisplay.finishTime
+                  : progressKm < 1
+                    ? '--'
+                    : '...'
               }
             </span>
-            <span className="tracker-stat-label">Est. Finish</span>
+            <span className="tracker-stat-label">{isFinished ? 'Final Time' : 'Est. Finish'}</span>
           </div>
         </motion.div>
 
@@ -2023,21 +2057,27 @@ export default function LiveTrackerPage() {
         </div>
         <div className="tracker-info-strip">
           <div className="tracker-info-card">
-            <div className="tracker-info-card-label">Estimated Finish</div>
+            <div className="tracker-info-card-label">{isFinished ? 'Finish' : 'Estimated Finish'}</div>
             <div className="tracker-info-card-value">
-              {finishDisplay
-                ? `${finishDisplay.finishTime} (${finishDisplay.totalFormatted} total)`
-                : progressKm < 1
-                  ? 'Kicks in after 1km'
-                  : 'Calculating...'
+              {isFinished
+                ? (finalTimeFormatted
+                    ? `${lastReceivedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} (${finalTimeFormatted} total)`
+                    : 'Finished')
+                : finishDisplay
+                  ? `${finishDisplay.finishTime} (${finishDisplay.totalFormatted} total)`
+                  : progressKm < 1
+                    ? 'Kicks in after 1km'
+                    : 'Calculating...'
               }
             </div>
             <div className="tracker-info-card-sub">
-              {finishDisplay
-                ? `${finishDisplay.remainingFormatted} remaining · ${finishDisplay.confidenceIcon} ${finishDisplay.confidenceLabel}`
-                : progressKm < 1
-                  ? 'Needs pace and elevation data to predict'
-                  : 'Awaiting enough GPS data'
+              {isFinished
+                ? `${progressKm.toFixed(2)} km covered · Unofficial`
+                : finishDisplay
+                  ? `${finishDisplay.remainingFormatted} remaining · ${finishDisplay.confidenceIcon} ${finishDisplay.confidenceLabel}`
+                  : progressKm < 1
+                    ? 'Needs pace and elevation data to predict'
+                    : 'Awaiting enough GPS data'
               }
             </div>
           </div>

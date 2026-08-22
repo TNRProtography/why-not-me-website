@@ -13,6 +13,8 @@ const DEFAULT_CONFIG = {
     // Which course the live tracker map draws: 'queenstown' | 'bottleLake'
     // (see src/config/courses.js)
     course: 'queenstown',
+    // Race over: freeze the tracker on its final state, no stale-data warnings
+    finished: false,
   },
   furthestDistance: {
     km: 20,

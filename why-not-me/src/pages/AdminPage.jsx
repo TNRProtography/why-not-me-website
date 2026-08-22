@@ -248,6 +248,22 @@ export default function AdminPage() {
               />
             </div>
           </div>
+          <div className="admin-row">
+            <label className="admin-toggle">
+              <input
+                type="checkbox"
+                checked={tracker.finished || false}
+                onChange={(e) => updateField('tracker', 'finished', e.target.checked)}
+              />
+              <span>Marathon finished</span>
+            </label>
+          </div>
+          <p className="admin-field-hint" style={{ marginTop: '-8px', marginBottom: '16px' }}>
+            Turn on once Nicole crosses the line. The map, route and all stats stay exactly
+            as they are, but the "signal stale" and "tracking lost" warnings stop, the clock
+            freezes at her last GPS fix, and the estimated finish becomes her final time.
+            Polling stops too, so the page settles instead of hunting for new data.
+          </p>
           <div className="admin-field">
             <label>Course</label>
             <select

@@ -8,6 +8,7 @@ const SiteConfigContext = createContext({
   trackerEnabled: false,
   furthestDistance: { km: 20, label: 'Longest run so far', quote: '' },
   trackerCourse: getCourse(DEFAULT_COURSE_ID),
+  trackerFinished: false,
   raw: null,
 })
 
@@ -60,6 +61,9 @@ export function SiteConfigProvider({ children }) {
     furthestDistance: config?.furthestDistance || { km: 20, label: 'Longest run so far', quote: '' },
     // Which race course the tracker map should show. Set in the admin page.
     trackerCourse: getCourse(config?.tracker?.course || DEFAULT_COURSE_ID),
+    // Race is over: freeze the tracker on its final state instead of warning
+    // that the signal has gone stale.
+    trackerFinished: config?.tracker?.finished || false,
     raw: config,
   }
 
