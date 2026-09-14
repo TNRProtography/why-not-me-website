@@ -87,6 +87,12 @@ export function trackDonationSortChange(sortBy) {
   })
 }
 
+export function trackDonationBannerShown(hasMessage) {
+  trackEvent('donation_banner_shown', {
+    has_message: !!hasMessage,
+  })
+}
+
 // ── Dedicate a Km ────────────────────────────────────────────
 
 export function trackKmClick(km, status) {

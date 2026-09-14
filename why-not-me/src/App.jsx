@@ -5,6 +5,7 @@ import Footer from './components/Footer'
 import ScrollToTop from './components/ScrollToTop'
 import ScrollAtmosphere from './components/ScrollAtmosphere'
 import DonationGoalTracker from './components/DonationGoalTracker'
+import DonationCelebrationBanner from './components/DonationCelebrationBanner'
 import HomePage from './pages/HomePage'
 import DocumentaryPage from './pages/DocumentaryPage'
 import DonationProgressPage from './pages/DonationProgressPage'
@@ -15,6 +16,7 @@ import LiveTrackerPage from './pages/LiveTrackerPage'
 import NicolesStoryPage from './pages/NicolesStoryPage'
 import AdminPage from './pages/AdminPage'
 import { SiteConfigProvider, useSiteConfig } from './config/siteConfig'
+import { DonationFeedProvider } from './config/donationFeed'
 import { trackPageView, initScrollTracking, initEngagementTracking, trackVisibilityChange } from './utils/analytics'
 
 function PageViewTracker() {
@@ -148,6 +150,7 @@ function AppInner() {
           <PageViewTracker />
           <ScrollToTop />
           <ScrollAtmosphere />
+          <DonationCelebrationBanner />
           <header className="site-header-sticky">
             <Nav
               trackerEnabled={trackerEnabled}
@@ -168,7 +171,9 @@ export default function App() {
   return (
     <BrowserRouter>
       <SiteConfigProvider>
-        <AppInner />
+        <DonationFeedProvider>
+          <AppInner />
+        </DonationFeedProvider>
       </SiteConfigProvider>
     </BrowserRouter>
   )

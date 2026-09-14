@@ -220,7 +220,18 @@ async function getAllPublicDonations() {
   return donations.slice(0, MAX_DONATIONS)
 }
 
-async function handleProgress() {
+// The frontend polls this frequently so visitors see new donations show up
+// live. Rather than let every visitor's poll trigger its own Raisely fetch
+// (which paginates through the full donation list), share one edge-cached
+// response across everyone for CACHE_TTL_SECONDS - Raisely only gets hit
+// once per cache window, no matter how many people are watching.
+async function handleProgress(request) {
+  const cache = caches.default
+  const cacheKey = new Request(new URL('/api/raisely-progress', request.url).toString(), request)
+
+  const cached = await cache.match(cacheKey)
+  if (cached) return cached
+
   const profile = await getProfile() // required
 
   let donations = []
@@ -230,11 +241,14 @@ async function handleProgress() {
     donations = []
   }
 
-  return jsonResponse({
+  const response = jsonResponse({
     profile: normaliseProfile(profile),
     donations: donations.map(normaliseDonation),
     updatedAt: new Date().toISOString(),
   })
+
+  await cache.put(cacheKey, response.clone())
+  return response
 }
 
 /* Serve a static asset, falling back to index.html for SPA routes. */
@@ -1150,7 +1164,7 @@ export default {
 
     if (url.pathname === '/api/raisely-progress') {
       try {
-        return await handleProgress()
+        return await handleProgress(request)
       } catch (error) {
         return jsonResponse({ error: 'Unable to load Raisely donation progress right now.' }, 502)
       }

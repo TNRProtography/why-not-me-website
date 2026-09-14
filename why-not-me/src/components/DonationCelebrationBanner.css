@@ -1,0 +1,94 @@
+.donation-banner-slot {
+  position: fixed;
+  left: 0;
+  right: 0;
+  z-index: 2000;
+  display: flex;
+  justify-content: center;
+  padding: 0 16px;
+  pointer-events: none;
+}
+
+.donation-banner {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  max-width: min(440px, 100%);
+  padding: 14px 16px;
+  background: rgba(13, 13, 13, 0.94);
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--gold, #A88E5D);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(168, 142, 93, 0.18);
+  border-radius: 4px;
+}
+
+.donation-banner__spark {
+  flex: none;
+  color: var(--gold, #A88E5D);
+  font-size: 18px;
+  line-height: 1.4;
+  animation: donation-banner-spark 1.6s ease-in-out infinite;
+}
+
+@keyframes donation-banner-spark {
+  0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.85; }
+  50% { transform: scale(1.25) rotate(20deg); opacity: 1; }
+}
+
+.donation-banner__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.donation-banner__headline {
+  margin: 0;
+  color: var(--white, #F5F3EC);
+  font-family: 'Montserrat', Arial, Helvetica, sans-serif;
+  font-size: 13.5px;
+  line-height: 1.4;
+  letter-spacing: 0.2px;
+}
+
+.donation-banner__headline strong {
+  color: var(--gold, #A88E5D);
+  font-weight: 800;
+}
+
+.donation-banner__message {
+  margin: 6px 0 0;
+  color: var(--warm, #CBB299);
+  font-family: 'Montserrat', Arial, Helvetica, sans-serif;
+  font-size: 12.5px;
+  font-style: italic;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.donation-banner__dismiss {
+  flex: none;
+  margin: -4px -4px 0 0;
+  padding: 4px 8px;
+  background: transparent;
+  border: none;
+  color: var(--white-50, rgba(245, 243, 236, 0.5));
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.donation-banner__dismiss:hover,
+.donation-banner__dismiss:focus-visible {
+  color: var(--white, #F5F3EC);
+}
+
+@media (max-width: 480px) {
+  .donation-banner-slot {
+    padding: 0 10px;
+  }
+
+  .donation-banner {
+    padding: 12px 12px;
+  }
+}

@@ -19,9 +19,15 @@ const SITE_COLORS = {
   white: '#F5F3EC',
 }
 
+// CARTO now requires a (free) API key on its basemap tiles - without it every
+// tile is served with an "API KEY REQUIRED" watermark. Get one at
+// https://carto.com/basemaps/apikey/ and set it as VITE_CARTO_API_KEY.
+const CARTO_API_KEY = import.meta.env.VITE_CARTO_API_KEY || ''
+const CARTO_KEY_PARAM = CARTO_API_KEY ? `?key=${CARTO_API_KEY}` : ''
+
 const BASEMAPS = {
   dark: {
-    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    url: `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png${CARTO_KEY_PARAM}`,
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
     label: 'Dark',
     className: 'basemap-dark',
