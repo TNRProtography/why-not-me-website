@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useDonationFeed, formatDonationCurrency } from '../config/donationFeed'
 import { trackDonationBannerShown } from '../utils/analytics'
@@ -7,6 +7,51 @@ import './DonationCelebrationBanner.css'
 const DISPLAY_MS = 7000
 const DISPLAY_MS_WITH_MESSAGE = 10000
 const GAP_MS = 500
+
+const CONFETTI_COLORS = ['#A88E5D', '#CBB299', '#F5F3EC', '#D4A020', '#D96030']
+const CONFETTI_COUNT = 26
+
+// A quick, on-brand confetti burst over the banner. Re-generated fresh (via
+// `seed` as the key) for every new donation so it always replays from the top.
+//
+// Driven by framer-motion (JS, per-element inline styles) rather than a CSS
+// @keyframes animation: the site has a blanket "disable decorative motion"
+// rule (`*, *::before, *::after { animation: none !important }` in
+// global.css) that would silently no-op a plain CSS animation here.
+function ConfettiBurst({ seed }) {
+  const pieces = useMemo(() => {
+    return Array.from({ length: CONFETTI_COUNT }, (_, i) => {
+      const angle = (Math.random() - 0.5) * Math.PI * 0.9 - Math.PI / 2 // upward-ish spread
+      const distance = 60 + Math.random() * 90
+      return {
+        id: `${seed}-${i}`,
+        tx: Math.cos(angle) * distance,
+        ty: Math.sin(angle) * distance + 40 + Math.random() * 40, // gravity drop
+        rot: Math.round((Math.random() - 0.5) * 540),
+        size: 5 + Math.round(Math.random() * 5),
+        color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+        delay: Math.random() * 0.12,
+        duration: 0.9 + Math.random() * 0.5,
+        round: i % 3 === 0,
+      }
+    })
+  }, [seed])
+
+  return (
+    <div className="donation-confetti" aria-hidden="true">
+      {pieces.map((p) => (
+        <motion.span
+          key={p.id}
+          className={`donation-confetti__piece${p.round ? ' donation-confetti__piece--round' : ''}`}
+          style={{ width: p.size, height: p.size, background: p.color }}
+          initial={{ opacity: 1, x: 0, y: 0, rotate: 0 }}
+          animate={{ opacity: 0, x: p.tx, y: p.ty, rotate: p.rot }}
+          transition={{ delay: p.delay, duration: p.duration, ease: [0.2, 0.7, 0.4, 1] }}
+        />
+      ))}
+    </div>
+  )
+}
 
 // Sits above every page. When the shared donation feed spots a donation it
 // hasn't seen before, this queues it up and shows a little "just donated"
@@ -77,7 +122,22 @@ export default function DonationCelebrationBanner() {
             exit={{ opacity: 0, y: -20, scale: 0.97 }}
             transition={{ type: 'spring', stiffness: 320, damping: 26 }}
           >
-            <span className="donation-banner__spark" aria-hidden="true">✦</span>
+            <motion.div
+              className="donation-banner__glow"
+              aria-hidden="true"
+              initial={{ boxShadow: '0 0 0 6px rgba(168, 142, 93, 0.45)' }}
+              animate={{ boxShadow: '0 0 0 1px rgba(168, 142, 93, 0)' }}
+              transition={{ duration: 1.1, ease: 'easeOut' }}
+            />
+            <ConfettiBurst seed={active.id || active.seq} />
+            <motion.span
+              className="donation-banner__spark"
+              aria-hidden="true"
+              animate={{ scale: [1, 1.25, 1], rotate: [0, 20, 0], opacity: [0.85, 1, 0.85] }}
+              transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+            >
+              ✦
+            </motion.span>
             <div className="donation-banner__body">
               <p className="donation-banner__headline">
                 <strong>{active.name || 'Someone'}</strong> just donated{' '}

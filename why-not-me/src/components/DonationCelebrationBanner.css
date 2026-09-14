@@ -10,6 +10,7 @@
 }
 
 .donation-banner {
+  position: relative;
   pointer-events: auto;
   display: flex;
   align-items: flex-start;
@@ -21,19 +22,40 @@
   border: 1px solid var(--gold, #A88E5D);
   box-shadow: 0 10px 32px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(168, 142, 93, 0.18);
   border-radius: 4px;
+  overflow: visible;
+}
+
+.donation-banner__glow {
+  position: absolute;
+  inset: 0;
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+.donation-confetti {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.donation-confetti__piece {
+  position: absolute;
+  top: 6px;
+  left: 28px;
+  border-radius: 1px;
+}
+
+.donation-confetti__piece--round {
+  border-radius: 50%;
 }
 
 .donation-banner__spark {
+  display: inline-block;
   flex: none;
   color: var(--gold, #A88E5D);
   font-size: 18px;
   line-height: 1.4;
-  animation: donation-banner-spark 1.6s ease-in-out infinite;
-}
-
-@keyframes donation-banner-spark {
-  0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.85; }
-  50% { transform: scale(1.25) rotate(20deg); opacity: 1; }
 }
 
 .donation-banner__body {
