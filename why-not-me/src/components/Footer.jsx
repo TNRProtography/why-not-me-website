@@ -62,9 +62,6 @@ export default function Footer() {
           <a href="https://www.tnrprotography.co.nz" target="_blank" rel="noopener noreferrer" onClick={() => trackSponsorClick('TNR Protography', 'https://www.tnrprotography.co.nz')}>
             <img src="/images/sponsors/tnr-protography.png" alt="TNR Protography" className="footer-sponsor-logo" />
           </a>
-          <a href="https://www.dispatchgarlick.co.nz/" target="_blank" rel="noopener noreferrer" onClick={() => trackSponsorClick('Dispatch & Garlick Ltd', 'https://www.dispatchgarlick.co.nz/')}>
-            <img src="/images/sponsors/dispatch-garlick.png" alt="Dispatch & Garlick Ltd Engineers" className="footer-sponsor-logo" />
-          </a>
         </div>
       </div>
 
