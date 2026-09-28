@@ -65,6 +65,9 @@ export default function Footer() {
           <a href="https://greymouthshowcasejeweller.co.nz/" target="_blank" rel="noopener noreferrer" onClick={() => trackSponsorClick('Greymouth Showcase Jewellers', 'https://greymouthshowcasejeweller.co.nz/')}>
             <img src="/images/sponsors/greymouth-showcase-jewellers.jpg" alt="Greymouth Showcase Jewellers" className="footer-sponsor-logo footer-sponsor-logo--square" />
           </a>
+          <a href="https://oneagency.nz/agent?consultant_id=39762" target="_blank" rel="noopener noreferrer" onClick={() => trackSponsorClick('Nicole Pamment - One Agency', 'https://oneagency.nz/agent?consultant_id=39762')}>
+            <img src="/images/sponsors/one-agency-nicole-pamment.png" alt="Nicole Pamment - One Agency" className="footer-sponsor-logo" />
+          </a>
         </div>
       </div>
 
