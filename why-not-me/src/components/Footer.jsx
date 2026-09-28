@@ -62,6 +62,9 @@ export default function Footer() {
           <a href="https://www.tnrprotography.co.nz" target="_blank" rel="noopener noreferrer" onClick={() => trackSponsorClick('TNR Protography', 'https://www.tnrprotography.co.nz')}>
             <img src="/images/sponsors/tnr-protography.png" alt="TNR Protography" className="footer-sponsor-logo" />
           </a>
+          <a href="https://greymouthshowcasejeweller.co.nz/" target="_blank" rel="noopener noreferrer" onClick={() => trackSponsorClick('Greymouth Showcase Jewellers', 'https://greymouthshowcasejeweller.co.nz/')}>
+            <img src="/images/sponsors/greymouth-showcase-jewellers.jpg" alt="Greymouth Showcase Jewellers" className="footer-sponsor-logo footer-sponsor-logo--square" />
+          </a>
         </div>
       </div>
 
