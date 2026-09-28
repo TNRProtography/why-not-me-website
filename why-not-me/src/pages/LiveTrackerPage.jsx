@@ -887,9 +887,8 @@ export default function LiveTrackerPage() {
         touchZoom: true,
       })
 
-      // ── Scroll/touch guard overlays ──
+      // ── Scroll guard overlay ──
       // Desktop: show "Use Ctrl + scroll to zoom" on wheel
-      // Mobile: show "Use two fingers to move the map" on single-finger drag
       const guardOverlay = document.createElement('div')
       guardOverlay.className = 'map-scroll-guard'
       guardOverlay.style.cssText = 'position:absolute;inset:0;z-index:1100;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.55);opacity:0;pointer-events:none;transition:opacity 0.25s;'
@@ -923,22 +922,14 @@ export default function LiveTrackerPage() {
         }
       }, { passive: false })
 
-      // Mobile: detect single-finger touch and show hint
+      // Mobile: only allow map dragging with two fingers (single finger scrolls the page)
       if (L.Browser.mobile) {
-        let touchCount = 0
         container.addEventListener('touchstart', (e) => {
-          touchCount = e.touches.length
-          if (touchCount >= 2) {
+          if (e.touches.length >= 2) {
             map.dragging.enable()
           }
         }, { passive: true })
-        container.addEventListener('touchmove', (e) => {
-          if (touchCount < 2) {
-            showGuard('Use two fingers to move the map')
-          }
-        }, { passive: true })
         container.addEventListener('touchend', () => {
-          touchCount = 0
           map.dragging.disable()
         }, { passive: true })
       }
