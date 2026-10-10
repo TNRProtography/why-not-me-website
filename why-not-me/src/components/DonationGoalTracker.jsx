@@ -185,7 +185,7 @@ function DetailedDonationTracker({ middleSlot = null }) {
                     <div className="donation-detail__donation-top">
                       <strong>{donation.name || 'Anonymous supporter'}</strong>
                       <span>
-                        {donation.kind === 'sponsorship' && <em style={{ fontSize: 11, color: 'var(--gold, #A88E5D)', marginRight: 6, fontStyle: 'normal', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Sponsor</em>}
+                        {(donation.kind === 'sponsorship' || donation.kind === 'quiz') && <em style={{ fontSize: 11, color: 'var(--gold, #A88E5D)', marginRight: 6, fontStyle: 'normal', letterSpacing: '0.5px', textTransform: 'uppercase' }}>{donation.kind === 'quiz' ? 'Quiz Fundraiser' : 'Sponsor'}</em>}
                         {formatCurrency(donation.amount, donation.currency || progress.currency)}
                       </span>
                     </div>

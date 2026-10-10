@@ -339,7 +339,7 @@ export default function AdminPage() {
         <div className="admin-card">
           <h2 className="admin-card-title">Donations & Sponsorships</h2>
           <p className="admin-card-desc">
-            Manually add a donation or sponsorship. These appear alongside Raisely donations
+            Manually add a donation, sponsorship or quiz fundraiser. These appear alongside Raisely donations
             on the site. Each entry is stored separately in KV so you can delete individually.
           </p>
           <DonationForm token={token} onToast={setToast} onAdded={() => setDonationsKey((k) => k + 1)} />
@@ -479,12 +479,22 @@ function TrackingDataCard({ token, onToast }) {
   )
 }
 
+// Types of manual entry. `badge` colours the tag in the entries list.
+const DONATION_KINDS = {
+  donation: { label: 'Donation', badge: { background: '#1a2e1a', color: '#8fbc8f' } },
+  sponsorship: { label: 'Sponsorship', badge: { background: '#3D3424', color: '#A88E5D' } },
+  quiz: { label: 'Quiz Fundraiser', badge: { background: '#1f2a3a', color: '#8fb3d9' } },
+}
+const kindInfo = (kind) => DONATION_KINDS[kind] || DONATION_KINDS.donation
+
 function DonationForm({ token, onToast, onAdded }) {
   const [name, setName] = useState('')
   const [amount, setAmount] = useState('')
   const [message, setMessage] = useState('')
   const [kind, setKind] = useState('donation')
   const [sending, setSending] = useState(false)
+  // A quiz fundraiser entry is the event's total, not a person's gift
+  const defaultName = kind === 'quiz' ? 'Quiz Night' : 'Anonymous'
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -492,6 +502,7 @@ function DonationForm({ token, onToast, onAdded }) {
       onToast({ ok: false, msg: 'Enter an amount.' })
       return
     }
+    const entryName = name.trim() || defaultName
     setSending(true)
     onToast(null)
     try {
@@ -500,7 +511,7 @@ function DonationForm({ token, onToast, onAdded }) {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           type: 'add_donation',
-          name: name.trim() || 'Anonymous',
+          name: entryName,
           amount: parseFloat(amount),
           message: message.trim(),
           kind,
@@ -508,7 +519,7 @@ function DonationForm({ token, onToast, onAdded }) {
       })
       const d = await res.json()
       if (d.success) {
-        onToast({ ok: true, msg: `${kind === 'sponsorship' ? 'Sponsorship' : 'Donation'} of $${amount} recorded for ${name || 'Anonymous'}.` })
+        onToast({ ok: true, msg: `${kindInfo(kind).label} of $${amount} recorded for ${entryName}.` })
         setName('')
         setAmount('')
         setMessage('')
@@ -532,7 +543,7 @@ function DonationForm({ token, onToast, onAdded }) {
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Anonymous"
+            placeholder={defaultName}
           />
         </div>
         <div className="admin-field">
@@ -560,8 +571,9 @@ function DonationForm({ token, onToast, onAdded }) {
               fontFamily: 'Montserrat, Arial, Helvetica, sans-serif', fontSize: 14,
             }}
           >
-            <option value="donation">Donation</option>
-            <option value="sponsorship">Sponsorship</option>
+            {Object.entries(DONATION_KINDS).map(([value, { label }]) => (
+              <option value={value} key={value}>{label}</option>
+            ))}
           </select>
         </div>
         <div className="admin-field">
@@ -641,12 +653,11 @@ function DonationList({ token, onToast, refreshKey }) {
           <div style={{ flex: 1 }}>
             <span style={{ color: '#F5F3EC', fontWeight: 600 }}>{d.name}</span>
             <span style={{
-              display: 'inline-block', background: d.kind === 'sponsorship' ? '#3D3424' : '#1a2e1a',
-              color: d.kind === 'sponsorship' ? '#A88E5D' : '#8fbc8f',
+              display: 'inline-block', ...kindInfo(d.kind).badge,
               padding: '2px 8px', fontSize: 10, fontWeight: 700, letterSpacing: 1,
               textTransform: 'uppercase', marginLeft: 8, borderRadius: 2,
             }}>
-              {d.kind || 'donation'}
+              {kindInfo(d.kind).label}
             </span>
             <span style={{ color: '#F5F3EC', fontWeight: 700, marginLeft: 12 }}>${d.amount}</span>
             {d.message && <span style={{ color: '#666', marginLeft: 8 }}>"{d.message}"</span>}

@@ -140,7 +140,7 @@ export default function DonationCelebrationBanner() {
             </motion.span>
             <div className="donation-banner__body">
               <p className="donation-banner__headline">
-                <strong>{active.name || 'Someone'}</strong> just donated{' '}
+                <strong>{active.name || 'Someone'}</strong> {active.kind === 'quiz' ? 'raised' : 'just donated'}{' '}
                 <strong>{formatDonationCurrency(active.amount, active.currency)}</strong>!
               </p>
               {active.message && (
